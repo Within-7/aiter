@@ -1,0 +1,28 @@
+.xterm-wrapper {
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  /* GPU acceleration to reduce repaints */
+  transform: translateZ(0);
+  will-change: contents;
+  /* Prevent layout shifts */
+  contain: layout style paint;
+  box-sizing: border-box; /* Ensure padding is included in height calculation */
+}
+
+.xterm-wrapper .xterm {
+  height: 100%;
+}
+
+.xterm-wrapper .xterm-viewport {
+  overflow-y: auto !important;
+  /* Smooth scrolling performance */
+  -webkit-overflow-scrolling: touch;
+  /* Add bottom padding to prevent last line cutoff */
+  padding-bottom: 20px !important;
+}
+
+.xterm-wrapper .xterm-screen {
+  /* Ensure content area has bottom padding */
+  padding-bottom: 10px !important;
+}

@@ -1,0 +1,40 @@
+appId: com.within7.aiter
+productName: AiTer
+copyright: Copyright © 2025-2026 Within-7.com - 任小姐出海战略咨询
+directories:
+  buildResources: build
+  output: release/${version}
+files:
+  - dist-electron
+  - dist-renderer
+asarUnpack:
+  - node_modules/node-pty/**/*
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.developer-tools
+  icon: build/icon.icns
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: zip
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: ${productName}-${version}-win-${arch}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: AiTer

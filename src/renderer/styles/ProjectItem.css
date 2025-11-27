@@ -1,0 +1,78 @@
+.project-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  margin: 2px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  position: relative;
+  gap: 8px;
+}
+
+.project-item:hover {
+  background-color: #2a2d2e;
+}
+
+.project-item.active {
+  background-color: #37373d;
+}
+
+.project-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.project-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.project-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #cccccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-path {
+  font-size: 11px;
+  color: #888888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-remove {
+  opacity: 0;
+  transition: opacity 0.2s;
+  font-size: 16px;
+}
+
+.project-item:hover .btn-remove {
+  opacity: 1;
+}
+
+.context-menu {
+  position: fixed;
+  background-color: #2d2d30;
+  border: 1px solid #454545;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  min-width: 120px;
+}
+
+.context-menu-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.2s;
+}
+
+.context-menu-item:hover {
+  background-color: #37373d;
+}

@@ -1,0 +1,193 @@
+.work-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  overflow: hidden;
+}
+
+.work-area-tabs {
+  display: flex;
+  justify-content: space-between;
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  height: 35px;
+  flex-shrink: 0;
+}
+
+.work-area-tabs-left {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+}
+
+.work-area-tabs::-webkit-scrollbar {
+  height: 3px;
+}
+
+.work-area-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  padding-top: 11px; /* Make room for the top border */
+  background: #2d2d30;
+  border-right: 1px solid #252526;
+  border-top: 3px solid transparent;
+  cursor: grab;
+  user-select: none;
+  transition: background-color 0.15s, border-top-color 0.2s, box-shadow 0.2s, opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+  min-width: 120px;
+  position: relative;
+  opacity: 0.7;
+}
+
+.work-area-tab:hover {
+  background: #3e3e42;
+  opacity: 0.85;
+}
+
+.work-area-tab.active {
+  background: #1e1e1e;
+  opacity: 1;
+  /* Border top color will be set inline via style prop with project color */
+  /* Add subtle shadow to make it stand out */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.work-area-tab.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+.work-area-tab.drag-over {
+  border-left: 2px solid #007acc;
+  padding-left: 10px;
+}
+
+.tab-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.tab-title {
+  font-size: 13px;
+  color: #cccccc;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.1s;
+  flex-shrink: 0;
+}
+
+.tab-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.work-area-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.editor-container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Keep in layout but hide visually when inactive */
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition: none;
+}
+
+.editor-container.hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.terminal-area {
+  height: 100%;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Keep in layout but hide visually when inactive */
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition: none;
+}
+
+.terminal-area.hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.work-area-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #999;
+  gap: 8px;
+}
+
+.work-area-empty p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.mode-toggle-button {
+  background: none;
+  border: none;
+  color: #cccccc;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 12px;
+  transition: background 0.2s, opacity 0.2s;
+  flex-shrink: 0;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mode-toggle-button:hover:not(.disabled) {
+  background: #3e3e42;
+}
+
+.mode-toggle-button.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

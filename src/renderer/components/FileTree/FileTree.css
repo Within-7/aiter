@@ -1,0 +1,129 @@
+.file-tree {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #252526;
+  color: #cccccc;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.file-tree-header {
+  padding: 12px 16px;
+  background: #2d2d30;
+  border-bottom: 1px solid #3e3e42;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #999;
+}
+
+.file-tree-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-left: 12px;
+}
+
+.file-tree-loading,
+.file-tree-error {
+  padding: 16px;
+  text-align: center;
+  color: #999;
+}
+
+.file-tree-error {
+  color: #f14c4c;
+}
+
+.file-tree-node {
+  user-select: none;
+}
+
+.file-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+  white-space: nowrap;
+}
+
+.file-tree-item:hover {
+  background: #2a2d2e;
+}
+
+.file-tree-item.selected {
+  background: #094771;
+}
+
+.expand-icon {
+  width: 12px;
+  font-size: 10px;
+  color: #cccccc;
+  flex-shrink: 0;
+}
+
+.file-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.git-status {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.git-status-modified,
+.git-status-modified .git-status {
+  color: #f9e64f;
+}
+
+.git-status-added,
+.git-status-added .git-status {
+  color: #73c991;
+}
+
+.git-status-deleted,
+.git-status-deleted .git-status {
+  color: #f14c4c;
+}
+
+.git-status-untracked,
+.git-status-untracked .git-status {
+  color: #888;
+}
+
+.file-tree-children {
+  /* Children are rendered recursively */
+}
+
+/* Scrollbar styling */
+.file-tree-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.file-tree-content::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.file-tree-content::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 5px;
+}
+
+.file-tree-content::-webkit-scrollbar-thumb:hover {
+  background: #4e4e4e;
+}

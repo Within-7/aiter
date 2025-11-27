@@ -1,0 +1,28 @@
+.tab-bar {
+  display: flex;
+  align-items: center;
+  background-color: #2d2d30;
+  border-bottom: 1px solid #1e1e1e;
+  height: 36px;
+  overflow: hidden;
+}
+
+.tabs {
+  flex: 1;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.btn-new-tab {
+  margin-right: 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
