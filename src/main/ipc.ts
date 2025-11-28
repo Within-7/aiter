@@ -4,6 +4,7 @@ import { PTYManager } from './pty'
 import { StoreManager } from './store'
 import { fileSystemManager } from './filesystem'
 import { ProjectServerManager } from './fileServer/ProjectServerManager'
+import { PluginManager } from './plugins/PluginManager'
 
 export function setupIPC(
   window: BrowserWindow,
@@ -224,6 +225,66 @@ export function setupIPC(
     try {
       const stats = serverManager.getStats()
       return { success: true, stats }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  // Plugin management
+  ipcMain.handle('plugins:list', async () => {
+    try {
+      const pluginManager = PluginManager.getInstance()
+      const plugins = await pluginManager.listPlugins()
+      return { success: true, plugins }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('plugins:install', async (_, { pluginId }) => {
+    try {
+      const pluginManager = PluginManager.getInstance()
+      const success = await pluginManager.installPlugin(pluginId, (progress) => {
+        window.webContents.send('plugins:install-progress', progress)
+      })
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('plugins:update', async (_, { pluginId }) => {
+    try {
+      const pluginManager = PluginManager.getInstance()
+      const success = await pluginManager.updatePlugin(pluginId, (progress) => {
+        window.webContents.send('plugins:update-progress', progress)
+      })
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('plugins:remove', async (_, { pluginId }) => {
+    try {
+      const pluginManager = PluginManager.getInstance()
+      const success = await pluginManager.removePlugin(pluginId)
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('plugins:configure', async (_, { pluginId, config }) => {
+    try {
+      const pluginManager = PluginManager.getInstance()
+      const success = await pluginManager.configurePlugin(pluginId, config)
+      return { success }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       return { success: false, error: message }

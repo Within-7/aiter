@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { Project, Terminal, AppSettings, FileNode } from '../types'
+import { Project, Terminal, AppSettings, FileNode, Plugin, PluginInstallProgress, PluginUpdateProgress } from '../types'
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -97,6 +97,26 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('app:error', listener)
       return () => ipcRenderer.removeListener('app:error', listener)
     }
+  },
+
+  // Plugin APIs
+  plugins: {
+    list: () => ipcRenderer.invoke('plugins:list'),
+    install: (pluginId: string) => ipcRenderer.invoke('plugins:install', { pluginId }),
+    update: (pluginId: string) => ipcRenderer.invoke('plugins:update', { pluginId }),
+    remove: (pluginId: string) => ipcRenderer.invoke('plugins:remove', { pluginId }),
+    configure: (pluginId: string, config: Record<string, unknown>) =>
+      ipcRenderer.invoke('plugins:configure', { pluginId, config }),
+    onInstallProgress: (callback: (progress: PluginInstallProgress) => void) => {
+      const listener = (_: unknown, progress: PluginInstallProgress) => callback(progress)
+      ipcRenderer.on('plugins:install-progress', listener)
+      return () => ipcRenderer.removeListener('plugins:install-progress', listener)
+    },
+    onUpdateProgress: (callback: (progress: PluginUpdateProgress) => void) => {
+      const listener = (_: unknown, progress: PluginUpdateProgress) => callback(progress)
+      ipcRenderer.on('plugins:update-progress', listener)
+      return () => ipcRenderer.removeListener('plugins:update-progress', listener)
+    }
   }
 })
 
@@ -183,6 +203,18 @@ export interface API {
   }
   app: {
     onError(callback: (error: { message: string; stack?: string }) => void): () => void
+  }
+  plugins: {
+    list(): Promise<{ success: boolean; plugins?: Plugin[]; error?: string }>
+    install(pluginId: string): Promise<{ success: boolean; error?: string }>
+    update(pluginId: string): Promise<{ success: boolean; error?: string }>
+    remove(pluginId: string): Promise<{ success: boolean; error?: string }>
+    configure(
+      pluginId: string,
+      config: Record<string, unknown>
+    ): Promise<{ success: boolean; error?: string }>
+    onInstallProgress(callback: (progress: PluginInstallProgress) => void): () => void
+    onUpdateProgress(callback: (progress: PluginUpdateProgress) => void): () => void
   }
 }
 

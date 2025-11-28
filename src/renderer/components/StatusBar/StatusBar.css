@@ -1,0 +1,242 @@
+/* Status Bar Container */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  background-color: #2d2d30;
+  color: #cccccc;
+  font-size: 12px;
+  padding: 0 12px;
+  border-top: 1px solid #1e1e1e;
+  user-select: none;
+  flex-shrink: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Status Bar Sections */
+.status-bar-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0; /* Allow sections to shrink */
+  height: 100%;
+}
+
+.status-bar-left {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.status-bar-center {
+  flex: 0 0 auto;
+  justify-content: center;
+}
+
+.status-bar-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* Status Items */
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  opacity: 0.9;
+  cursor: default;
+  padding: 0 8px;
+  height: 100%;
+  transition: opacity 0.2s ease;
+}
+
+.status-item:hover {
+  opacity: 1;
+}
+
+.status-icon {
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.status-text {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Status Buttons */
+.status-button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0 10px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  font-size: 12px;
+  white-space: nowrap;
+  position: relative;
+}
+
+.status-button:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.status-button:active:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.status-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Plugin Button Specific Styles */
+.plugin-button {
+  font-weight: 500;
+}
+
+.plugin-button.no-plugins {
+  opacity: 0.7;
+}
+
+.plugin-button.has-plugins {
+  color: #4ec9b0; /* Teal for installed plugins */
+}
+
+.plugin-button.update-available {
+  color: #f48771; /* Orange for updates */
+}
+
+.plugin-button.installing {
+  color: #dcdcaa; /* Yellow for installing */
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.plugin-icon {
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.plugin-text {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Plugin Badge */
+.plugin-badge {
+  background-color: #f48771;
+  color: #1e1e1e;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 9px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-left: 2px;
+}
+
+.plugin-button.has-plugins .plugin-badge {
+  background-color: #4ec9b0; /* Teal for new plugins */
+}
+
+.plugin-button.update-available .plugin-badge {
+  background-color: #f48771; /* Orange for updates */
+}
+
+/* Settings Button */
+.settings-button {
+  padding: 0 8px;
+}
+
+.settings-button .status-icon {
+  font-size: 14px;
+  opacity: 0.8;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.settings-button:hover .status-icon {
+  opacity: 1;
+  transform: rotate(30deg);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .status-bar-section {
+    gap: 8px;
+  }
+
+  .status-item {
+    padding: 0 4px;
+  }
+
+  .status-button {
+    padding: 0 6px;
+  }
+
+  /* Hide some items on smaller screens */
+  .status-bar-right .status-item:not(:last-child) {
+    display: none;
+  }
+}
+
+/* Platform-specific adjustments */
+.platform-windows .status-bar-right {
+  padding-right: 140px; /* Space for window controls */
+}
+
+/* Dark theme (default) */
+.status-bar {
+  --status-bg: #2d2d30;
+  --status-border: #1e1e1e;
+  --status-text: #cccccc;
+  --status-hover: rgba(255, 255, 255, 0.1);
+  --status-active: rgba(255, 255, 255, 0.15);
+}
+
+/* Light theme support (for future) */
+.theme-light .status-bar {
+  --status-bg: #007acc;
+  --status-border: #0065a9;
+  --status-text: #ffffff;
+  --status-hover: rgba(255, 255, 255, 0.15);
+  --status-active: rgba(255, 255, 255, 0.25);
+
+  background-color: var(--status-bg);
+  border-top-color: var(--status-border);
+  color: var(--status-text);
+}
+
+/* Accessibility */
+.status-button:focus-visible {
+  outline: 2px solid #007acc;
+  outline-offset: -2px;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, opacity, transform;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
+}

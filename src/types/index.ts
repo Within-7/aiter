@@ -110,3 +110,36 @@ export interface WindowState {
   y?: number
   isMaximized: boolean
 }
+
+// Plugin system types
+export interface Plugin {
+  id: string
+  name: string
+  description: string
+  version: string
+  author: string
+  installed: boolean
+  installedVersion?: string
+  updateAvailable: boolean
+  enabled: boolean
+  config?: Record<string, unknown>
+  tags?: string[]
+  icon?: string
+  homepage?: string
+}
+
+export interface PluginInstallProgress {
+  pluginId: string
+  status: 'downloading' | 'installing' | 'complete' | 'error'
+  progress: number
+  message?: string
+}
+
+export interface PluginUpdateProgress {
+  pluginId: string
+  status: 'checking' | 'downloading' | 'installing' | 'complete' | 'error'
+  progress: number
+  message?: string
+  fromVersion?: string
+  toVersion?: string
+}

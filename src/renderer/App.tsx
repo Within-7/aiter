@@ -59,6 +59,9 @@ function App() {
     }
   }, [])
 
+  // Get active terminal for StatusBar
+  const activeTerminal = state.terminals.find(t => t.id === state.activeTerminalId)
+
   return (
     <AppContext.Provider value={{ state, dispatch }}>
       <div className="app">
@@ -66,7 +69,7 @@ function App() {
           <Sidebar />
           <WorkArea />
         </div>
-        <StatusBar />
+        <StatusBar activeTerminal={activeTerminal} />
       </div>
     </AppContext.Provider>
   )
