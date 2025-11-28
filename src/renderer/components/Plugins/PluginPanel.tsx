@@ -92,44 +92,94 @@ export const PluginPanel: React.FC = () => {
   }, [])
 
   const handleInstall = async (pluginId: string) => {
-    setProcessingPlugins((prev) => new Set(prev).add(pluginId))
-
     try {
-      const result = await window.api.plugins.install(pluginId)
-      if (result.success) {
-        await loadPlugins()
+      // Get the install command
+      const commandResult = await window.api.plugins.getInstallCommand(pluginId)
+      if (!commandResult.success || !commandResult.command) {
+        setError(commandResult.error || 'Failed to get install command')
+        return
+      }
+
+      // Get current active project for terminal context
+      const activeProject = state.projects.find(p => p.id === state.activeProjectId)
+      if (!activeProject) {
+        setError('No active project. Please select a project first.')
+        return
+      }
+
+      // Create a new terminal and execute the install command
+      const terminalResult = await window.api.terminal.create({
+        cwd: activeProject.path,
+        shell: state.settings?.shell || '/bin/bash',
+        projectId: activeProject.id,
+        projectName: activeProject.name
+      })
+
+      if (terminalResult.success && terminalResult.terminal) {
+        // Write the command to the terminal
+        await window.api.terminal.write({
+          id: terminalResult.terminal.id,
+          data: commandResult.command + '\r'
+        })
+
+        // Close the plugin panel to show the terminal
+        dispatch({ type: 'SET_PLUGIN_PANEL', payload: false })
+
+        // Reload plugins after a delay to check installation status
+        setTimeout(() => {
+          loadPlugins()
+        }, 2000)
       } else {
-        setError(result.error || 'Installation failed')
+        setError(terminalResult.error || 'Failed to create terminal')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Installation failed')
-    } finally {
-      setProcessingPlugins((prev) => {
-        const next = new Set(prev)
-        next.delete(pluginId)
-        return next
-      })
     }
   }
 
   const handleUpdate = async (pluginId: string) => {
-    setProcessingPlugins((prev) => new Set(prev).add(pluginId))
-
     try {
-      const result = await window.api.plugins.update(pluginId)
-      if (result.success) {
-        await loadPlugins()
+      // Get the update command
+      const commandResult = await window.api.plugins.getUpdateCommand(pluginId)
+      if (!commandResult.success || !commandResult.command) {
+        setError(commandResult.error || 'Failed to get update command')
+        return
+      }
+
+      // Get current active project for terminal context
+      const activeProject = state.projects.find(p => p.id === state.activeProjectId)
+      if (!activeProject) {
+        setError('No active project. Please select a project first.')
+        return
+      }
+
+      // Create a new terminal and execute the update command
+      const terminalResult = await window.api.terminal.create({
+        cwd: activeProject.path,
+        shell: state.settings?.shell || '/bin/bash',
+        projectId: activeProject.id,
+        projectName: activeProject.name
+      })
+
+      if (terminalResult.success && terminalResult.terminal) {
+        // Write the command to the terminal
+        await window.api.terminal.write({
+          id: terminalResult.terminal.id,
+          data: commandResult.command + '\r'
+        })
+
+        // Close the plugin panel to show the terminal
+        dispatch({ type: 'SET_PLUGIN_PANEL', payload: false })
+
+        // Reload plugins after a delay to check update status
+        setTimeout(() => {
+          loadPlugins()
+        }, 2000)
       } else {
-        setError(result.error || 'Update failed')
+        setError(terminalResult.error || 'Failed to create terminal')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed')
-    } finally {
-      setProcessingPlugins((prev) => {
-        const next = new Set(prev)
-        next.delete(pluginId)
-        return next
-      })
     }
   }
 
