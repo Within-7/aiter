@@ -3,7 +3,7 @@ import { AppContext, appReducer, initialState } from './context/AppContext'
 import { Sidebar } from './components/Sidebar'
 import { WorkArea } from './components/WorkArea'
 import { StatusBar } from './components/StatusBar'
-import { PluginPanel } from './components/PluginPanel'
+import { PluginPanel } from './components/Plugins/PluginPanel'
 import './styles/App.css'
 
 function App() {
