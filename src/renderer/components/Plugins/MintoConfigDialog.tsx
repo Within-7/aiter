@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 
 interface MintoConfig {
   githubToken?: string
-  autoCheckUpdates?: boolean
+  autoUpdate?: boolean
 }
 
 interface MintoConfigDialogProps {
@@ -19,8 +19,8 @@ export const MintoConfigDialog: React.FC<MintoConfigDialogProps> = ({
   onSave
 }) => {
   const [githubToken, setGithubToken] = useState(currentConfig.githubToken || '')
-  const [autoCheckUpdates, setAutoCheckUpdates] = useState(
-    currentConfig.autoCheckUpdates ?? true
+  const [autoUpdate, setAutoUpdate] = useState(
+    currentConfig.autoUpdate ?? false
   )
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -29,7 +29,7 @@ export const MintoConfigDialog: React.FC<MintoConfigDialogProps> = ({
   useEffect(() => {
     if (isOpen) {
       setGithubToken(currentConfig.githubToken || '')
-      setAutoCheckUpdates(currentConfig.autoCheckUpdates ?? true)
+      setAutoUpdate(currentConfig.autoUpdate ?? false)
       setError(null)
     }
   }, [isOpen, currentConfig])
@@ -41,7 +41,7 @@ export const MintoConfigDialog: React.FC<MintoConfigDialogProps> = ({
     try {
       const config: MintoConfig = {
         githubToken: githubToken.trim() || undefined,
-        autoCheckUpdates
+        autoUpdate
       }
 
       await onSave(config)
@@ -119,14 +119,14 @@ export const MintoConfigDialog: React.FC<MintoConfigDialogProps> = ({
             <label className="minto-config-checkbox-label">
               <input
                 type="checkbox"
-                checked={autoCheckUpdates}
-                onChange={(e) => setAutoCheckUpdates(e.target.checked)}
+                checked={autoUpdate}
+                onChange={(e) => setAutoUpdate(e.target.checked)}
                 disabled={isSaving}
               />
-              <span>Automatically check for updates</span>
+              <span>Automatically update Minto</span>
             </label>
             <p className="minto-config-hint">
-              Check for new Minto versions when opening projects
+              Automatically update Minto CLI to the latest version when updates are available (updates run in terminal)
             </p>
           </div>
 
