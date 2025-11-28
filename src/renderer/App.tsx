@@ -3,6 +3,7 @@ import { AppContext, appReducer, initialState } from './context/AppContext'
 import { Sidebar } from './components/Sidebar'
 import { WorkArea } from './components/WorkArea'
 import { StatusBar } from './components/StatusBar'
+import { PluginPanel } from './components/PluginPanel'
 import './styles/App.css'
 
 function App() {
@@ -70,6 +71,7 @@ function App() {
           <WorkArea />
         </div>
         <StatusBar activeTerminal={activeTerminal} />
+        <PluginPanel />
       </div>
     </AppContext.Provider>
   )

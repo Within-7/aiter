@@ -5,6 +5,7 @@ import { setupMenu } from './menu'
 import { PTYManager } from './pty'
 import { StoreManager } from './store'
 import { ProjectServerManager } from './fileServer/ProjectServerManager'
+import { PluginManager } from './plugins/PluginManager'
 
 // Set application name
 app.setName('AiTer')
@@ -13,6 +14,7 @@ let mainWindow: BrowserWindow | null = null
 let ptyManager: PTYManager | null = null
 let storeManager: StoreManager | null = null
 let serverManager: ProjectServerManager | null = null
+let pluginManager: PluginManager | null = null
 
 async function initialize() {
   try {
@@ -24,6 +26,10 @@ async function initialize() {
 
     // Initialize file server manager
     serverManager = new ProjectServerManager()
+
+    // Initialize plugin manager
+    pluginManager = PluginManager.getInstance()
+    await pluginManager.initialize()
 
     // Create main window
     mainWindow = createMainWindow()
@@ -38,6 +44,9 @@ async function initialize() {
     mainWindow.on('closed', () => {
       mainWindow = null
     })
+
+    // Start plugin auto-check after window is created
+    pluginManager.startAutoCheck()
 
     console.log('AiTer initialized successfully')
   } catch (error) {
@@ -70,6 +79,9 @@ app.on('before-quit', async () => {
   }
   if (serverManager) {
     await serverManager.stopAllServers()
+  }
+  if (pluginManager) {
+    await pluginManager.cleanup()
   }
 })
 
