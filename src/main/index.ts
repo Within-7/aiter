@@ -37,6 +37,9 @@ async function initialize() {
     // Create main window
     mainWindow = createMainWindow()
 
+    // Set main window on plugin manager for event communication
+    pluginManager.setMainWindow(mainWindow)
+
     // Setup menu
     setupMenu()
 

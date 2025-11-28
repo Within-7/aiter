@@ -52,13 +52,57 @@ function App() {
       window.api.app.onError((error) => {
         console.error('App error:', error)
         // Could show a toast notification here
+      }),
+
+      window.api.plugins.onAutoUpdateAvailable(async (data) => {
+        console.log(`[App] Auto-update available for ${data.pluginName} (${data.pluginId})`)
+
+        // Get the update command
+        const commandResult = await window.api.plugins.getUpdateCommand(data.pluginId)
+        if (!commandResult.success || !commandResult.command) {
+          console.error(`[App] Failed to get update command: ${commandResult.error}`)
+          return
+        }
+
+        // Get current active project for terminal context
+        const activeProject = state.projects.find(p => p.id === state.activeProjectId)
+        if (!activeProject) {
+          console.warn('[App] No active project for auto-update. Skipping.')
+          return
+        }
+
+        // Create a new terminal and execute the update command
+        const terminalResult = await window.api.terminal.create({
+          cwd: activeProject.path,
+          shell: state.settings?.shell || '/bin/bash',
+          projectId: activeProject.id,
+          projectName: activeProject.name
+        })
+
+        if (terminalResult.success && terminalResult.terminal) {
+          // Add terminal to state
+          dispatch({
+            type: 'ADD_TERMINAL',
+            payload: terminalResult.terminal
+          })
+
+          // Write the command to the terminal
+          await window.api.terminal.write({
+            id: terminalResult.terminal.id,
+            data: `# Auto-updating ${data.pluginName}...\r${commandResult.command}\r`
+          })
+
+          console.log(`[App] Auto-update triggered for ${data.pluginName}`)
+        } else {
+          console.error(`[App] Failed to create terminal for auto-update: ${terminalResult.error}`)
+        }
       })
     ]
 
     return () => {
       cleanups.forEach((cleanup) => cleanup())
     }
-  }, [])
+  }, [state.projects, state.activeProjectId, state.settings])
 
   // Get active terminal for StatusBar
   const activeTerminal = state.terminals.find(t => t.id === state.activeTerminalId)

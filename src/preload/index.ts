@@ -122,6 +122,11 @@ contextBridge.exposeInMainWorld('api', {
       const listener = (_: unknown, progress: PluginUpdateProgress) => callback(progress)
       ipcRenderer.on('plugins:update-progress', listener)
       return () => ipcRenderer.removeListener('plugins:update-progress', listener)
+    },
+    onAutoUpdateAvailable: (callback: (data: { pluginId: string; pluginName: string }) => void) => {
+      const listener = (_: unknown, data: { pluginId: string; pluginName: string }) => callback(data)
+      ipcRenderer.on('plugins:auto-update-available', listener)
+      return () => ipcRenderer.removeListener('plugins:auto-update-available', listener)
     }
   }
 })
@@ -224,6 +229,7 @@ export interface API {
     getCheckUpdateCommand(pluginId: string): Promise<{ success: boolean; command?: string; error?: string }>
     onInstallProgress(callback: (progress: PluginInstallProgress) => void): () => void
     onUpdateProgress(callback: (progress: PluginUpdateProgress) => void): () => void
+    onAutoUpdateAvailable(callback: (data: { pluginId: string; pluginName: string }) => void): () => void
   }
 }
 

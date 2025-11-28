@@ -18,6 +18,7 @@ import {
   ProgressCallback,
 } from '../../types/plugin';
 import Store from 'electron-store';
+import { BrowserWindow } from 'electron';
 
 interface PluginStoreSchema {
   plugins: {
@@ -32,10 +33,18 @@ export class PluginManager {
   private store: Store<PluginStoreSchema>;
   private autoCheckInterval: NodeJS.Timeout | null = null;
   private readonly AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+  private mainWindow: BrowserWindow | null = null;
 
   private constructor(store: Store<PluginStoreSchema>) {
     this.store = store;
     this.initializeRegistry();
+  }
+
+  /**
+   * Set the main window for sending events to renderer
+   */
+  public setMainWindow(window: BrowserWindow): void {
+    this.mainWindow = window;
   }
 
   /**
@@ -407,18 +416,41 @@ export class PluginManager {
     console.log('[PluginManager] Checking all plugins for updates...');
 
     const promises: Promise<PluginUpdateCheckResult>[] = [];
+    const pluginIds: string[] = [];
+
     for (const [pluginId, plugin] of this.plugins) {
       if (plugin.status === 'installed' || plugin.status === 'update-available') {
         promises.push(this.checkForUpdate(pluginId));
+        pluginIds.push(pluginId);
       }
     }
 
     const results = await Promise.allSettled(promises);
-    const updateCount = results.filter(
-      (r) => r.status === 'fulfilled' && r.value.hasUpdate
-    ).length;
+    const pluginsWithUpdates: string[] = [];
 
-    console.log(`[PluginManager] Update check complete. ${updateCount} updates available.`);
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled' && result.value.hasUpdate) {
+        pluginsWithUpdates.push(pluginIds[index]);
+      }
+    });
+
+    console.log(`[PluginManager] Update check complete. ${pluginsWithUpdates.length} updates available.`);
+
+    // Check for auto-update configuration and trigger updates
+    for (const pluginId of pluginsWithUpdates) {
+      const config = await this.getPluginConfiguration(pluginId);
+      if (config.autoUpdate === true) {
+        console.log(`[PluginManager] Auto-update enabled for ${pluginId}, notifying renderer...`);
+
+        // Send event to renderer to trigger auto-update in terminal
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send('plugins:auto-update-available', {
+            pluginId,
+            pluginName: this.plugins.get(pluginId)?.definition.name || pluginId
+          });
+        }
+      }
+    }
   }
 
   /**
