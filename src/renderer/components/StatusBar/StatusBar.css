@@ -175,6 +175,8 @@
 /* About Button */
 .about-button {
   padding: 0 10px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .about-button .status-icon {
