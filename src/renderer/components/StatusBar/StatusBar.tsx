@@ -164,7 +164,6 @@ export function StatusBar({ activeTerminal }: StatusBarProps) {
           title="About AiTer"
         >
           <AiOutlineInfoCircle className="status-icon" />
-          <span className="status-text">About</span>
         </button>
       </div>
     </div>

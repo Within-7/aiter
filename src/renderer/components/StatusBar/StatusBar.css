@@ -172,6 +172,23 @@
   transform: rotate(30deg);
 }
 
+/* About Button */
+.about-button {
+  padding: 0 8px;
+  margin-left: auto;
+}
+
+.about-button .status-icon {
+  font-size: 16px;
+  opacity: 0.8;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.about-button:hover .status-icon {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .status-bar-section {
