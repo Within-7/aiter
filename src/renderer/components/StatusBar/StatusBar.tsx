@@ -2,6 +2,7 @@ import { useContext, useState, useEffect } from 'react'
 import { AppContext } from '../../context/AppContext'
 import { PluginButton, PluginStatus } from './PluginButton'
 import { Terminal } from '../../../types'
+import { AiOutlineInfoCircle } from 'react-icons/ai'
 import './StatusBar.css'
 
 export interface StatusBarProps {
@@ -73,6 +74,11 @@ export function StatusBar({ activeTerminal }: StatusBarProps) {
   // Handle plugin button click
   const handlePluginClick = () => {
     dispatch({ type: 'TOGGLE_PLUGIN_PANEL' })
+  }
+
+  // Handle about button click
+  const handleAboutClick = () => {
+    dispatch({ type: 'TOGGLE_ABOUT_PANEL' })
   }
 
   // Get active project info
@@ -152,6 +158,14 @@ export function StatusBar({ activeTerminal }: StatusBarProps) {
             </span>
           </span>
         )}
+        <button
+          className="status-button about-button"
+          onClick={handleAboutClick}
+          title="About AiTer"
+        >
+          <AiOutlineInfoCircle className="status-icon" />
+          <span className="status-text">About</span>
+        </button>
       </div>
     </div>
   )

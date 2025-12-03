@@ -99,6 +99,11 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
 
+  // Shell APIs
+  shell: {
+    openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', { url })
+  },
+
   // Plugin APIs
   plugins: {
     list: () => ipcRenderer.invoke('plugins:list'),
@@ -240,6 +245,9 @@ export interface API {
   }
   app: {
     onError(callback: (error: { message: string; stack?: string }) => void): () => void
+  }
+  shell: {
+    openExternal(url: string): Promise<{ success: boolean; error?: string }>
   }
   plugins: {
     list(): Promise<{ success: boolean; plugins?: Plugin[]; error?: string }>

@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, dialog } from 'electron'
+import { BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { v4 as uuidv4 } from 'uuid'
 import { PTYManager } from './pty'
 import { StoreManager } from './store'
@@ -414,6 +414,17 @@ export function setupIPC(
 
       const success = await updateManager.downloadUpdate()
       return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  // Shell operations
+  ipcMain.handle('shell:openExternal', async (_, { url }) => {
+    try {
+      await shell.openExternal(url)
+      return { success: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       return { success: false, error: message }
