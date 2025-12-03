@@ -35,8 +35,9 @@
 }
 
 .status-bar-right {
-  flex: 1;
+  flex: 0 1 auto;
   justify-content: flex-end;
+  margin-left: auto;
 }
 
 /* Status Items */
@@ -175,7 +176,6 @@
 /* About Button */
 .about-button {
   padding: 0 10px;
-  margin-left: auto;
   flex-shrink: 0;
 }
 
