@@ -1,0 +1,28 @@
+{
+  "version": "{{VERSION}}",
+  "releaseDate": "{{RELEASE_DATE}}",
+  "changelog": [
+    {{CHANGELOG_JSON}}
+  ],
+  "downloads": {
+    "mac": {
+      "arm64": {
+        "url": "{{MAC_ARM_FILE}}",
+        "size": "{{MAC_ARM_SIZE}}",
+        "sha256": "{{MAC_ARM_SHA256}}"
+      },
+      "x64": {
+        "url": "{{MAC_INTEL_FILE}}",
+        "size": "{{MAC_INTEL_SIZE}}",
+        "sha256": "{{MAC_INTEL_SHA256}}"
+      }
+    },
+    "win": {
+      "x64": {
+        "url": "{{WIN_FILE}}",
+        "size": "{{WIN_SIZE}}",
+        "sha256": "{{WIN_SHA256}}"
+      }
+    }
+  }
+}

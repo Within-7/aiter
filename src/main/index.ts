@@ -6,6 +6,7 @@ import { PTYManager } from './pty'
 import { StoreManager } from './store'
 import { ProjectServerManager } from './fileServer/ProjectServerManager'
 import { PluginManager } from './plugins/PluginManager'
+import { initUpdateManager } from './updater'
 
 // Set application name
 app.setName('AiTer')
@@ -15,6 +16,9 @@ let ptyManager: PTYManager | null = null
 let storeManager: StoreManager | null = null
 let serverManager: ProjectServerManager | null = null
 let pluginManager: PluginManager | null = null
+
+// Update check URL (可以通过环境变量配置)
+const UPDATE_CHECK_URL = process.env.UPDATE_CHECK_URL || 'https://your-server.com/airter/latest.json'
 
 async function initialize() {
   try {
@@ -54,6 +58,10 @@ async function initialize() {
 
     // Start plugin auto-check after window is created
     pluginManager.startAutoCheck()
+
+    // Initialize and start update checker
+    const updateManager = initUpdateManager(UPDATE_CHECK_URL)
+    updateManager.startAutoCheck(mainWindow)
 
     console.log('AiTer initialized successfully')
   } catch (error) {

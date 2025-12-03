@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar'
 import { WorkArea } from './components/WorkArea'
 import { StatusBar } from './components/StatusBar'
 import { PluginPanel } from './components/Plugins/PluginPanel'
+import { UpdateNotification } from './components/UpdateNotification'
 import './styles/App.css'
 
 function App() {
@@ -116,6 +117,7 @@ function App() {
         </div>
         <StatusBar activeTerminal={activeTerminal} />
         <PluginPanel />
+        <UpdateNotification />
       </div>
     </AppContext.Provider>
   )

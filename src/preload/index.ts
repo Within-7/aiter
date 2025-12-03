@@ -133,6 +133,27 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('plugins:initialized', listener)
       return () => ipcRenderer.removeListener('plugins:initialized', listener)
     }
+  },
+
+  // Update APIs
+  update: {
+    check: () => ipcRenderer.invoke('update:check'),
+    download: () => ipcRenderer.invoke('update:download'),
+    onAvailable: (callback: (data: {
+      currentVersion: string;
+      latestVersion: string;
+      changelog: string[];
+      releaseDate: string;
+    }) => void) => {
+      const listener = (_: unknown, data: {
+        currentVersion: string;
+        latestVersion: string;
+        changelog: string[];
+        releaseDate: string;
+      }) => callback(data)
+      ipcRenderer.on('update:available', listener)
+      return () => ipcRenderer.removeListener('update:available', listener)
+    }
   }
 })
 
@@ -236,6 +257,25 @@ export interface API {
     onUpdateProgress(callback: (progress: PluginUpdateProgress) => void): () => void
     onAutoUpdateAvailable(callback: (data: { pluginId: string; pluginName: string }) => void): () => void
     onInitialized(callback: () => void): () => void
+  }
+  update: {
+    check(): Promise<{
+      success: boolean;
+      hasUpdate?: boolean;
+      updateInfo?: {
+        version: string;
+        releaseDate: string;
+        changelog: string[];
+      };
+      error?: string;
+    }>
+    download(): Promise<{ success: boolean; error?: string }>
+    onAvailable(callback: (data: {
+      currentVersion: string;
+      latestVersion: string;
+      changelog: string[];
+      releaseDate: string;
+    }) => void): () => void
   }
 }
 

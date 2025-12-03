@@ -14,10 +14,11 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
-    "build:mac": "tsc && vite build && electron-builder --mac",
-    "build:win": "tsc && vite build && electron-builder --win",
-    "build:all": "tsc && vite build && electron-builder --mac --win",
+    "build": "tsc && vite build && electron-builder && node scripts/generate-release.js",
+    "build:mac": "tsc && vite build && electron-builder --mac && node scripts/generate-release.js",
+    "build:win": "tsc && vite build && electron-builder --win && node scripts/generate-release.js",
+    "build:all": "tsc && vite build && electron-builder --mac --win && node scripts/generate-release.js",
+    "generate-release": "node scripts/generate-release.js",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx",
     "type-check": "tsc --noEmit"

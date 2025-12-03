@@ -5,6 +5,7 @@ import { StoreManager } from './store'
 import { fileSystemManager } from './filesystem'
 import { ProjectServerManager } from './fileServer/ProjectServerManager'
 import { PluginManager } from './plugins/PluginManager'
+import { getUpdateManager } from './updater'
 
 export function setupIPC(
   window: BrowserWindow,
@@ -378,6 +379,41 @@ export function setupIPC(
 
       const command = await plugin.installer.getCheckUpdateCommand()
       return { success: true, command }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  // Update management
+  ipcMain.handle('update:check', async () => {
+    try {
+      const updateManager = getUpdateManager()
+      if (!updateManager) {
+        return { success: false, error: 'Update manager not initialized' }
+      }
+
+      const updateInfo = await updateManager.checkForUpdates(window)
+      return {
+        success: true,
+        hasUpdate: updateInfo !== null,
+        updateInfo: updateInfo || undefined
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('update:download', async () => {
+    try {
+      const updateManager = getUpdateManager()
+      if (!updateManager) {
+        return { success: false, error: 'Update manager not initialized' }
+      }
+
+      const success = await updateManager.downloadUpdate()
+      return { success }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       return { success: false, error: message }
