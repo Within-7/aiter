@@ -1,3 +1,4 @@
+import { FaPuzzlePiece } from 'react-icons/fa'
 import './StatusBar.css'
 
 export type PluginStatus = 'no-plugins' | 'has-plugins' | 'update-available' | 'installing'
@@ -53,7 +54,9 @@ export function PluginButton({ pluginCount, status, hasUpdates, onClick }: Plugi
       title={getTooltip()}
       disabled={status === 'installing'}
     >
-      <span className="plugin-icon">🧩</span>
+      <span className="plugin-icon">
+        <FaPuzzlePiece />
+      </span>
       <span className="plugin-text">{getDisplayText()}</span>
       {showBadge && (
         <span className="plugin-badge">

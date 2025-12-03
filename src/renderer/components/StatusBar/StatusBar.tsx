@@ -75,12 +75,6 @@ export function StatusBar({ activeTerminal }: StatusBarProps) {
     dispatch({ type: 'TOGGLE_PLUGIN_PANEL' })
   }
 
-  // Handle settings button click
-  const handleSettingsClick = () => {
-    console.log('Settings clicked - to be implemented')
-    // Future: dispatch({ type: 'OPEN_SETTINGS' })
-  }
-
   // Get active project info
   const activeProject = state.projects.find(p => p.id === state.activeProjectId)
 
@@ -158,13 +152,6 @@ export function StatusBar({ activeTerminal }: StatusBarProps) {
             </span>
           </span>
         )}
-        <button
-          className="status-button settings-button"
-          onClick={handleSettingsClick}
-          title="Open Settings"
-        >
-          <span className="status-icon">⚙️</span>
-        </button>
       </div>
     </div>
   )
