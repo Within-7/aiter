@@ -141,7 +141,7 @@ export function Sidebar() {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <h2 className={!isFullscreen ? 'has-traffic-lights' : ''}>Files</h2>
+        <h2 className={!isFullscreen ? 'has-traffic-lights' : ''}>AiTer</h2>
         <button
           className="btn-icon btn-add"
           onClick={handleAddProject}
