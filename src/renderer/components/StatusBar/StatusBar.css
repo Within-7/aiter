@@ -109,16 +109,7 @@
   opacity: 0.7;
 }
 
-.plugin-button.has-plugins {
-  color: #4ec9b0; /* Teal for installed plugins */
-}
-
-.plugin-button.update-available {
-  color: #f48771; /* Orange for updates */
-}
-
 .plugin-button.installing {
-  color: #dcdcaa; /* Yellow for installing */
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -132,7 +123,7 @@
 }
 
 .plugin-icon {
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1;
   display: flex;
   align-items: center;
