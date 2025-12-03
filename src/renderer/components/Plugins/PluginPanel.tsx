@@ -313,7 +313,7 @@ export const PluginPanel: React.FC = () => {
 
           <div className="plugin-panel-footer">
             <a
-              href="https://github.com/your-org/aiter-plugins"
+              href="http://aiter.within-7.com"
               target="_blank"
               rel="noopener noreferrer"
               className="plugin-panel-browse"

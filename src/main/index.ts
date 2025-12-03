@@ -18,7 +18,7 @@ let serverManager: ProjectServerManager | null = null
 let pluginManager: PluginManager | null = null
 
 // Update check URL (可以通过环境变量配置)
-const UPDATE_CHECK_URL = process.env.UPDATE_CHECK_URL || 'https://your-server.com/airter/latest.json'
+const UPDATE_CHECK_URL = process.env.UPDATE_CHECK_URL || 'http://aiter.within-7.com/latest.json'
 
 async function initialize() {
   try {

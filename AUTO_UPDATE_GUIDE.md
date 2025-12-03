@@ -69,14 +69,14 @@ npm run build:all
 
 ```bash
 # 示例：使用 rsync 上传
-rsync -avz release/ user@your-server.com:/var/www/airter/
+rsync -avz release/ user@server:/var/www/aiter/
 
 # 或使用其他方式（FTP、SCP 等）
 ```
 
-**重要**：确保 `latest.json` 可以通过 HTTPS 访问，例如：
+**重要**：确保 `latest.json` 可以通过 HTTP 访问，例如：
 ```
-https://your-server.com/airter/latest.json
+http://aiter.within-7.com/latest.json
 ```
 
 ### 5. 配置更新检查 URL
@@ -84,13 +84,13 @@ https://your-server.com/airter/latest.json
 编辑 `src/main/index.ts`，设置更新检查 URL：
 
 ```typescript
-const UPDATE_CHECK_URL = 'https://your-server.com/airter/latest.json'
+const UPDATE_CHECK_URL = 'http://aiter.within-7.com/latest.json'
 ```
 
 或者通过环境变量配置：
 
 ```bash
-export UPDATE_CHECK_URL=https://your-server.com/airter/latest.json
+export UPDATE_CHECK_URL=http://aiter.within-7.com/latest.json
 npm run build:mac
 ```
 
