@@ -141,6 +141,10 @@ export class NodeManager {
       npm_config_prefix: npmPrefix,
       // 可选：设置 npm 缓存目录到 AiTer 数据目录
       npm_config_cache: path.join(this.nodejsDir, '.npm-cache'),
+      // 禁用 nvm，防止它覆盖我们的 Node.js 配置
+      NVM_DIR: undefined,
+      // 告诉 shell 不要初始化版本管理器
+      SKIP_NVM_INIT: '1',
     };
   }
 
