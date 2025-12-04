@@ -7,6 +7,7 @@ import { StoreManager } from './store'
 import { ProjectServerManager } from './fileServer/ProjectServerManager'
 import { PluginManager } from './plugins/PluginManager'
 import { initUpdateManager } from './updater'
+import { NodeManager } from './nodejs/manager'
 
 // Set application name
 app.setName('AiTer')
@@ -16,6 +17,7 @@ let ptyManager: PTYManager | null = null
 let storeManager: StoreManager | null = null
 let serverManager: ProjectServerManager | null = null
 let pluginManager: PluginManager | null = null
+let nodeManager: NodeManager | null = null
 
 // Update check URL (可以通过环境变量配置)
 const UPDATE_CHECK_URL = process.env.UPDATE_CHECK_URL || 'http://aiter.within-7.com/latest.json'
@@ -24,6 +26,22 @@ async function initialize() {
   try {
     // Initialize store
     storeManager = new StoreManager()
+
+    // Initialize Node.js manager and install if needed
+    nodeManager = new NodeManager()
+    const installed = await nodeManager.isInstalled()
+    if (!installed) {
+      console.log('[NodeManager] Built-in Node.js not found, installing...')
+      const success = await nodeManager.installFromResources()
+      if (success) {
+        console.log('[NodeManager] Built-in Node.js installed successfully')
+      } else {
+        console.warn('[NodeManager] Failed to install built-in Node.js, terminals will use system Node.js')
+      }
+    } else {
+      const nodeInfo = await nodeManager.getNodeInfo()
+      console.log(`[NodeManager] Built-in Node.js already installed: ${nodeInfo?.version}`)
+    }
 
     // Initialize PTY manager
     ptyManager = new PTYManager()
