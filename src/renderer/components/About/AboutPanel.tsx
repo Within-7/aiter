@@ -51,10 +51,10 @@ export const AboutPanel: React.FC = () => {
       if (result.success) {
         setVersionInfo(prev => ({
           ...prev,
-          latest: result.version || prev.current,
+          latest: result.updateInfo?.version || prev.current,
           isChecking: false,
           lastCheckTime: new Date(),
-          updateAvailable: result.updateAvailable || false,
+          updateAvailable: result.hasUpdate || false,
           error: null
         }))
       } else {
