@@ -46,7 +46,7 @@ export function Sidebar() {
     }
   }, [])
 
-  // Auto-expand project when its tab is selected
+  // Auto-expand project when its tab is selected (but don't force collapse others)
   useEffect(() => {
     // Find the project of the active tab
     let activeProjectId: string | undefined
@@ -66,9 +66,19 @@ export function Sidebar() {
       }
     }
 
-    // Expand only the active project, collapse others
+    // Only expand the active project if it's currently collapsed
+    // Don't force collapse other projects - let user control them manually
     if (activeProjectId) {
-      setExpandedProjects(new Set([activeProjectId]))
+      setExpandedProjects(prev => {
+        if (!prev.has(activeProjectId!)) {
+          // Project is collapsed, auto-expand it
+          const next = new Set(prev)
+          next.add(activeProjectId!)
+          return next
+        }
+        // Project already expanded, keep current state
+        return prev
+      })
     }
   }, [state.activeEditorTabId, state.activeTerminalId, state.editorTabs, state.terminals, state.projects])
 
