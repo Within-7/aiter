@@ -68,7 +68,8 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
     }
 
     getServerUrl()
-  }, [mode, currentFilePath, serverUrl, state.projects])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentFilePath, serverUrl])
 
   // Listen for postMessage from iframe to open links in new tabs
   useEffect(() => {
@@ -175,7 +176,8 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
     return () => {
       window.removeEventListener('message', handleMessage)
     }
-  }, [mode, currentFilePath, state.projects, dispatch])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, currentFilePath, dispatch])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
