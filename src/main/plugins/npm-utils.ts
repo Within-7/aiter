@@ -60,6 +60,7 @@ export interface NpmPackageMetadata {
   } | string;
   keywords?: string[];
   license?: string;
+  bin?: string | Record<string, string>;  // Command(s) provided by the package
 }
 
 /**
@@ -111,6 +112,7 @@ export async function fetchNpmPackageMetadata(
       repository: data.repository,
       keywords: data.keywords || [],
       license: data.license,
+      bin: data.bin,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -122,8 +124,41 @@ export async function fetchNpmPackageMetadata(
  * Extract command name from package name
  * For scoped packages like @scope/package, returns 'package'
  * For regular packages, returns the package name
+ *
+ * @deprecated Use getCommandNameFromMetadata() instead to get the actual command name from bin field
  */
 export function getCommandNameFromPackage(packageName: string): string {
   const parts = packageName.split('/');
   return parts.length > 1 ? parts[1] : packageName;
+}
+
+/**
+ * Extract the actual command name from package metadata
+ * Reads from the bin field to get the real command name(s) provided by the package
+ *
+ * Examples:
+ * - @google/gemini-cli has bin: { "gemini": "dist/index.js" } → returns "gemini"
+ * - @within-7/minto has bin: { "minto": "dist/index.js" } → returns "minto"
+ * - package with bin: "dist/cli.js" → returns package name without scope
+ */
+export function getCommandNameFromMetadata(metadata: NpmPackageMetadata): string {
+  if (!metadata.bin) {
+    // No bin field, fallback to package name extraction
+    return getCommandNameFromPackage(metadata.name);
+  }
+
+  if (typeof metadata.bin === 'string') {
+    // Single command, name is the package name without scope
+    return getCommandNameFromPackage(metadata.name);
+  }
+
+  // Multiple commands in object format, take the first one
+  const commands = Object.keys(metadata.bin);
+  if (commands.length > 0) {
+    console.log(`[npm-utils] Package ${metadata.name} provides commands: ${commands.join(', ')}, using: ${commands[0]}`);
+    return commands[0];
+  }
+
+  // Fallback
+  return getCommandNameFromPackage(metadata.name);
 }

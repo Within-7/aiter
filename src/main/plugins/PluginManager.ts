@@ -152,15 +152,36 @@ export class PluginManager {
     const nodeEnv = this.nodeManager.getTerminalEnv();
     const npmPath = this.nodeManager.getNpmExecutable();
     const { GenericNpmInstaller } = await import('./installers/GenericNpmInstaller');
+    const { fetchNpmPackageMetadata, getCommandNameFromMetadata } = await import('./npm-utils');
 
     for (const pluginId of customPluginIds) {
       const entry = customPlugins[pluginId];
 
       try {
+        // Re-fetch metadata to ensure we have the correct command name from bin field
+        let commandName = entry.commandName;
+        try {
+          const metadata = await fetchNpmPackageMetadata(entry.packageName, nodeEnv, npmPath);
+          const actualCommandName = getCommandNameFromMetadata(metadata);
+
+          // If command name has changed, update the stored entry
+          if (actualCommandName !== entry.commandName) {
+            console.log(`[PluginManager] Updating command name for ${entry.packageName}: ${entry.commandName} → ${actualCommandName}`);
+            entry.commandName = actualCommandName;
+            commandName = actualCommandName;
+
+            // Save updated entry
+            customPlugins[pluginId] = entry;
+            this.store.set('plugins.custom', customPlugins);
+          }
+        } catch (metadataError) {
+          console.warn(`[PluginManager] Failed to fetch metadata for ${entry.packageName}, using stored command name:`, metadataError);
+        }
+
         const installer = new GenericNpmInstaller(
           this.store as any,
           entry.packageName,
-          entry.commandName,
+          commandName,
           nodeEnv,
           npmPath
         );
@@ -430,7 +451,7 @@ export class PluginManager {
     error?: string;
   }> {
     try {
-      const { parseNpmUrl, fetchNpmPackageMetadata, getCommandNameFromPackage } = await import('./npm-utils');
+      const { parseNpmUrl, fetchNpmPackageMetadata, getCommandNameFromMetadata } = await import('./npm-utils');
 
       // Parse URL to get package name
       const packageName = parseNpmUrl(urlOrPackageName);
@@ -453,8 +474,9 @@ export class PluginManager {
       const npmPath = this.nodeManager.getNpmExecutable();
       const metadata = await fetchNpmPackageMetadata(packageName, nodeEnv, npmPath);
 
-      // Extract command name from package name
-      const commandName = getCommandNameFromPackage(packageName);
+      // Extract actual command name from metadata bin field
+      const commandName = getCommandNameFromMetadata(metadata);
+      console.log(`[PluginManager] Extracted command name: ${commandName} for package: ${packageName}`);
 
       // Create plugin entry
       const pluginEntry: CustomPluginEntry = {
