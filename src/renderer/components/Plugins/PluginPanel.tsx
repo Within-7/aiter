@@ -94,8 +94,8 @@ export const PluginPanel: React.FC = () => {
 
   // Listen for install progress
   useEffect(() => {
-    const cleanup = window.api.plugins.onInstallProgress((progress: PluginInstallProgress) => {
-      console.log(`Install progress: ${progress.pluginId} - ${progress.status} (${progress.progress}%)`)
+    const cleanup = window.api.plugins.onInstallProgress((progress: any) => {
+      console.log(`Install progress: ${progress.phase} - ${progress.message} (${progress.percentage}%)`)
       // You could show a toast notification or progress bar here
     })
 
@@ -104,8 +104,8 @@ export const PluginPanel: React.FC = () => {
 
   // Listen for update progress
   useEffect(() => {
-    const cleanup = window.api.plugins.onUpdateProgress((progress: PluginUpdateProgress) => {
-      console.log(`Update progress: ${progress.pluginId} - ${progress.status} (${progress.progress}%)`)
+    const cleanup = window.api.plugins.onUpdateProgress((progress: any) => {
+      console.log(`Update progress: ${progress.phase} - ${progress.message} (${progress.percentage}%)`)
       // You could show a toast notification or progress bar here
     })
 
