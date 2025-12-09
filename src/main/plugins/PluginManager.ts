@@ -19,6 +19,7 @@ import {
 } from '../../types/plugin';
 import Store from 'electron-store';
 import { BrowserWindow } from 'electron';
+import { NodeManager } from '../nodejs/manager';
 
 interface PluginStoreSchema {
   plugins: {
@@ -35,9 +36,11 @@ export class PluginManager {
   private readonly AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
   private mainWindow: BrowserWindow | null = null;
   private initializePromise: Promise<void> | null = null;
+  private nodeManager: NodeManager;
 
   private constructor(store: Store<PluginStoreSchema>) {
     this.store = store;
+    this.nodeManager = new NodeManager();
     this.initializeRegistry();
   }
 
@@ -83,6 +86,8 @@ export class PluginManager {
 
       // Register Minto CLI plugin
       const { MintoInstaller } = await import('./installers/MintoInstaller');
+      const nodeEnv = this.nodeManager.getTerminalEnv();
+      console.log('[PluginManager] NodeManager env PATH:', nodeEnv.PATH?.substring(0, 200));
       await this.registerPlugin(
         {
           id: 'minto',
@@ -95,7 +100,7 @@ export class PluginManager {
           platforms: ['darwin', 'linux', 'win32'],
           tags: ['ai', 'cli', 'chat', 'code-generation']
         } as any,
-        new MintoInstaller(this.store as any)
+        new MintoInstaller(this.store as any, nodeEnv)
       );
 
       console.log('[PluginManager] Initialization complete');

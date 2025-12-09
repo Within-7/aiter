@@ -13,12 +13,13 @@ import { NpmPluginInstaller } from './NpmPluginInstaller';
 import Store from 'electron-store';
 
 export class MintoInstaller extends NpmPluginInstaller {
-  constructor(store: Store) {
+  constructor(store: Store, env?: NodeJS.ProcessEnv) {
     super({
       store,
       packageName: '@within-7/minto',
       commandName: 'minto',
       configStoreKey: 'plugins.minto.configuration',
+      env,
     });
   }
 
