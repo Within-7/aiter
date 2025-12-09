@@ -8,11 +8,13 @@ interface FileTreeProps {
   projectPath: string
   projectName: string
   onFileClick: (file: FileNode) => void
+  activeFilePath?: string
 }
 
 export const FileTree: React.FC<FileTreeProps> = ({
   projectPath,
-  onFileClick
+  onFileClick,
+  activeFilePath
 }) => {
   const [nodes, setNodes] = useState<FileNode[]>([])
   const [loading, setLoading] = useState(false)
@@ -114,6 +116,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
             level={0}
             onToggle={handleToggle}
             onClick={onFileClick}
+            activeFilePath={activeFilePath}
           />
         ))}
       </div>

@@ -209,6 +209,11 @@ export function Sidebar() {
                 projectPath={project.path}
                 projectName={project.name}
                 onFileClick={handleFileClick}
+                activeFilePath={
+                  state.activeEditorTabId
+                    ? state.editorTabs.find(t => t.id === state.activeEditorTabId)?.filePath
+                    : undefined
+                }
               />
             )}
           </div>

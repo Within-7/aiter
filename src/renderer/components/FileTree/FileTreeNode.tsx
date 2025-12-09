@@ -6,6 +6,7 @@ interface FileTreeNodeProps {
   level: number
   onToggle: (node: FileNode) => void
   onClick: (node: FileNode) => void
+  activeFilePath?: string
 }
 
 const getFileIcon = (node: FileNode): string => {
@@ -72,7 +73,8 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   node,
   level,
   onToggle,
-  onClick
+  onClick,
+  activeFilePath
 }) => {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -86,11 +88,12 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   const icon = getFileIcon(node)
   const gitStatus = getGitStatusIcon(node.gitStatus)
   const gitStatusClass = getGitStatusClass(node.gitStatus)
+  const isActive = node.type === 'file' && activeFilePath === node.path
 
   return (
     <div className="file-tree-node">
       <div
-        className={`file-tree-item ${gitStatusClass}`}
+        className={`file-tree-item ${gitStatusClass} ${isActive ? 'selected' : ''}`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={handleClick}
       >
@@ -113,6 +116,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
               level={level + 1}
               onToggle={onToggle}
               onClick={onClick}
+              activeFilePath={activeFilePath}
             />
           ))}
         </div>
