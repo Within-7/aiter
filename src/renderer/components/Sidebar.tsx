@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect, useMemo } from 'react'
-import { VscTerminal, VscSourceControl, VscGitBranch } from 'react-icons/vsc'
+import { VscTerminal, VscSourceControl } from 'react-icons/vsc'
 import { AppContext } from '../context/AppContext'
 import { FileTree } from './FileTree/FileTree'
 import { GitHistoryPanel } from './GitHistoryPanel'
@@ -221,7 +221,7 @@ export function Sidebar() {
                     }}
                     title="Click to view Git history"
                   >
-                    <VscGitBranch className="git-icon" />
+                    <VscSourceControl className="git-icon" />
                     <span className="git-branch">{gitStatus.currentBranch || 'main'}</span>
                     {gitStatus.hasChanges && (
                       <span className="git-changes-indicator" title="Uncommitted changes">
