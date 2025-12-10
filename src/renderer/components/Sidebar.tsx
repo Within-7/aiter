@@ -1,8 +1,8 @@
 import { useContext, useState, useEffect, useMemo } from 'react'
-import { VscTerminal } from 'react-icons/vsc'
+import { VscTerminal, VscSourceControl, VscGitBranch } from 'react-icons/vsc'
 import { AppContext } from '../context/AppContext'
 import { FileTree } from './FileTree/FileTree'
-import { FileNode, EditorTab } from '../../types'
+import { FileNode, EditorTab, GitStatus } from '../../types'
 import { getProjectColor } from '../utils/projectColors'
 import '../styles/Sidebar.css'
 
@@ -10,6 +10,7 @@ export function Sidebar() {
   const { state, dispatch } = useContext(AppContext)
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [gitStatuses, setGitStatuses] = useState<Map<string, GitStatus>>(new Map())
 
   // Monitor fullscreen state changes
   useEffect(() => {
@@ -78,6 +79,34 @@ export function Sidebar() {
       })
     }
   }, [activeProjectId])
+
+  // Load Git status for all projects
+  useEffect(() => {
+    const loadGitStatuses = async () => {
+      const statusMap = new Map<string, GitStatus>()
+
+      for (const project of state.projects) {
+        try {
+          const result = await window.api.git.getStatus(project.path)
+          if (result.success && result.status) {
+            statusMap.set(project.id, result.status)
+          }
+        } catch (error) {
+          console.error(`Failed to get git status for ${project.name}:`, error)
+        }
+      }
+
+      setGitStatuses(statusMap)
+    }
+
+    if (state.projects.length > 0) {
+      loadGitStatuses()
+
+      // Refresh git statuses every 10 seconds
+      const interval = setInterval(loadGitStatuses, 10000)
+      return () => clearInterval(interval)
+    }
+  }, [state.projects])
 
   const handleAddProject = async () => {
     const result = await window.api.dialog.openFolder()
@@ -160,6 +189,8 @@ export function Sidebar() {
       <div className="sidebar-content">
         {state.projects.map(project => {
           const projectColor = getProjectColor(project.id, project.color)
+          const gitStatus = gitStatuses.get(project.id)
+
           return (
             <div key={project.id} className="project-section">
               <div
@@ -175,6 +206,20 @@ export function Sidebar() {
                   title={`Project color: ${projectColor}`}
                 />
                 <span className="project-name">{project.name}</span>
+
+                {/* Git Status Display */}
+                {gitStatus?.isRepo && (
+                  <div className="git-status">
+                    <VscGitBranch className="git-icon" />
+                    <span className="git-branch">{gitStatus.currentBranch || 'main'}</span>
+                    {gitStatus.hasChanges && (
+                      <span className="git-changes-indicator" title="Uncommitted changes">
+                        •
+                      </span>
+                    )}
+                  </div>
+                )}
+
               <button
                 className="btn-icon btn-terminal"
                 onClick={async (e) => {

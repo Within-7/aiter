@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { Project, Terminal, AppSettings, FileNode, Plugin, PluginInstallProgress, PluginUpdateProgress } from '../types'
+import { Project, Terminal, AppSettings, FileNode, Plugin, PluginInstallProgress, PluginUpdateProgress, GitStatus, GitCommit } from '../types'
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -193,6 +193,16 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.on('nodejs:download-progress', listener)
       return () => ipcRenderer.removeListener('nodejs:download-progress', listener)
     }
+  },
+
+  // Git management APIs
+  git: {
+    getStatus: (projectPath: string) =>
+      ipcRenderer.invoke('git:getStatus', { projectPath }),
+    getRecentCommits: (projectPath: string, count?: number) =>
+      ipcRenderer.invoke('git:getRecentCommits', { projectPath, count }),
+    initRepo: (projectPath: string) =>
+      ipcRenderer.invoke('git:initRepo', { projectPath })
   }
 })
 
@@ -356,6 +366,22 @@ export interface API {
       status: 'downloading' | 'extracting' | 'complete' | 'error';
       message?: string;
     }) => void): () => void
+  }
+  git: {
+    getStatus(projectPath: string): Promise<{
+      success: boolean;
+      status?: GitStatus;
+      error?: string;
+    }>
+    getRecentCommits(projectPath: string, count?: number): Promise<{
+      success: boolean;
+      commits?: GitCommit[];
+      error?: string;
+    }>
+    initRepo(projectPath: string): Promise<{
+      success: boolean;
+      error?: string;
+    }>
   }
 }
 

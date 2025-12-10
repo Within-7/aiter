@@ -9,6 +9,7 @@ import { getUpdateManager } from './updater'
 import { NodeManager } from './nodejs/manager'
 import { NodeDetector } from './nodejs/detector'
 import { NodeDownloader } from './nodejs/downloader'
+import { gitManager } from './git'
 
 export function setupIPC(
   window: BrowserWindow,
@@ -19,7 +20,26 @@ export function setupIPC(
   // Project management
   ipcMain.handle('project:add', async (_, { path, name }) => {
     try {
+      // Check if directory is a Git repository
+      let isGitRepo = await gitManager.isGitRepo(path)
+
+      // If not a Git repo, initialize one
+      if (!isGitRepo) {
+        console.log(`Project ${name} is not a Git repository, initializing...`)
+        const initSuccess = await gitManager.initRepo(path)
+        if (initSuccess) {
+          isGitRepo = true
+          console.log(`Git repository initialized for ${name}`)
+        } else {
+          console.warn(`Failed to initialize Git repository for ${name}`)
+        }
+      }
+
       const project = storeManager.addProject(path, name)
+
+      // Update project with Git status
+      project.isGitRepo = isGitRepo
+
       window.webContents.send('projects:updated', {
         projects: storeManager.getProjects()
       })
@@ -551,6 +571,37 @@ export function setupIPC(
   ipcMain.handle('nodejs:uninstall', async () => {
     try {
       const success = await nodeManager.uninstall()
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  // Git management
+  ipcMain.handle('git:getStatus', async (_, { projectPath }) => {
+    try {
+      const status = await gitManager.getStatus(projectPath)
+      return { success: true, status }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('git:getRecentCommits', async (_, { projectPath, count }) => {
+    try {
+      const commits = await gitManager.getRecentCommits(projectPath, count || 10)
+      return { success: true, commits }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('git:initRepo', async (_, { projectPath }) => {
+    try {
+      const success = await gitManager.initRepo(projectPath)
       return { success }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'

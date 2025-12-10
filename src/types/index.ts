@@ -34,6 +34,29 @@ export interface EditorTab {
   serverUrl?: string // HTTP server URL for HTML preview
 }
 
+export interface GitCommit {
+  hash: string
+  shortHash: string
+  message: string
+  author: string
+  date: string
+  timestamp: number
+}
+
+export interface GitStatus {
+  isRepo: boolean
+  currentBranch?: string
+  hasChanges?: boolean
+  ahead?: number
+  behind?: number
+  lastCommit?: {
+    hash: string
+    message: string
+    author: string
+    date: string
+  }
+}
+
 export interface GitRepository {
   projectId: string
   path: string
@@ -100,6 +123,11 @@ export interface IPCEvents {
   // App events
   'app:error': { message: string; stack?: string }
   'app:ready': void
+
+  // Git events
+  'git:getStatus': { projectPath: string }
+  'git:getRecentCommits': { projectPath: string; count?: number }
+  'git:initRepo': { projectPath: string }
 }
 
 // Window state

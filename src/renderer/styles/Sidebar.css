@@ -74,13 +74,59 @@
 }
 
 .project-header .project-name {
-  flex: 1;
   font-size: 13px;
   font-weight: 600;
   color: #cccccc;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-right: 8px;
+}
+
+/* Git Status Display */
+.git-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 8px;
+  padding: 2px 6px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  font-size: 11px;
+  color: #a9a9a9;
+  flex-shrink: 0;
+}
+
+.git-status .git-icon {
+  font-size: 12px;
+  color: #569cd6;
+  flex-shrink: 0;
+}
+
+.git-status .git-branch {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #cccccc;
+}
+
+.git-status .git-changes-indicator {
+  color: #f9a825;
+  font-size: 16px;
+  line-height: 1;
+  margin-left: 2px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .sidebar-empty {
