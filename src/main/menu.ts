@@ -1,4 +1,4 @@
-import { app, Menu, shell } from 'electron'
+import { app, Menu, shell, BrowserWindow } from 'electron'
 import path from 'path'
 
 export function setupMenu() {
@@ -14,7 +14,10 @@ export function setupMenu() {
               {
                 label: `关于 ${app.getName()}`,
                 click: () => {
-                  app.showAboutPanel()
+                  const focusedWindow = BrowserWindow.getFocusedWindow()
+                  if (focusedWindow) {
+                    focusedWindow.webContents.send('menu:show-about')
+                  }
                 }
               },
               { type: 'separator' as const },

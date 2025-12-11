@@ -56,6 +56,10 @@ function App() {
         // Could show a toast notification here
       }),
 
+      window.api.menu.onShowAbout(() => {
+        dispatch({ type: 'TOGGLE_ABOUT_PANEL' })
+      }),
+
       window.api.plugins.onAutoUpdateAvailable(async (data) => {
         console.log(`[App] Auto-update available for ${data.pluginName} (${data.pluginId})`)
 

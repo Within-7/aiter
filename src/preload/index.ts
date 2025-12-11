@@ -104,6 +104,15 @@ contextBridge.exposeInMainWorld('api', {
     openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', { url })
   },
 
+  // Menu APIs
+  menu: {
+    onShowAbout: (callback: () => void) => {
+      const listener = () => callback()
+      ipcRenderer.on('menu:show-about', listener)
+      return () => ipcRenderer.removeListener('menu:show-about', listener)
+    }
+  },
+
   // Plugin APIs
   plugins: {
     list: () => ipcRenderer.invoke('plugins:list'),
