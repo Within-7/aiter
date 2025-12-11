@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AiTer - AI协作终端客户端</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #50C878;
+            --dark-bg: #1E1E1E;
+            --darker-bg: #0F0F0F;
+            --light-text: #E0E0E0;
+            --accent: #FF6B6B;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: var(--light-text);
+            background: var(--darker-bg);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        header {
+            background: var(--dark-bg);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--light-text);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-color);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 6rem 0;
+            text-align: center;
+            background: var(--gradient);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="%23ffffff" opacity="0.05"/></svg>');
+            opacity: 0.1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-block;
+            border: 2px solid transparent;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border-color: white;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 5rem 0;
+            background: var(--dark-bg);
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: var(--light-text);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: var(--darker-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(74, 144, 226, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        /* Use Cases Section */
+        .use-cases {
+            padding: 5rem 0;
+            background: var(--darker-bg);
+        }
+
+        .use-case-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .use-case-item {
+            background: var(--dark-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .use-case-item h3 {
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+        }
+
+        .use-case-item ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .use-case-item li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .use-case-item li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+
+        /* Benefits Section */
+        .benefits {
+            padding: 5rem 0;
+            background: var(--dark-bg);
+        }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .benefit-item {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .benefit-number {
+            font-size: 3rem;
+            font-weight: bold;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .benefit-item h3 {
+            margin-bottom: 0.5rem;
+            color: var(--light-text);
+        }
+
+        /* Screenshots Section */
+        .screenshots {
+            padding: 5rem 0;
+            background: var(--darker-bg);
+        }
+
+        .screenshot-container {
+            margin-top: 3rem;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .screenshot-placeholder {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            padding: 4rem 2rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-style: italic;
+        }
+
+        /* Download Section */
+        .download {
+            padding: 5rem 0;
+            background: var(--dark-bg);
+            text-align: center;
+        }
+
+        .download-options {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .download-card {
+            background: var(--darker-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            min-width: 250px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .download-card:hover {
+            border-color: var(--primary-color);
+            transform: scale(1.05);
+        }
+
+        .platform-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--darker-bg);
+            padding: 3rem 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links a {
+            color: var(--light-text);
+            text-decoration: none;
+            display: block;
+            padding: 0.3rem 0;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary-color);
+        }
+
+        .copyright {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .nav-links {
+                gap: 1rem;
+                font-size: 0.9rem;
+            }
+
+            .features-grid,
+            .use-case-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">AiTer</div>
+            <ul class="nav-links">
+                <li><a href="#features">功能特性</a></li>
+                <li><a href="#use-cases">应用场景</a></li>
+                <li><a href="#benefits">核心优势</a></li>
+                <li><a href="#download">立即下载</a></li>
+                <li><a href="USER_MANUAL.html">使用手册</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container hero-content">
+            <h1>AiTer - AI协作终端</h1>
+            <p>专为AI CLI工具设计的现代化终端客户端</p>
+            <p>赋能跨境电商战略咨询团队，提升AI协作效率</p>
+            <div class="cta-buttons">
+                <a href="#download" class="btn btn-primary">立即下载</a>
+                <a href="USER_MANUAL.html" class="btn btn-secondary">查看文档</a>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">强大功能</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🗂️</div>
+                    <h3>多项目管理</h3>
+                    <p>轻松管理多个咨询项目，快速切换工作空间。每个项目独立的终端环境和文件树视图。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🖥️</div>
+                    <h3>多终端标签</h3>
+                    <p>每个项目支持多个终端标签，并行处理多个AI协作任务。智能命令历史记录。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI CLI优化</h3>
+                    <p>原生支持Minto CLI、Claude Code、Gemini CLI等AI工具。优化的界面布局，提升AI协作体验。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <h3>代码编辑器</h3>
+                    <p>内置Monaco编辑器，支持代码高亮、自动补全。Markdown实时预览，HTML文件在线浏览。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h3>文件服务器</h3>
+                    <p>每个项目独立HTTP服务器，支持HTML预览、静态资源访问。智能端口管理和LRU缓存。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>现代化UI</h3>
+                    <p>深色主题优化，长时间工作不疲劳。跨平台一致体验(macOS/Windows)。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="use-cases" class="use-cases">
+        <div class="container">
+            <h2 class="section-title">应用场景</h2>
+            <div class="use-case-list">
+                <div class="use-case-item">
+                    <h3>📊 商业研究</h3>
+                    <ul>
+                        <li>市场数据分析与报告生成</li>
+                        <li>竞争对手调研文档管理</li>
+                        <li>行业趋势研究项目组织</li>
+                        <li>AI辅助洞察提炼</li>
+                    </ul>
+                </div>
+                <div class="use-case-item">
+                    <h3>🎯 战略规划</h3>
+                    <ul>
+                        <li>战略方案起草与迭代</li>
+                        <li>多方案对比分析</li>
+                        <li>战略文档版本管理</li>
+                        <li>AI协作战略建议</li>
+                    </ul>
+                </div>
+                <div class="use-case-item">
+                    <h3>💼 咨询项目</h3>
+                    <ul>
+                        <li>客户项目独立管理</li>
+                        <li>咨询报告协作编写</li>
+                        <li>知识库构建与复用</li>
+                        <li>项目文档规范化</li>
+                    </ul>
+                </div>
+                <div class="use-case-item">
+                    <h3>🌍 跨境电商</h3>
+                    <ul>
+                        <li>市场准入分析</li>
+                        <li>供应链策略规划</li>
+                        <li>运营方案设计</li>
+                        <li>本地化策略研究</li>
+                    </ul>
+                </div>
+                <div class="use-case-item">
+                    <h3>📚 知识管理</h3>
+                    <ul>
+                        <li>最佳实践文档沉淀</li>
+                        <li>经验模板复用</li>
+                        <li>团队知识共享</li>
+                        <li>AI辅助知识提取</li>
+                    </ul>
+                </div>
+                <div class="use-case-item">
+                    <h3>⚡ 团队协作</h3>
+                    <ul>
+                        <li>统一工作环境</li>
+                        <li>项目结构标准化</li>
+                        <li>协作流程优化</li>
+                        <li>AI工具集成使用</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="benefits" class="benefits">
+        <div class="container">
+            <h2 class="section-title">核心优势</h2>
+            <div class="benefits-grid">
+                <div class="benefit-item">
+                    <div class="benefit-number">3x</div>
+                    <h3>效率提升</h3>
+                    <p>多项目并行，AI协作加速</p>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-number">80%</div>
+                    <h3>时间节省</h3>
+                    <p>知识复用，减少重复工作</p>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-number">100%</div>
+                    <h3>规范统一</h3>
+                    <p>标准化流程，质量保证</p>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-number">∞</div>
+                    <h3>知识积累</h3>
+                    <p>经验沉淀，持续增值</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="screenshots">
+        <div class="container">
+            <h2 class="section-title">产品截图</h2>
+            <div class="screenshot-container">
+                <div class="screenshot-placeholder">
+                    <p>产品截图即将更新...</p>
+                    <p style="margin-top: 1rem; font-size: 0.9rem;">展示多项目管理、终端协作、代码编辑等核心功能</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="download" class="download">
+        <div class="container">
+            <h2 class="section-title">立即下载</h2>
+            <p style="margin-bottom: 2rem; color: rgba(255, 255, 255, 0.8);">支持macOS和Windows平台，选择适合您的版本</p>
+            <div class="download-options">
+                <div class="download-card">
+                    <div class="platform-icon"></div>
+                    <h3>macOS</h3>
+                    <p style="margin: 1rem 0; color: rgba(255, 255, 255, 0.7);">Intel & Apple Silicon</p>
+                    <a href="#" class="btn btn-primary">下载 .dmg</a>
+                </div>
+                <div class="download-card">
+                    <div class="platform-icon">🪟</div>
+                    <h3>Windows</h3>
+                    <p style="margin: 1rem 0; color: rgba(255, 255, 255, 0.7);">Windows 10/11</p>
+                    <a href="#" class="btn btn-primary">下载 .exe</a>
+                </div>
+            </div>
+            <p style="margin-top: 2rem; color: rgba(255, 255, 255, 0.6); font-size: 0.9rem;">
+                当前版本: v0.1.0 | 最低要求: Node.js 18+
+            </p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>产品</h4>
+                    <ul class="footer-links">
+                        <li><a href="#features">功能特性</a></li>
+                        <li><a href="#download">下载</a></li>
+                        <li><a href="USER_MANUAL.html">使用手册</a></li>
+                        <li><a href="BEST_PRACTICES.html">最佳实践</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>文档</h4>
+                    <ul class="footer-links">
+                        <li><a href="USER_MANUAL.html">用户手册</a></li>
+                        <li><a href="CONSULTING_WORKFLOW.html">咨询工作流</a></li>
+                        <li><a href="BEST_PRACTICES.html">最佳实践</a></li>
+                        <li><a href="../README.md">开发文档</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>关于</h4>
+                    <ul class="footer-links">
+                        <li><a href="https://within-7.com" target="_blank">Within-7.com</a></li>
+                        <li><a href="mailto:dev@within-7.com">联系我们</a></li>
+                        <li><a href="https://github.com" target="_blank">GitHub</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>任小姐出海战略咨询</h4>
+                    <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.9rem;">
+                        专注跨境电商战略咨询<br>
+                        赋能企业全球化发展
+                    </p>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>Copyright © 2025-2026 Within-7.com - 任小姐出海战略咨询</p>
+                <p style="margin-top: 0.5rem;">Developed by Lib | MIT License</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

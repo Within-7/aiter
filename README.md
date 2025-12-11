@@ -1,10 +1,17 @@
 # AiTer
 
-A modern terminal client optimized for Minto CLI collaboration.
+A modern terminal client optimized for AI CLI tools collaboration.
 
 **开发者**: Lib
 **公司**: 任小姐出海战略咨询
 **网站**: [Within-7.com](https://within-7.com)
+
+## 📚 Documentation
+
+- **[产品网站](docs/index.html)** - 产品介绍和功能展示
+- **[用户手册](docs/USER_MANUAL.md)** - 详细使用指南,快速上手
+- **[战略咨询工作流](docs/CONSULTING_WORKFLOW.md)** - 面向咨询团队的工作流程指南
+- **[最佳实践](docs/BEST_PRACTICES.md)** - 高效使用技巧和经验总结
 
 ## Features
 
