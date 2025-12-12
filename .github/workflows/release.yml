@@ -1,0 +1,172 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v0.1.0, v1.0.0, etc.
+  workflow_dispatch:  # Allow manual trigger from GitHub UI
+
+permissions:
+  contents: write  # Required for creating releases
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Build application (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build application (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts (macOS Intel)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-intel
+          path: |
+            release/**/AiTer-*-mac-x64.dmg
+            release/**/AiTer-*-mac-x64.zip
+          retention-days: 7
+
+      - name: Upload artifacts (macOS Apple Silicon)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64
+          path: |
+            release/**/AiTer-*-mac-arm64.dmg
+            release/**/AiTer-*-mac-arm64.zip
+          retention-days: 7
+
+      - name: Upload artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            release/**/AiTer-*-win-x64.exe
+            release/**/AiTer-*-win-x64.zip
+          retention-days: 7
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_REF: ${{ github.ref }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: AiTer v${{ steps.version.outputs.VERSION }}
+          body: |
+            # AiTer v${{ steps.version.outputs.VERSION }}
+
+            **PROPRIETARY SOFTWARE - For Authorized Use Only**
+
+            This is a proprietary software release for authorized users only.
+
+            ## 下载说明 / Download Instructions
+
+            ### macOS 用户
+            - **Apple Silicon (M1/M2/M3)**: 下载 `AiTer-*-mac-arm64.dmg`
+            - **Intel 芯片**: 下载 `AiTer-*-mac-x64.dmg`
+
+            ### Windows 用户
+            - 下载 `AiTer-*-win-x64.exe`
+
+            ## 安装步骤 / Installation
+
+            ### macOS
+            1. 下载对应版本的 `.dmg` 文件
+            2. 双击打开 DMG 文件
+            3. 将 AiTer 拖到 Applications 文件夹
+            4. 首次打开时，右键点击 → 打开（绕过 Gatekeeper）
+
+            ### Windows
+            1. 下载 `.exe` 安装程序
+            2. 双击运行安装程序
+            3. 按照安装向导完成安装
+
+            ## 主要功能 / Features
+
+            - 🗂️ 多项目管理
+            - 🖥️ 多终端标签支持
+            - 📝 内置代码编辑器（Monaco Editor）
+            - 🌐 HTML 实时预览
+            - 📋 Markdown 预览
+            - 🔌 插件系统
+            - ⚡ 高性能终端（xterm.js）
+            - 🎨 优雅的暗色主题
+
+            ## 系统要求 / Requirements
+
+            - **macOS**: 10.12 (Sierra) or later
+            - **Windows**: Windows 10 or later
+            - **RAM**: 4GB minimum, 8GB recommended
+            - **Disk**: 500MB free space
+
+            ## 许可协议 / License
+
+            This software is proprietary. See LICENSE for details.
+
+            **版权所有 © 2025-2026 Within-7.com - 任小姐出海战略咨询**
+
+            ---
+
+            For internal use only. Do not redistribute.
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.exe
+            artifacts/**/*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

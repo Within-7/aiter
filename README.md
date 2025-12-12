@@ -6,10 +6,24 @@ A modern terminal client optimized for AI CLI tools collaboration.
 **公司**: 任小姐出海战略咨询
 **网站**: [Within-7.com](https://within-7.com)
 
+## 📥 下载安装 / Download
+
+### 团队成员快速下载
+
+访问 [Releases 页面](https://github.com/Within-7/aiter/releases/latest) 下载最新版本。
+
+详细安装说明请查看：[团队下载使用指南](docs/TEAM_DOWNLOAD_GUIDE.md)
+
+### 开发者发布流程
+
+发布新版本请查看：[发布指南](docs/RELEASE_GUIDE.md)
+
 ## 📚 Documentation
 
 - **[产品网站](docs/index.html)** - 产品介绍和功能展示
 - **[用户手册](docs/USER_MANUAL.md)** - 详细使用指南,快速上手
+- **[团队下载指南](docs/TEAM_DOWNLOAD_GUIDE.md)** - 下载安装说明（团队成员必读）
+- **[发布指南](docs/RELEASE_GUIDE.md)** - 版本发布流程（开发者）
 - **[战略咨询工作流](docs/CONSULTING_WORKFLOW.md)** - 面向咨询团队的工作流程指南
 - **[最佳实践](docs/BEST_PRACTICES.md)** - 高效使用技巧和经验总结
 
