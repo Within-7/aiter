@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to download Node.js LTS binaries for AiTer
-# This will download Node.js for macOS (Intel and Apple Silicon) and Windows
+# Downloads only the necessary binaries based on the current platform
 
 set -e
 
@@ -12,6 +12,16 @@ RESOURCES_DIR="./resources/nodejs"
 
 # Create resources directory
 mkdir -p "$RESOURCES_DIR"
+
+# Detect current OS
+CURRENT_OS="unknown"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    CURRENT_OS="darwin"
+elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+    CURRENT_OS="win32"
+fi
+
+echo "Detected OS: ${CURRENT_OS}"
 
 # Function to download and extract Node.js
 download_nodejs() {
@@ -30,7 +40,14 @@ download_nodejs() {
     mkdir -p "${target_dir}"
 
     # Download file
-    curl -# -L "${url}" -o "/tmp/${filename}"
+    if command -v curl &> /dev/null; then
+        curl -# -L "${url}" -o "/tmp/${filename}"
+    elif command -v wget &> /dev/null; then
+        wget -q --show-progress "${url}" -O "/tmp/${filename}"
+    else
+        echo "Error: Neither curl nor wget found"
+        exit 1
+    fi
 
     # Extract based on extension
     if [ "${ext}" = "tar.gz" ]; then
@@ -38,10 +55,17 @@ download_nodejs() {
         tar -xzf "/tmp/${filename}" -C "${target_dir}" --strip-components=1
     elif [ "${ext}" = "zip" ]; then
         echo "Extracting ${filename}..."
-        unzip -q "/tmp/${filename}" -d "${target_dir}"
+        if command -v unzip &> /dev/null; then
+            unzip -q "/tmp/${filename}" -d "${target_dir}"
+        else
+            # Fallback for Windows runners without unzip
+            powershell -Command "Expand-Archive -Path '/tmp/${filename}' -DestinationPath '${target_dir}' -Force"
+        fi
         # Move files from nested directory
-        mv "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}"/* "${target_dir}/"
-        rmdir "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}"
+        if [ -d "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}" ]; then
+            mv "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}"/* "${target_dir}/"
+            rmdir "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}"
+        fi
     fi
 
     # Clean up
@@ -50,17 +74,25 @@ download_nodejs() {
     echo "✓ Downloaded and extracted ${platform}-${arch}"
 }
 
-# Download for macOS Intel (x64)
-download_nodejs "darwin" "x64" "tar.gz"
-
-# Download for macOS Apple Silicon (arm64)
-download_nodejs "darwin" "arm64" "tar.gz"
-
-# Download for Windows (x64)
-download_nodejs "win32" "x64" "zip"
+# Download based on current platform
+if [ "$CURRENT_OS" = "darwin" ]; then
+    echo "Building for macOS - downloading both Intel and Apple Silicon binaries..."
+    download_nodejs "darwin" "x64" "tar.gz"
+    download_nodejs "darwin" "arm64" "tar.gz"
+elif [ "$CURRENT_OS" = "win32" ]; then
+    echo "Building for Windows - downloading Windows binary..."
+    download_nodejs "win32" "x64" "zip"
+else
+    echo "Error: Unsupported OS ${CURRENT_OS}"
+    exit 1
+fi
 
 echo ""
 echo "✓ All Node.js binaries downloaded successfully!"
 echo ""
 echo "Directory structure:"
-tree -L 2 "${RESOURCES_DIR}" || ls -R "${RESOURCES_DIR}"
+if command -v tree &> /dev/null; then
+    tree -L 2 "${RESOURCES_DIR}"
+else
+    ls -R "${RESOURCES_DIR}"
+fi
