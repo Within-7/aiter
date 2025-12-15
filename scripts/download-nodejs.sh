@@ -13,15 +13,21 @@ RESOURCES_DIR="./resources/nodejs"
 # Create resources directory
 mkdir -p "$RESOURCES_DIR"
 
-# Detect current OS
+# Detect current OS - more robust detection
 CURRENT_OS="unknown"
 if [[ "$OSTYPE" == "darwin"* ]]; then
     CURRENT_OS="darwin"
-elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+elif [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
+    CURRENT_OS="win32"
+elif [[ "$(uname -s)" == "Darwin" ]]; then
+    CURRENT_OS="darwin"
+elif [[ "$(uname -s)" == MINGW* ]] || [[ "$(uname -s)" == MSYS* ]] || [[ "$(uname -s)" == CYGWIN* ]]; then
     CURRENT_OS="win32"
 fi
 
-echo "Detected OS: ${CURRENT_OS}"
+echo "Detected OSTYPE: ${OSTYPE}"
+echo "Detected uname -s: $(uname -s)"
+echo "Current OS: ${CURRENT_OS}"
 
 # Function to download and extract Node.js
 download_nodejs() {
@@ -33,6 +39,9 @@ download_nodejs() {
     local url="${BASE_URL}/${NODE_VERSION}/${filename}"
     local target_dir="${RESOURCES_DIR}/${platform}-${arch}"
 
+    # Use a temporary directory that works on both Unix and Windows
+    local temp_file="${filename}"
+
     echo "Downloading Node.js ${NODE_VERSION} for ${platform}-${arch}..."
     echo "URL: ${url}"
 
@@ -41,9 +50,9 @@ download_nodejs() {
 
     # Download file
     if command -v curl &> /dev/null; then
-        curl -# -L "${url}" -o "/tmp/${filename}"
+        curl -# -L "${url}" -o "${temp_file}"
     elif command -v wget &> /dev/null; then
-        wget -q --show-progress "${url}" -O "/tmp/${filename}"
+        wget -q --show-progress "${url}" -O "${temp_file}"
     else
         echo "Error: Neither curl nor wget found"
         exit 1
@@ -52,24 +61,27 @@ download_nodejs() {
     # Extract based on extension
     if [ "${ext}" = "tar.gz" ]; then
         echo "Extracting ${filename}..."
-        tar -xzf "/tmp/${filename}" -C "${target_dir}" --strip-components=1
+        tar -xzf "${temp_file}" -C "${target_dir}" --strip-components=1
     elif [ "${ext}" = "zip" ]; then
         echo "Extracting ${filename}..."
         if command -v unzip &> /dev/null; then
-            unzip -q "/tmp/${filename}" -d "${target_dir}"
+            unzip -q "${temp_file}" -d "${target_dir}"
         else
             # Fallback for Windows runners without unzip
-            powershell -Command "Expand-Archive -Path '/tmp/${filename}' -DestinationPath '${target_dir}' -Force"
+            # Convert Unix path to Windows path for PowerShell
+            local win_temp_file=$(cygpath -w "${temp_file}" 2>/dev/null || echo "${temp_file}")
+            local win_target_dir=$(cygpath -w "${target_dir}" 2>/dev/null || echo "${target_dir}")
+            powershell.exe -Command "Expand-Archive -Path '${win_temp_file}' -DestinationPath '${win_target_dir}' -Force"
         fi
         # Move files from nested directory
         if [ -d "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}" ]; then
-            mv "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}"/* "${target_dir}/"
-            rmdir "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}"
+            mv "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}"/* "${target_dir}/" 2>/dev/null || true
+            rmdir "${target_dir}/node-${NODE_VERSION}-${platform}-${arch}" 2>/dev/null || true
         fi
     fi
 
     # Clean up
-    rm "/tmp/${filename}"
+    rm -f "${temp_file}"
 
     echo "✓ Downloaded and extracted ${platform}-${arch}"
 }
