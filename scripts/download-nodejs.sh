@@ -34,10 +34,11 @@ download_nodejs() {
     local platform=$1
     local arch=$2
     local ext=$3
+    local save_as_platform=${4:-$platform}  # Optional 4th arg for directory name
 
     local filename="node-${NODE_VERSION}-${platform}-${arch}.${ext}"
     local url="${BASE_URL}/${NODE_VERSION}/${filename}"
-    local target_dir="${RESOURCES_DIR}/${platform}-${arch}"
+    local target_dir="${RESOURCES_DIR}/${save_as_platform}-${arch}"
 
     # Use a temporary directory that works on both Unix and Windows
     local temp_file="${filename}"
@@ -132,7 +133,8 @@ if [ "$CURRENT_OS" = "darwin" ]; then
     download_nodejs "darwin" "arm64" "tar.gz"
 elif [ "$CURRENT_OS" = "win32" ]; then
     echo "Building for Windows - downloading Windows binary..."
-    download_nodejs "win32" "x64" "zip"
+    # Note: Node.js uses "win" in download URLs, but we save to "win32" directory for electron-builder
+    download_nodejs "win" "x64" "zip" "win32"
 else
     echo "Error: Unsupported OS ${CURRENT_OS}"
     exit 1
