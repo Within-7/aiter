@@ -154,6 +154,9 @@ export class NodeManager {
       PATH: newPath,
       NODE_PATH: nodePath,
       npm_config_cache: path.join(this.nodejsDir, '.npm-cache'),
+      // 标记这是 AiTer 的终端环境，用于 shell 初始化脚本检测
+      AITER_TERMINAL: '1',
+      AITER_NODE_PATH: binPath,
     };
 
     // 只有在用户没有使用版本管理器时，才设置 npm_config_prefix
@@ -238,5 +241,21 @@ export class NodeManager {
       console.error('[NodeManager] Error uninstalling:', error);
       return false;
     }
+  }
+
+  /**
+   * 获取 shell 初始化脚本内容
+   * 用户可以添加到 ~/.zshrc 或 ~/.bashrc 以确保 AiTer 的 Node.js 优先级最高
+   */
+  getShellInitScript(): string {
+    const binPath = this.getNodeBinPath();
+
+    return `
+# AiTer - Built-in Node.js Configuration
+# This ensures AiTer's bundled Node.js is used in AiTer terminals
+if [ -n "$AITER_TERMINAL" ]; then
+  export PATH="${binPath}:$PATH"
+fi
+`.trim();
   }
 }
