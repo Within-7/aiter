@@ -248,14 +248,99 @@ export class NodeManager {
    * 用户可以添加到 ~/.zshrc 或 ~/.bashrc 以确保 AiTer 的 Node.js 优先级最高
    */
   getShellInitScript(): string {
-    const binPath = this.getNodeBinPath();
-
     return `
 # AiTer - Built-in Node.js Configuration
 # This ensures AiTer's bundled Node.js is used in AiTer terminals
 if [ -n "$AITER_TERMINAL" ]; then
-  export PATH="${binPath}:$PATH"
+  export PATH="$AITER_NODE_PATH:$PATH"
 fi
 `.trim();
+  }
+
+  /**
+   * 获取用户的 shell 配置文件路径
+   */
+  private getShellConfigPath(): string | null {
+    const homeDir = require('os').homedir();
+    const shell = process.env.SHELL || '';
+
+    // Windows 不需要配置
+    if (this.platform === 'win32') {
+      return null;
+    }
+
+    // 检测 shell 类型并返回配置文件路径
+    if (shell.includes('zsh')) {
+      return path.join(homeDir, '.zshrc');
+    } else if (shell.includes('bash')) {
+      return path.join(homeDir, '.bashrc');
+    }
+
+    // 默认尝试 zsh（macOS 默认）
+    return path.join(homeDir, '.zshrc');
+  }
+
+  /**
+   * 检查 shell 配置文件中是否已包含 AiTer 配置
+   */
+  async isShellConfigured(): Promise<boolean> {
+    try {
+      const configPath = this.getShellConfigPath();
+      if (!configPath) return true; // Windows 不需要配置
+
+      if (!(await fs.pathExists(configPath))) {
+        return false;
+      }
+
+      const content = await fs.readFile(configPath, 'utf-8');
+      return content.includes('# AiTer - Built-in Node.js Configuration');
+    } catch (error) {
+      console.error('[NodeManager] Error checking shell config:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 自动配置 shell（添加 AiTer 配置到 .zshrc/.bashrc）
+   */
+  async configureShell(): Promise<boolean> {
+    try {
+      const configPath = this.getShellConfigPath();
+      if (!configPath) {
+        console.log('[NodeManager] Windows platform, shell config not needed');
+        return true;
+      }
+
+      // 检查是否已配置
+      if (await this.isShellConfigured()) {
+        console.log('[NodeManager] Shell already configured');
+        return true;
+      }
+
+      // 确保配置文件存在
+      await fs.ensureFile(configPath);
+
+      // 读取现有内容
+      let existingContent = '';
+      if (await fs.pathExists(configPath)) {
+        existingContent = await fs.readFile(configPath, 'utf-8');
+      }
+
+      // 准备要添加的内容
+      const scriptToAdd = '\n\n' + this.getShellInitScript() + '\n';
+
+      // 检查文件末尾是否有换行符
+      const needsNewline = existingContent.length > 0 && !existingContent.endsWith('\n');
+      const contentToAppend = needsNewline ? '\n' + scriptToAdd : scriptToAdd;
+
+      // 追加到文件末尾
+      await fs.appendFile(configPath, contentToAppend);
+
+      console.log(`[NodeManager] Shell configured successfully: ${configPath}`);
+      return true;
+    } catch (error) {
+      console.error('[NodeManager] Error configuring shell:', error);
+      return false;
+    }
   }
 }

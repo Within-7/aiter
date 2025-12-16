@@ -43,6 +43,15 @@ async function initialize() {
       console.log(`[NodeManager] Built-in Node.js already installed: ${nodeInfo?.version}`)
     }
 
+    // Auto-configure shell for seamless Node.js integration
+    // This runs on every launch to ensure configuration is present
+    const shellConfigured = await nodeManager.configureShell()
+    if (shellConfigured) {
+      console.log('[NodeManager] Shell configuration verified')
+    } else {
+      console.warn('[NodeManager] Failed to configure shell automatically')
+    }
+
     // Initialize PTY manager
     ptyManager = new PTYManager()
 
