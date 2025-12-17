@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import path from 'path'
 import { createMainWindow } from './window'
 import { setupIPC } from './ipc'
 import { setupMenu } from './menu'
@@ -9,8 +10,33 @@ import { PluginManager } from './plugins/PluginManager'
 import { initUpdateManager } from './updater'
 import { NodeManager } from './nodejs/manager'
 
-// Set application name
-app.setName('AiTer')
+// ============================================================================
+// Development/Production Environment Isolation
+// ============================================================================
+// This ensures dev and production versions can run simultaneously without conflicts
+const isDev = !app.isPackaged
+
+if (isDev) {
+  // Set separate app name for development
+  app.setName('AiTer Dev')
+
+  // Use separate user data directory for dev mode
+  // This prevents conflicts with production version's data
+  const devUserData = path.join(app.getPath('userData'), '..', 'AiTer-Dev')
+  app.setPath('userData', devUserData)
+
+  console.log('╔════════════════════════════════════════════════════════════════╗')
+  console.log('║              🚀 DEVELOPMENT MODE ENABLED                       ║')
+  console.log('╚════════════════════════════════════════════════════════════════╝')
+  console.log(`[Dev Mode] App Name: ${app.getName()}`)
+  console.log(`[Dev Mode] User Data: ${app.getPath('userData')}`)
+  console.log(`[Dev Mode] Logs: ${app.getPath('logs')}`)
+  console.log('─────────────────────────────────────────────────────────────────')
+} else {
+  // Production mode: use normal app name
+  app.setName('AiTer')
+  console.log('Production mode - using default configuration')
+}
 
 let mainWindow: BrowserWindow | null = null
 let ptyManager: PTYManager | null = null

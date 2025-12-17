@@ -54,6 +54,9 @@ export function createMainWindow(): BrowserWindow {
     ? path.join(app.getAppPath(), 'assets/logo.png')
     : path.join(process.resourcesPath, 'assets/logo.png')
 
+  // Set window title based on app name (includes dev mode indicator)
+  const windowTitle = app.getName()
+
   const window = new BrowserWindow({
     width: state.width,
     height: state.height,
@@ -61,6 +64,7 @@ export function createMainWindow(): BrowserWindow {
     y: state.y,
     minWidth: 800,
     minHeight: 600,
+    title: windowTitle,
     backgroundColor: '#1e1e1e',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 15, y: 15 },
