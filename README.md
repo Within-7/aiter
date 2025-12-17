@@ -8,11 +8,24 @@ A modern terminal client optimized for AI CLI tools collaboration.
 
 ## 📥 下载安装 / Download
 
+### 一键安装（推荐 / Recommended）
+
+**macOS / Linux:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.sh | bash
+```
+
+**详细安装说明 / Installation Guide:**
+- 🇨🇳 [完整安装指南（中文）](INSTALL.md)
+- 🇺🇸 [Full Installation Guide (English)](INSTALL.md#english)
+
 ### 团队成员快速下载
 
 访问 [Releases 页面](https://github.com/Within-7/aiter/releases/latest) 下载最新版本。
 
-详细安装说明请查看：[团队下载使用指南](docs/TEAM_DOWNLOAD_GUIDE.md)
+详细安装说明请查看：
+- [安装指南](INSTALL.md) - 自动化安装脚本和手动安装说明
+- [团队下载使用指南](docs/TEAM_DOWNLOAD_GUIDE.md) - 团队成员专用
 
 ### 开发者发布流程
 
