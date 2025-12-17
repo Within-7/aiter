@@ -96,22 +96,29 @@ export abstract class NpmPluginInstaller implements PluginInstaller {
   }
 
   /**
-   * Get current installed version via `npm list -g <package> --json`
+   * Get current installed version by reading package.json directly
+   * This is much faster than `npm list -g` which can take 5+ seconds
    */
   async getCurrentVersion(): Promise<string | null> {
     try {
-      const { stdout } = await execFileAsync(this.npmPath, [
-        'list',
-        '-g',
-        this.packageName,
-        '--json',
-        '--depth=0'
-      ], { env: this.env });
+      // Get the global node_modules path
+      const { stdout } = await execFileAsync(this.npmPath, ['root', '-g'], {
+        env: this.env,
+        timeout: 5000 // 5 second timeout
+      });
 
-      const data: NpmListOutput = JSON.parse(stdout);
-      const packageInfo = data.dependencies?.[this.packageName];
+      const globalModulesPath = stdout.trim();
+      const path = await import('path');
+      const packageJsonPath = path.join(globalModulesPath, this.packageName, 'package.json');
 
-      return packageInfo?.version || null;
+      // Read package.json directly
+      const fs = await import('fs-extra');
+      if (await fs.pathExists(packageJsonPath)) {
+        const packageJson = await fs.readJson(packageJsonPath);
+        return packageJson.version || null;
+      }
+
+      return null;
     } catch (error) {
       console.error(`[NpmPluginInstaller] Error getting current version for ${this.packageName}:`, error);
       return null;
