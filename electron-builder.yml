@@ -10,8 +10,8 @@ files:
 asarUnpack:
   - node_modules/node-pty/**/*
 extraResources:
-  - from: resources/nodejs/${os}-${arch}
-    to: nodejs/${os}-${arch}
+  - from: resources/nodejs
+    to: nodejs
     filter:
       - '**/*'
 mac:
