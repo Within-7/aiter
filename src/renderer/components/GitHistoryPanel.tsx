@@ -329,33 +329,57 @@ export function GitHistoryPanel({ projectId, projectPath, projectName, gitStatus
   // Open diff tab for an uncommitted file change
   const handleOpenUncommittedFileDiff = async (change: FileChange) => {
     try {
-      const result = await window.api.git.getFileDiff(projectPath, change.path)
-      if (result.success && result.diff !== undefined) {
-        // Extract file name from path
-        const fileName = change.path.split('/').pop() || change.path
+      // Extract file name from path
+      const fileName = change.path.split('/').pop() || change.path
+      // Create a unique ID for this diff tab
+      const tabId = `diff-uncommitted-${change.path.replace(/[^a-zA-Z0-9]/g, '-')}`
 
-        // Create a unique ID for this diff tab
-        const tabId = `diff-uncommitted-${change.path.replace(/[^a-zA-Z0-9]/g, '-')}`
+      let diffContent = ''
 
-        // Create editor tab for diff view
-        const diffTab: EditorTab = {
-          id: tabId,
-          filePath: change.path,
-          fileName: `${fileName} (uncommitted)`,
-          fileType: 'diff',
-          content: '',
-          isDirty: false,
-          isDiff: true,
-          diffContent: result.diff || `[${change.status.toUpperCase()}] ${change.path}\n\nNo diff available for ${change.status} files.`,
-          commitHash: undefined,
-          commitMessage: `Uncommitted changes - ${change.status}`,
-          projectPath: projectPath
+      if (change.status === 'untracked') {
+        // For untracked files, read the file content and show all as additions
+        const fullPath = `${projectPath}/${change.path}`
+        const fileResult = await window.api.fs.readFile(fullPath)
+        if (fileResult.success && fileResult.content !== undefined) {
+          const lines = fileResult.content.split('\n')
+          const totalLines = lines.length
+          // Format as a diff with all lines as additions
+          diffContent = `diff --git a/${change.path} b/${change.path}
+new file mode 100644
+--- /dev/null
++++ b/${change.path}
+@@ -0,0 +1,${totalLines} @@
+${lines.map(line => `+${line}`).join('\n')}`
+        } else {
+          diffContent = `[NEW FILE] ${change.path}\n\nUnable to read file content.`
         }
-
-        dispatch({ type: 'ADD_EDITOR_TAB', payload: diffTab })
       } else {
-        console.error('Failed to get file diff:', result.error)
+        // For tracked files, use git diff
+        const result = await window.api.git.getFileDiff(projectPath, change.path)
+        if (result.success && result.diff !== undefined) {
+          diffContent = result.diff || `[${change.status.toUpperCase()}] ${change.path}\n\nNo changes detected.`
+        } else {
+          console.error('Failed to get file diff:', result.error)
+          return
+        }
       }
+
+      // Create editor tab for diff view
+      const diffTab: EditorTab = {
+        id: tabId,
+        filePath: change.path,
+        fileName: `${fileName} (uncommitted)`,
+        fileType: 'diff',
+        content: '',
+        isDirty: false,
+        isDiff: true,
+        diffContent: diffContent,
+        commitHash: undefined,
+        commitMessage: `Uncommitted changes - ${change.status}`,
+        projectPath: projectPath
+      }
+
+      dispatch({ type: 'ADD_EDITOR_TAB', payload: diffTab })
     } catch (error) {
       console.error('Failed to open uncommitted file diff:', error)
     }
