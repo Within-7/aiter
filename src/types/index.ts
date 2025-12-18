@@ -27,7 +27,7 @@ export interface EditorTab {
   id: string
   filePath: string
   fileName: string
-  fileType: 'html' | 'markdown' | 'json' | 'javascript' | 'typescript' | 'css' | 'text' | 'other' | 'diff'
+  fileType: 'html' | 'markdown' | 'json' | 'javascript' | 'typescript' | 'css' | 'text' | 'other' | 'diff' | 'python' | 'java' | 'c' | 'cpp' | 'go' | 'rust' | 'ruby' | 'php' | 'shell' | 'sql' | 'yaml' | 'xml' | 'dockerfile' | 'image' | 'pdf' | 'word' | 'excel' | 'powerpoint'
   content: string
   isDirty: boolean
   cursorPosition?: { line: number; column: number }

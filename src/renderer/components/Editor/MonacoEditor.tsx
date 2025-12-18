@@ -10,12 +10,29 @@ interface MonacoEditorProps {
 }
 
 const languageMap: Record<string, string> = {
+  // Web languages
   javascript: 'javascript',
   typescript: 'typescript',
   html: 'html',
   css: 'css',
   json: 'json',
   markdown: 'markdown',
+  // Programming languages
+  python: 'python',
+  java: 'java',
+  c: 'c',
+  cpp: 'cpp',
+  go: 'go',
+  rust: 'rust',
+  ruby: 'ruby',
+  php: 'php',
+  shell: 'shell',
+  sql: 'sql',
+  // Config formats
+  yaml: 'yaml',
+  xml: 'xml',
+  dockerfile: 'dockerfile',
+  // Fallback
   text: 'plaintext',
   other: 'plaintext'
 }

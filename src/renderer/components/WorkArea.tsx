@@ -4,6 +4,9 @@ import { MonacoEditor } from './Editor/MonacoEditor'
 import { MarkdownEditor } from './Editor/MarkdownEditor'
 import { HTMLPreview } from './Editor/HTMLPreview'
 import { DiffViewer } from './Editor/DiffViewer'
+import { ImageViewer } from './Editor/ImageViewer'
+import { PDFViewer } from './Editor/PDFViewer'
+import { OfficeViewer } from './Editor/OfficeViewer'
 import { TerminalContainer } from './TerminalContainer'
 import { getProjectColor } from '../utils/projectColors'
 import '../styles/WorkArea.css'
@@ -276,6 +279,22 @@ export const WorkArea: React.FC = () => {
                 onSave={handleSave}
                 mode={currentMode}
                 currentFilePath={activeEditorTab.filePath}
+              />
+            ) : activeEditorTab.fileType === 'image' ? (
+              <ImageViewer
+                src={activeEditorTab.content}
+                fileName={activeEditorTab.fileName}
+              />
+            ) : activeEditorTab.fileType === 'pdf' ? (
+              <PDFViewer
+                filePath={activeEditorTab.filePath}
+                fileName={activeEditorTab.fileName}
+              />
+            ) : activeEditorTab.fileType === 'word' || activeEditorTab.fileType === 'excel' || activeEditorTab.fileType === 'powerpoint' ? (
+              <OfficeViewer
+                filePath={activeEditorTab.filePath}
+                fileName={activeEditorTab.fileName}
+                fileType={activeEditorTab.fileType}
               />
             ) : (
               <MonacoEditor

@@ -133,7 +133,7 @@ export const OfficeViewer: React.FC<OfficeViewerProps> = ({
           </button>
 
           <p className="office-hint">
-            This file will be opened in your system's default application for {getFileTypeName().toLowerCase()}.
+            This file will be opened in your system&apos;s default application for {getFileTypeName().toLowerCase()}.
           </p>
         </div>
 

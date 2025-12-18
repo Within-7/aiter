@@ -18,34 +18,116 @@ const getFileIcon = (node: FileNode): string => {
   const ext = fileName.substring(fileName.lastIndexOf('.'))
 
   const iconMap: Record<string, string> = {
+    // JavaScript/TypeScript
     '.js': '📄',
     '.jsx': '⚛️',
+    '.mjs': '📄',
+    '.cjs': '📄',
     '.ts': '📘',
     '.tsx': '⚛️',
+    '.mts': '📘',
+    '.cts': '📘',
+    // Web
     '.html': '🌐',
     '.htm': '🌐',
     '.css': '🎨',
     '.scss': '🎨',
     '.sass': '🎨',
     '.less': '🎨',
+    // Data formats
     '.json': '📋',
+    '.jsonc': '📋',
+    '.json5': '📋',
+    // Markdown
     '.md': '📝',
     '.markdown': '📝',
-    '.txt': '📄',
+    '.mdx': '📝',
+    // Python
+    '.py': '🐍',
+    '.pyw': '🐍',
+    '.pyi': '🐍',
+    '.pyx': '🐍',
+    // Java
+    '.java': '☕',
+    '.jar': '☕',
+    '.class': '☕',
+    // C/C++
+    '.c': '🔧',
+    '.h': '🔧',
+    '.cpp': '⚙️',
+    '.cxx': '⚙️',
+    '.cc': '⚙️',
+    '.hpp': '⚙️',
+    '.hxx': '⚙️',
+    '.hh': '⚙️',
+    // Go
+    '.go': '🔵',
+    // Rust
+    '.rs': '🦀',
+    // Ruby
+    '.rb': '💎',
+    '.erb': '💎',
+    '.rake': '💎',
+    '.gemspec': '💎',
+    // PHP
+    '.php': '🐘',
+    '.phtml': '🐘',
+    // Shell
+    '.sh': '🖥️',
+    '.bash': '🖥️',
+    '.zsh': '🖥️',
+    '.fish': '🖥️',
+    '.ps1': '🖥️',
+    '.bat': '🖥️',
+    '.cmd': '🖥️',
+    // SQL
+    '.sql': '🗃️',
+    '.mysql': '🗃️',
+    '.pgsql': '🗃️',
+    // YAML/Config
+    '.yaml': '⚙️',
+    '.yml': '⚙️',
+    '.toml': '⚙️',
+    '.ini': '⚙️',
+    '.env': '🔐',
+    // XML
     '.xml': '📄',
-    '.yaml': '📄',
-    '.yml': '📄',
+    '.xsd': '📄',
+    '.xsl': '📄',
+    '.plist': '📄',
+    // Docker
+    '.dockerfile': '🐳',
+    // Text/Log
+    '.txt': '📄',
     '.log': '📄',
+    '.gitignore': '📄',
+    '.gitattributes': '📄',
+    '.editorconfig': '📄',
+    // Images
     '.png': '🖼️',
     '.jpg': '🖼️',
     '.jpeg': '🖼️',
     '.gif': '🖼️',
     '.svg': '🖼️',
     '.webp': '🖼️',
+    '.bmp': '🖼️',
+    '.ico': '🖼️',
+    '.tiff': '🖼️',
+    '.tif': '🖼️',
+    // Documents
     '.pdf': '📕',
+    '.doc': '📘',
+    '.docx': '📘',
+    '.xls': '📗',
+    '.xlsx': '📗',
+    '.ppt': '📙',
+    '.pptx': '📙',
+    // Archives
     '.zip': '📦',
     '.tar': '📦',
     '.gz': '📦',
+    '.rar': '📦',
+    '.7z': '📦',
   }
 
   return iconMap[ext] || '📄'
