@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useCallback, useMemo } from 'react'
 import { AppContext } from '../context/AppContext'
 import { MonacoEditor } from './Editor/MonacoEditor'
 import { MarkdownEditor } from './Editor/MarkdownEditor'
@@ -40,36 +40,38 @@ export const WorkArea: React.FC = () => {
     ? `terminal-${state.activeTerminalId}`
     : null
 
-  // Create a map of all tabs by ID for quick lookup
-  const tabsById = new Map<string, Tab>()
+  // Memoize tabs creation to prevent unnecessary recalculations
+  const allTabs = useMemo(() => {
+    const tabsById = new Map<string, Tab>()
 
-  state.editorTabs.forEach(t => {
-    const project = state.projects.find(p => t.filePath.startsWith(p.path))
-    tabsById.set(`editor-${t.id}`, {
-      id: `editor-${t.id}`,
-      type: 'editor' as TabType,
-      title: t.isDirty ? `● ${t.fileName}` : t.fileName,
-      projectColor: project ? getProjectColor(project.id, project.color) : undefined
+    state.editorTabs.forEach(t => {
+      const project = state.projects.find(p => t.filePath.startsWith(p.path))
+      tabsById.set(`editor-${t.id}`, {
+        id: `editor-${t.id}`,
+        type: 'editor' as TabType,
+        title: t.isDirty ? `● ${t.fileName}` : t.fileName,
+        projectColor: project ? getProjectColor(project.id, project.color) : undefined
+      })
     })
-  })
 
-  state.terminals.forEach(t => {
-    const project = state.projects.find(p => p.id === t.projectId)
-    tabsById.set(`terminal-${t.id}`, {
-      id: `terminal-${t.id}`,
-      type: 'terminal' as TabType,
-      title: t.name,
-      projectColor: project ? getProjectColor(project.id, project.color) : undefined
+    state.terminals.forEach(t => {
+      const project = state.projects.find(p => p.id === t.projectId)
+      tabsById.set(`terminal-${t.id}`, {
+        id: `terminal-${t.id}`,
+        type: 'terminal' as TabType,
+        title: t.name,
+        projectColor: project ? getProjectColor(project.id, project.color) : undefined
+      })
     })
-  })
 
-  // Use tabOrder to determine display order, filtering out any removed tabs
-  const allTabs: Tab[] = (state.tabOrder || [])
-    .map(id => tabsById.get(id))
-    .filter((tab): tab is Tab => tab !== undefined)
+    // Use tabOrder to determine display order, filtering out any removed tabs
+    return (state.tabOrder || [])
+      .map(id => tabsById.get(id))
+      .filter((tab): tab is Tab => tab !== undefined)
+  }, [state.editorTabs, state.terminals, state.projects, state.tabOrder])
 
-  const handleTabClick = (tabId: string) => {
-    // Extract type and id correctly (handle IDs that may contain hyphens)
+  // Memoize event handlers to prevent unnecessary re-renders of child components
+  const handleTabClick = useCallback((tabId: string) => {
     if (tabId.startsWith('editor-')) {
       const id = tabId.substring('editor-'.length)
       dispatch({ type: 'SET_ACTIVE_EDITOR_TAB', payload: id })
@@ -77,12 +79,10 @@ export const WorkArea: React.FC = () => {
       const id = tabId.substring('terminal-'.length)
       dispatch({ type: 'SET_ACTIVE_TERMINAL', payload: id })
     }
-  }
+  }, [dispatch])
 
-  const handleTabClose = (e: React.MouseEvent, tabId: string) => {
+  const handleTabClose = useCallback((e: React.MouseEvent, tabId: string) => {
     e.stopPropagation()
-
-    // Extract type and id correctly (handle IDs that may contain hyphens)
     if (tabId.startsWith('editor-')) {
       const id = tabId.substring('editor-'.length)
       dispatch({ type: 'REMOVE_EDITOR_TAB', payload: id })
@@ -90,27 +90,26 @@ export const WorkArea: React.FC = () => {
       const id = tabId.substring('terminal-'.length)
       dispatch({ type: 'REMOVE_TERMINAL', payload: id })
     }
-  }
+  }, [dispatch])
 
-  const handleDragStart = (e: React.DragEvent, tabId: string) => {
+  const handleDragStart = useCallback((e: React.DragEvent, tabId: string) => {
     setDraggedTabId(tabId)
     e.dataTransfer.effectAllowed = 'move'
-    // Set a transparent drag image to avoid default ghost image
     const img = new Image()
     img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
     e.dataTransfer.setDragImage(img, 0, 0)
-  }
+  }, [])
 
-  const handleDragOver = (e: React.DragEvent, tabId: string) => {
+  const handleDragOver = useCallback((e: React.DragEvent, tabId: string) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     setDragOverTabId(tabId)
-  }
+  }, [])
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setDraggedTabId(null)
     setDragOverTabId(null)
-  }
+  }, [])
 
   const handleDrop = (e: React.DragEvent, targetTabId: string) => {
     e.preventDefault()

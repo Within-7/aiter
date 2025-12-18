@@ -73,7 +73,11 @@ export function createMainWindow(): BrowserWindow {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      // Performance optimizations
+      backgroundThrottling: false, // Prevent throttling when window is in background
+      enableWebSQL: false, // Disable unused feature
+      spellcheck: false // Disable spellcheck for terminal performance
     }
   })
 

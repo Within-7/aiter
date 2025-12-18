@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { CanvasAddon } from '@xterm/addon-canvas'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { Terminal as TerminalType, AppSettings } from '../../types'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/XTerminal.css'
@@ -102,9 +103,13 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
     // Add addons
     const fitAddon = new FitAddon()
     const webLinksAddon = new WebLinksAddon()
+    const unicode11Addon = new Unicode11Addon()
 
     xterm.loadAddon(fitAddon)
     xterm.loadAddon(webLinksAddon)
+    xterm.loadAddon(unicode11Addon)
+    // Activate Unicode 11 for better emoji and special character support
+    xterm.unicode.activeVersion = '11'
 
     // Open terminal
     xterm.open(terminalRef.current)
