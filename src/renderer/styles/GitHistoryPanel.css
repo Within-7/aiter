@@ -208,15 +208,40 @@
 
 .commit-item {
   display: flex;
-  gap: 8px;
-  padding: 8px;
+  flex-direction: column;
+  padding: 0;
   background-color: #2d2d30;
   border-radius: 4px;
+  overflow: hidden;
+}
+
+.commit-item.expanded {
+  border: 1px solid #3e3e42;
+}
+
+.commit-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px;
+  cursor: pointer;
   transition: background-color 0.1s;
 }
 
-.commit-item:hover {
+.commit-header:hover {
   background-color: #3e3e42;
+}
+
+.commit-expand-icon {
+  color: #888888;
+  font-size: 12px;
+  flex-shrink: 0;
+  padding-top: 2px;
+  transition: color 0.1s;
+}
+
+.commit-header:hover .commit-expand-icon {
+  color: #cccccc;
 }
 
 .commit-icon {
@@ -649,5 +674,112 @@
 }
 
 .diff-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #4e4e4e;
+}
+
+/* Commit Files (Expanded View) */
+.commit-files {
+  background-color: #252526;
+  border-top: 1px solid #3e3e42;
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.commit-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #cccccc;
+  border-radius: 2px;
+  transition: background-color 0.1s;
+}
+
+.commit-file-item:hover {
+  background-color: #2d2d30;
+}
+
+.commit-file-item .status-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.commit-file-item .status-icon.added {
+  color: #4ec9b0;
+}
+
+.commit-file-item .status-icon.modified {
+  color: #ce9178;
+}
+
+.commit-file-item .status-icon.deleted {
+  color: #f48771;
+}
+
+.commit-file-item .status-icon.renamed {
+  color: #569cd6;
+}
+
+.commit-file-path {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.commit-file-status {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-weight: 600;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.commit-file-status.added {
+  background-color: rgba(78, 201, 176, 0.2);
+  color: #4ec9b0;
+}
+
+.commit-file-status.modified {
+  background-color: rgba(206, 145, 120, 0.2);
+  color: #ce9178;
+}
+
+.commit-file-status.deleted {
+  background-color: rgba(244, 135, 113, 0.2);
+  color: #f48771;
+}
+
+.commit-file-status.renamed {
+  background-color: rgba(86, 156, 214, 0.2);
+  color: #569cd6;
+}
+
+.loading-files {
+  font-size: 11px;
+  color: #888888;
+  text-align: center;
+  padding: 8px;
+  margin: 0;
+}
+
+.commit-files::-webkit-scrollbar {
+  width: 6px;
+}
+
+.commit-files::-webkit-scrollbar-track {
+  background: #252526;
+}
+
+.commit-files::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 3px;
+}
+
+.commit-files::-webkit-scrollbar-thumb:hover {
   background: #4e4e4e;
 }

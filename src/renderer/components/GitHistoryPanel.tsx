@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { VscGitCommit, VscRefresh, VscCheck, VscFile, VscDiffAdded, VscDiffModified, VscDiffRemoved, VscCloudUpload, VscCloudDownload, VscSync, VscAdd, VscRemove, VscDiff, VscChevronDown } from 'react-icons/vsc'
+import { VscGitCommit, VscRefresh, VscCheck, VscFile, VscDiffAdded, VscDiffModified, VscDiffRemoved, VscCloudUpload, VscCloudDownload, VscSync, VscAdd, VscRemove, VscDiff, VscChevronDown, VscChevronRight } from 'react-icons/vsc'
 import { GitCommit, GitStatus } from '../../types'
 import '../styles/GitHistoryPanel.css'
 
@@ -14,6 +14,11 @@ interface GitHistoryPanelProps {
 interface FileChange {
   path: string
   status: 'added' | 'modified' | 'deleted' | 'untracked'
+}
+
+interface CommitFile {
+  path: string
+  status: 'added' | 'modified' | 'deleted' | 'renamed'
 }
 
 interface Branch {
@@ -33,6 +38,8 @@ export function GitHistoryPanel({ projectId, projectPath, projectName, gitStatus
   const [showNewBranchInput, setShowNewBranchInput] = useState(false)
   const [operationInProgress, setOperationInProgress] = useState<string | null>(null)
   const [selectedFileDiff, setSelectedFileDiff] = useState<{ path: string; diff: string } | null>(null)
+  const [expandedCommits, setExpandedCommits] = useState<Set<string>>(new Set())
+  const [commitFiles, setCommitFiles] = useState<Map<string, CommitFile[]>>(new Map())
 
   const loadGitData = async () => {
     setLoading(true)
@@ -257,6 +264,46 @@ export function GitHistoryPanel({ projectId, projectPath, projectName, gitStatus
       alert('Failed to get diff')
     } finally {
       setOperationInProgress(null)
+    }
+  }
+
+  const handleToggleCommit = async (commitHash: string) => {
+    const newExpanded = new Set(expandedCommits)
+
+    if (newExpanded.has(commitHash)) {
+      // Collapse
+      newExpanded.delete(commitHash)
+    } else {
+      // Expand and load files if not already loaded
+      newExpanded.add(commitHash)
+
+      if (!commitFiles.has(commitHash)) {
+        try {
+          const result = await window.api.git.getCommitFiles(projectPath, commitHash)
+          if (result.success && result.files) {
+            setCommitFiles(prev => new Map(prev).set(commitHash, result.files!))
+          }
+        } catch (error) {
+          console.error('Failed to load commit files:', error)
+        }
+      }
+    }
+
+    setExpandedCommits(newExpanded)
+  }
+
+  const getCommitFileStatusIcon = (status: CommitFile['status']) => {
+    switch (status) {
+      case 'added':
+        return <VscDiffAdded className="status-icon added" />
+      case 'modified':
+        return <VscDiffModified className="status-icon modified" />
+      case 'deleted':
+        return <VscDiffRemoved className="status-icon deleted" />
+      case 'renamed':
+        return <VscFile className="status-icon renamed" />
+      default:
+        return <VscFile className="status-icon" />
     }
   }
 
@@ -501,23 +548,56 @@ export function GitHistoryPanel({ projectId, projectPath, projectName, gitStatus
             <p className="loading">Loading commits...</p>
           ) : commits.length > 0 ? (
             <div className="commits-list">
-              {commits.map((commit) => (
-                <div key={commit.hash} className="commit-item">
-                  <div className="commit-icon">
-                    <VscGitCommit />
-                  </div>
-                  <div className="commit-details">
-                    <div className="commit-message">{commit.message}</div>
-                    <div className="commit-meta">
-                      <span className="commit-author">{commit.author}</span>
-                      <span className="commit-separator">•</span>
-                      <span className="commit-hash">{commit.shortHash}</span>
-                      <span className="commit-separator">•</span>
-                      <span className="commit-date">{formatDate(commit.timestamp)}</span>
+              {commits.map((commit) => {
+                const isExpanded = expandedCommits.has(commit.hash)
+                const files = commitFiles.get(commit.hash) || []
+
+                return (
+                  <div key={commit.hash} className={`commit-item ${isExpanded ? 'expanded' : ''}`}>
+                    <div
+                      className="commit-header"
+                      onClick={() => handleToggleCommit(commit.hash)}
+                    >
+                      <div className="commit-expand-icon">
+                        {isExpanded ? <VscChevronDown /> : <VscChevronRight />}
+                      </div>
+                      <div className="commit-icon">
+                        <VscGitCommit />
+                      </div>
+                      <div className="commit-details">
+                        <div className="commit-message">{commit.message}</div>
+                        <div className="commit-meta">
+                          <span className="commit-author">{commit.author}</span>
+                          <span className="commit-separator">•</span>
+                          <span className="commit-hash">{commit.shortHash}</span>
+                          <span className="commit-separator">•</span>
+                          <span className="commit-date">{formatDate(commit.timestamp)}</span>
+                        </div>
+                      </div>
                     </div>
+
+                    {isExpanded && (
+                      <div className="commit-files">
+                        {files.length > 0 ? (
+                          files.map((file, index) => (
+                            <div key={index} className="commit-file-item">
+                              {getCommitFileStatusIcon(file.status)}
+                              <span className="commit-file-path" title={file.path}>
+                                {file.path}
+                              </span>
+                              <span className={`commit-file-status ${file.status}`}>
+                                {file.status}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="loading-files">Loading files...</p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <p className="no-commits">No commits yet</p>

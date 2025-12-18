@@ -748,5 +748,15 @@ export function setupIPC(
     }
   })
 
+  ipcMain.handle('git:getCommitFiles', async (_, { projectPath, commitHash }) => {
+    try {
+      const files = await gitManager.getCommitFiles(projectPath, commitHash)
+      return { success: true, files }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
   console.log('IPC handlers registered')
 }

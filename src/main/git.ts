@@ -232,6 +232,55 @@ Thumbs.db
   }
 
   /**
+   * Get files changed in a specific commit
+   */
+  async getCommitFiles(
+    projectPath: string,
+    commitHash: string
+  ): Promise<Array<{ path: string; status: 'added' | 'modified' | 'deleted' | 'renamed' }>> {
+    try {
+      const { stdout } = await execAsync(
+        `git diff-tree --no-commit-id --name-status -r ${commitHash}`,
+        { cwd: projectPath }
+      )
+
+      if (!stdout.trim()) {
+        return []
+      }
+
+      return stdout
+        .trim()
+        .split('\n')
+        .map(line => {
+          const [statusCode, ...pathParts] = line.split('\t')
+          const filePath = pathParts.join('\t') // Handle paths with tabs (rare but possible)
+
+          let status: 'added' | 'modified' | 'deleted' | 'renamed' = 'modified'
+          switch (statusCode.charAt(0)) {
+            case 'A':
+              status = 'added'
+              break
+            case 'D':
+              status = 'deleted'
+              break
+            case 'M':
+              status = 'modified'
+              break
+            case 'R':
+              status = 'renamed'
+              break
+          }
+
+          return { path: filePath, status }
+        })
+        .filter(item => item.path) // Filter out empty entries
+    } catch (error) {
+      console.error('Failed to get commit files:', error)
+      return []
+    }
+  }
+
+  /**
    * Get comprehensive Git status for a project
    */
   async getStatus(projectPath: string): Promise<GitStatus> {
