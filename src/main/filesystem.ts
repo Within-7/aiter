@@ -120,7 +120,6 @@ export class SecureFileSystemManager {
       '.xsd': 'xml',
       '.xsl': 'xml',
       '.xslt': 'xml',
-      '.svg': 'xml',
       '.plist': 'xml',
       // Docker
       '.dockerfile': 'dockerfile',
@@ -150,6 +149,7 @@ export class SecureFileSystemManager {
       '.ico': 'image',
       '.tiff': 'image',
       '.tif': 'image',
+      '.svg': 'image',
       // PDF
       '.pdf': 'pdf',
       // Office documents
