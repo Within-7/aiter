@@ -1,5 +1,6 @@
 import React from 'react'
-import { FileNode, FileChange } from '../../../types'
+import { FileNode } from '../../../types'
+import { ExtendedGitStatus } from './FileTree'
 
 interface FileTreeNodeProps {
   node: FileNode
@@ -7,7 +8,7 @@ interface FileTreeNodeProps {
   onToggle: (node: FileNode) => void
   onClick: (node: FileNode) => void
   activeFilePath?: string
-  gitChanges?: Map<string, FileChange['status']>
+  gitChanges?: Map<string, ExtendedGitStatus>
 }
 
 const getFileIcon = (node: FileNode): string => {
@@ -134,7 +135,7 @@ const getFileIcon = (node: FileNode): string => {
   return iconMap[ext] || '📄'
 }
 
-const getGitStatusIcon = (status?: FileNode['gitStatus']): string | null => {
+const getGitStatusIcon = (status?: ExtendedGitStatus | FileNode['gitStatus']): string | null => {
   if (!status || status === 'clean') return null
 
   const statusMap: Record<string, string> = {
@@ -142,12 +143,13 @@ const getGitStatusIcon = (status?: FileNode['gitStatus']): string | null => {
     added: 'A',
     deleted: 'D',
     untracked: '?',
+    'recent-commit': '●',
   }
 
   return statusMap[status] || null
 }
 
-const getGitStatusClass = (status?: FileNode['gitStatus']): string => {
+const getGitStatusClass = (status?: ExtendedGitStatus | FileNode['gitStatus']): string => {
   if (!status || status === 'clean') return ''
   return `git-status-${status}`
 }
