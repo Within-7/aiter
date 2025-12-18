@@ -103,7 +103,7 @@
 
 .git-status-untracked,
 .git-status-untracked .git-status {
-  color: #888;
+  color: #e2a14e;
 }
 
 .git-status-recent-commit,

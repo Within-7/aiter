@@ -142,8 +142,8 @@ const getGitStatusIcon = (status?: ExtendedGitStatus | FileNode['gitStatus']): s
     modified: 'M',
     added: 'A',
     deleted: 'D',
-    untracked: '?',
-    'recent-commit': '●',
+    untracked: 'U',
+    'recent-commit': 'C',
   }
 
   return statusMap[status] || null
