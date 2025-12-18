@@ -154,6 +154,32 @@ const getGitStatusClass = (status?: ExtendedGitStatus | FileNode['gitStatus']): 
   return `git-status-${status}`
 }
 
+// Get the most important git status for a directory based on its children
+const getDirectoryGitStatus = (
+  dirPath: string,
+  gitChanges?: Map<string, ExtendedGitStatus>
+): ExtendedGitStatus | null => {
+  if (!gitChanges || gitChanges.size === 0) return null
+
+  // Priority: modified > added > deleted > untracked > recent-commit
+  const priorityOrder: ExtendedGitStatus[] = ['modified', 'added', 'deleted', 'untracked', 'recent-commit']
+  let highestPriority: ExtendedGitStatus | null = null
+  let highestPriorityIndex = Infinity
+
+  for (const [filePath, status] of gitChanges.entries()) {
+    // Check if this file is under the directory
+    if (filePath.startsWith(dirPath + '/')) {
+      const index = priorityOrder.indexOf(status)
+      if (index !== -1 && index < highestPriorityIndex) {
+        highestPriorityIndex = index
+        highestPriority = status
+      }
+    }
+  }
+
+  return highestPriority
+}
+
 export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   node,
   level,
@@ -171,8 +197,14 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     }
   }
 
-  // Get git status from gitChanges map or fall back to node.gitStatus
-  const effectiveGitStatus = gitChanges?.get(node.path) || node.gitStatus
+  // Get git status: for files from map, for directories check children
+  let effectiveGitStatus: ExtendedGitStatus | FileNode['gitStatus'] | undefined
+  if (node.type === 'directory') {
+    effectiveGitStatus = getDirectoryGitStatus(node.path, gitChanges)
+  } else {
+    effectiveGitStatus = gitChanges?.get(node.path) || node.gitStatus
+  }
+
   const icon = getFileIcon(node)
   const gitStatus = getGitStatusIcon(effectiveGitStatus)
   const gitStatusClass = getGitStatusClass(effectiveGitStatus)
