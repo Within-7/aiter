@@ -133,18 +133,52 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'REMOVE_TERMINAL': {
       const newTerminals = state.terminals.filter((t) => t.id !== action.payload)
-      const newActiveId =
-        state.activeTerminalId === action.payload
-          ? newTerminals.length > 0
-            ? newTerminals[newTerminals.length - 1].id
-            : undefined
-          : state.activeTerminalId
+      const removedTabId = `terminal-${action.payload}`
+      const newTabOrder = state.tabOrder.filter(id => id !== removedTabId)
+
+      // If this was the active terminal, find the previous tab in tabOrder
+      let newActiveTerminalId = state.activeTerminalId
+      let newActiveEditorTabId = state.activeEditorTabId
+
+      if (state.activeTerminalId === action.payload) {
+        // Find the index of the removed tab
+        const removedIndex = state.tabOrder.indexOf(removedTabId)
+
+        if (removedIndex > 0 && newTabOrder.length > 0) {
+          // Get the previous tab in order
+          const previousTabId = newTabOrder[removedIndex - 1]
+
+          if (previousTabId.startsWith('terminal-')) {
+            newActiveTerminalId = previousTabId.substring('terminal-'.length)
+            newActiveEditorTabId = undefined
+          } else if (previousTabId.startsWith('editor-')) {
+            newActiveEditorTabId = previousTabId.substring('editor-'.length)
+            newActiveTerminalId = undefined
+          }
+        } else if (newTabOrder.length > 0) {
+          // If removed tab was first, activate the new first tab
+          const nextTabId = newTabOrder[0]
+
+          if (nextTabId.startsWith('terminal-')) {
+            newActiveTerminalId = nextTabId.substring('terminal-'.length)
+            newActiveEditorTabId = undefined
+          } else if (nextTabId.startsWith('editor-')) {
+            newActiveEditorTabId = nextTabId.substring('editor-'.length)
+            newActiveTerminalId = undefined
+          }
+        } else {
+          // No tabs left
+          newActiveTerminalId = undefined
+          newActiveEditorTabId = undefined
+        }
+      }
 
       return {
         ...state,
         terminals: newTerminals,
-        tabOrder: state.tabOrder.filter(id => id !== `terminal-${action.payload}`),
-        activeTerminalId: newActiveId
+        tabOrder: newTabOrder,
+        activeTerminalId: newActiveTerminalId,
+        activeEditorTabId: newActiveEditorTabId
       }
     }
 
@@ -202,18 +236,52 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'REMOVE_EDITOR_TAB': {
       const newTabs = state.editorTabs.filter(t => t.id !== action.payload)
-      const newActiveId =
-        state.activeEditorTabId === action.payload
-          ? newTabs.length > 0
-            ? newTabs[newTabs.length - 1].id
-            : undefined
-          : state.activeEditorTabId
+      const removedTabId = `editor-${action.payload}`
+      const newTabOrder = state.tabOrder.filter(id => id !== removedTabId)
+
+      // If this was the active editor tab, find the previous tab in tabOrder
+      let newActiveEditorTabId = state.activeEditorTabId
+      let newActiveTerminalId = state.activeTerminalId
+
+      if (state.activeEditorTabId === action.payload) {
+        // Find the index of the removed tab
+        const removedIndex = state.tabOrder.indexOf(removedTabId)
+
+        if (removedIndex > 0 && newTabOrder.length > 0) {
+          // Get the previous tab in order
+          const previousTabId = newTabOrder[removedIndex - 1]
+
+          if (previousTabId.startsWith('editor-')) {
+            newActiveEditorTabId = previousTabId.substring('editor-'.length)
+            newActiveTerminalId = undefined
+          } else if (previousTabId.startsWith('terminal-')) {
+            newActiveTerminalId = previousTabId.substring('terminal-'.length)
+            newActiveEditorTabId = undefined
+          }
+        } else if (newTabOrder.length > 0) {
+          // If removed tab was first, activate the new first tab
+          const nextTabId = newTabOrder[0]
+
+          if (nextTabId.startsWith('editor-')) {
+            newActiveEditorTabId = nextTabId.substring('editor-'.length)
+            newActiveTerminalId = undefined
+          } else if (nextTabId.startsWith('terminal-')) {
+            newActiveTerminalId = nextTabId.substring('terminal-'.length)
+            newActiveEditorTabId = undefined
+          }
+        } else {
+          // No tabs left
+          newActiveEditorTabId = undefined
+          newActiveTerminalId = undefined
+        }
+      }
 
       return {
         ...state,
         editorTabs: newTabs,
-        tabOrder: state.tabOrder.filter(id => id !== `editor-${action.payload}`),
-        activeEditorTabId: newActiveId
+        tabOrder: newTabOrder,
+        activeEditorTabId: newActiveEditorTabId,
+        activeTerminalId: newActiveTerminalId
       }
     }
 
