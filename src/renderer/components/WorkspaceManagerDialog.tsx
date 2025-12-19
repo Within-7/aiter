@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Workspace, Project } from '../../types'
 import '../styles/WorkspaceManagerDialog.css'
 
 interface WorkspaceManagerDialogProps {
   isOpen: boolean
   onClose: () => void
+}
+
+interface ConfirmDialogState {
+  isOpen: boolean
+  title: string
+  message: string
+  onConfirm: () => void
 }
 
 const WORKSPACE_COLORS = [
@@ -31,6 +38,24 @@ export const WorkspaceManagerDialog: React.FC<WorkspaceManagerDialogProps> = ({
   const [newWorkspaceColor, setNewWorkspaceColor] = useState<string | undefined>()
   const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null)
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set())
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  })
+
+  // Check if workspace name already exists (excluding current editing workspace)
+  const isNameDuplicate = useMemo(() => {
+    const nameToCheck = isCreating ? newWorkspaceName.trim() : editingWorkspace?.name.trim()
+    if (!nameToCheck) return false
+
+    const existingNames = workspaces
+      .filter(w => w.id !== editingWorkspace?.id) // Exclude current editing workspace
+      .map(w => w.name.toLowerCase())
+
+    return existingNames.includes(nameToCheck.toLowerCase())
+  }, [workspaces, newWorkspaceName, editingWorkspace, isCreating])
 
   useEffect(() => {
     if (isOpen) {
@@ -91,17 +116,27 @@ export const WorkspaceManagerDialog: React.FC<WorkspaceManagerDialogProps> = ({
     setSelectedProjects(new Set())
   }
 
-  const handleDeleteWorkspace = async (id: string) => {
+  const handleDeleteWorkspace = (id: string) => {
     if (id === 'default') return
 
     const workspace = workspaces.find(w => w.id === id)
     if (!workspace) return
 
-    if (!confirm(`Delete workspace "${workspace.name}"? This cannot be undone.`)) return
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Workspace',
+      message: `Are you sure you want to delete "${workspace.name}"? This cannot be undone.`,
+      onConfirm: async () => {
+        await window.api.workspace.delete(id)
+        await loadData()
+        setSelectedWorkspace(null)
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      }
+    })
+  }
 
-    await window.api.workspace.delete(id)
-    await loadData()
-    setSelectedWorkspace(null)
+  const handleCloseConfirmDialog = () => {
+    setConfirmDialog(prev => ({ ...prev, isOpen: false }))
   }
 
   const handleLaunchWorkspace = async (workspaceId: string) => {
@@ -250,9 +285,12 @@ export const WorkspaceManagerDialog: React.FC<WorkspaceManagerDialogProps> = ({
                   </div>
                   <p className="form-hint">Leave empty to show all projects</p>
                 </div>
+                {isNameDuplicate && (
+                  <p className="form-error">A workspace with this name already exists</p>
+                )}
                 <div className="form-actions">
                   <button className="btn-secondary" onClick={handleCancelEdit}>Cancel</button>
-                  <button className="btn-primary" onClick={handleCreateWorkspace} disabled={!newWorkspaceName.trim()}>
+                  <button className="btn-primary" onClick={handleCreateWorkspace} disabled={!newWorkspaceName.trim() || isNameDuplicate}>
                     Create Workspace
                   </button>
                 </div>
@@ -307,9 +345,12 @@ export const WorkspaceManagerDialog: React.FC<WorkspaceManagerDialogProps> = ({
                   </div>
                   <p className="form-hint">Leave empty to show all projects</p>
                 </div>
+                {isNameDuplicate && (
+                  <p className="form-error">A workspace with this name already exists</p>
+                )}
                 <div className="form-actions">
                   <button className="btn-secondary" onClick={handleCancelEdit}>Cancel</button>
-                  <button className="btn-primary" onClick={handleUpdateWorkspace}>
+                  <button className="btn-primary" onClick={handleUpdateWorkspace} disabled={!currentEditWorkspace.name.trim() || isNameDuplicate}>
                     Save Changes
                   </button>
                 </div>
@@ -370,6 +411,28 @@ export const WorkspaceManagerDialog: React.FC<WorkspaceManagerDialogProps> = ({
             )}
           </div>
         </div>
+
+        {/* Confirmation Dialog */}
+        {confirmDialog.isOpen && (
+          <div className="confirm-dialog-overlay" onClick={handleCloseConfirmDialog}>
+            <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+              <div className="confirm-dialog-header">
+                <h3>{confirmDialog.title}</h3>
+              </div>
+              <div className="confirm-dialog-body">
+                <p>{confirmDialog.message}</p>
+              </div>
+              <div className="confirm-dialog-actions">
+                <button className="btn-secondary" onClick={handleCloseConfirmDialog}>
+                  Cancel
+                </button>
+                <button className="btn-danger" onClick={confirmDialog.onConfirm}>
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
