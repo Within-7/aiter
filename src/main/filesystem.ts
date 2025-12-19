@@ -404,6 +404,185 @@ export class SecureFileSystemManager {
     const validPath = this.validatePath(filePath)
     return await fs.promises.stat(validPath)
   }
+
+  /**
+   * Create a new empty file
+   */
+  async createFile(filePath: string, content: string = ''): Promise<boolean> {
+    try {
+      const validPath = this.validatePath(filePath)
+
+      // Check if file already exists
+      try {
+        await fs.promises.access(validPath)
+        throw new Error('File already exists')
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw err
+        }
+      }
+
+      // Ensure parent directory exists
+      const dir = path.dirname(validPath)
+      await fs.promises.mkdir(dir, { recursive: true })
+
+      // Create the file
+      await fs.promises.writeFile(validPath, content, 'utf-8')
+
+      return true
+    } catch (error) {
+      console.error('Error creating file:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Create a new directory
+   */
+  async createDirectory(dirPath: string): Promise<boolean> {
+    try {
+      const validPath = this.validatePath(dirPath)
+
+      // Check if directory already exists
+      try {
+        const stats = await fs.promises.stat(validPath)
+        if (stats.isDirectory()) {
+          throw new Error('Directory already exists')
+        }
+        throw new Error('A file with this name already exists')
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw err
+        }
+      }
+
+      // Create the directory
+      await fs.promises.mkdir(validPath, { recursive: true })
+
+      return true
+    } catch (error) {
+      console.error('Error creating directory:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Rename a file or directory
+   */
+  async rename(oldPath: string, newPath: string): Promise<boolean> {
+    try {
+      const validOldPath = this.validatePath(oldPath)
+      const validNewPath = this.validatePath(newPath)
+
+      // Check if source exists
+      await fs.promises.access(validOldPath)
+
+      // Check if destination already exists
+      try {
+        await fs.promises.access(validNewPath)
+        throw new Error('A file or directory with this name already exists')
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw err
+        }
+      }
+
+      // Rename
+      await fs.promises.rename(validOldPath, validNewPath)
+
+      return true
+    } catch (error) {
+      console.error('Error renaming:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Delete a file or directory
+   */
+  async delete(targetPath: string): Promise<boolean> {
+    try {
+      const validPath = this.validatePath(targetPath)
+
+      const stats = await fs.promises.stat(validPath)
+
+      if (stats.isDirectory()) {
+        // Recursively delete directory
+        await fs.promises.rm(validPath, { recursive: true, force: true })
+      } else {
+        // Delete file
+        await fs.promises.unlink(validPath)
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error deleting:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Copy files from external paths to a destination directory
+   */
+  async copyFiles(sourcePaths: string[], destDir: string): Promise<{ success: boolean; copied: string[]; errors: string[] }> {
+    const copied: string[] = []
+    const errors: string[] = []
+
+    try {
+      const validDestDir = this.validatePath(destDir)
+
+      // Ensure destination directory exists
+      await fs.promises.mkdir(validDestDir, { recursive: true })
+
+      for (const sourcePath of sourcePaths) {
+        try {
+          const validSourcePath = this.validatePath(sourcePath)
+          const fileName = path.basename(validSourcePath)
+          const destPath = path.join(validDestDir, fileName)
+
+          const stats = await fs.promises.stat(validSourcePath)
+
+          if (stats.isDirectory()) {
+            // Copy directory recursively
+            await this.copyDirectoryRecursive(validSourcePath, destPath)
+          } else {
+            // Copy file
+            await fs.promises.copyFile(validSourcePath, destPath)
+          }
+
+          copied.push(fileName)
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Unknown error'
+          errors.push(`${path.basename(sourcePath)}: ${message}`)
+        }
+      }
+
+      return { success: errors.length === 0, copied, errors }
+    } catch (error) {
+      console.error('Error copying files:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Helper to recursively copy a directory
+   */
+  private async copyDirectoryRecursive(source: string, dest: string): Promise<void> {
+    await fs.promises.mkdir(dest, { recursive: true })
+
+    const entries = await fs.promises.readdir(source, { withFileTypes: true })
+
+    for (const entry of entries) {
+      const srcPath = path.join(source, entry.name)
+      const destPath = path.join(dest, entry.name)
+
+      if (entry.isDirectory()) {
+        await this.copyDirectoryRecursive(srcPath, destPath)
+      } else {
+        await fs.promises.copyFile(srcPath, destPath)
+      }
+    }
+  }
 }
 
 // Singleton instance

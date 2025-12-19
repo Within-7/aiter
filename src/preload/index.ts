@@ -51,7 +51,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Dialog APIs
   dialog: {
-    openFolder: () => ipcRenderer.invoke('dialog:openFolder')
+    openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
+    openFiles: () => ipcRenderer.invoke('dialog:openFiles')
   },
 
   // Settings APIs
@@ -74,7 +75,17 @@ contextBridge.exposeInMainWorld('api', {
     readFile: (path: string) => ipcRenderer.invoke('fs:readFile', { path }),
     writeFile: (path: string, content: string) =>
       ipcRenderer.invoke('fs:writeFile', { path, content }),
-    fileExists: (path: string) => ipcRenderer.invoke('fs:fileExists', { path })
+    fileExists: (path: string) => ipcRenderer.invoke('fs:fileExists', { path }),
+    createFile: (path: string, content?: string) =>
+      ipcRenderer.invoke('fs:createFile', { path, content }),
+    createDirectory: (path: string) =>
+      ipcRenderer.invoke('fs:createDirectory', { path }),
+    rename: (oldPath: string, newPath: string) =>
+      ipcRenderer.invoke('fs:rename', { oldPath, newPath }),
+    delete: (path: string) =>
+      ipcRenderer.invoke('fs:delete', { path }),
+    copyFiles: (sourcePaths: string[], destDir: string) =>
+      ipcRenderer.invoke('fs:copyFiles', { sourcePaths, destDir })
   },
 
   // File Server APIs
@@ -304,6 +315,11 @@ export interface API {
       data?: { path: string; name: string } | null
       error?: string
     }>
+    openFiles(): Promise<{
+      success: boolean
+      data?: { paths: string[] } | null
+      error?: string
+    }>
   }
   settings: {
     get(): Promise<{ success: boolean; settings?: AppSettings; error?: string }>
@@ -332,6 +348,24 @@ export interface API {
     fileExists(
       path: string
     ): Promise<{ success: boolean; exists?: boolean; error?: string }>
+    createFile(
+      path: string,
+      content?: string
+    ): Promise<{ success: boolean; error?: string }>
+    createDirectory(
+      path: string
+    ): Promise<{ success: boolean; error?: string }>
+    rename(
+      oldPath: string,
+      newPath: string
+    ): Promise<{ success: boolean; error?: string }>
+    delete(
+      path: string
+    ): Promise<{ success: boolean; error?: string }>
+    copyFiles(
+      sourcePaths: string[],
+      destDir: string
+    ): Promise<{ success: boolean; copied?: string[]; errors?: string[]; error?: string }>
   }
   fileServer: {
     getUrl(

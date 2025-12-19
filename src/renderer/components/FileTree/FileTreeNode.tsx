@@ -7,6 +7,7 @@ interface FileTreeNodeProps {
   level: number
   onToggle: (node: FileNode) => void
   onClick: (node: FileNode) => void
+  onContextMenu: (e: React.MouseEvent, node: FileNode, isProjectRoot?: boolean) => void
   activeFilePath?: string
   gitChanges?: Map<string, ExtendedGitStatus>
 }
@@ -185,6 +186,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   level,
   onToggle,
   onClick,
+  onContextMenu,
   activeFilePath,
   gitChanges
 }) => {
@@ -195,6 +197,11 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     } else {
       onClick(node)
     }
+  }
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onContextMenu(e, node, false)
   }
 
   // Get git status: for files from map, for directories check children
@@ -217,6 +224,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
         className={`file-tree-item ${gitStatusClass} ${isActive ? 'selected' : ''} ${isIgnored ? 'gitignored' : ''}`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={handleClick}
+        onContextMenu={handleContextMenu}
       >
         {node.type === 'directory' && (
           <span className="expand-icon">
@@ -237,6 +245,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
               level={level + 1}
               onToggle={onToggle}
               onClick={onClick}
+              onContextMenu={onContextMenu}
               activeFilePath={activeFilePath}
               gitChanges={gitChanges}
             />

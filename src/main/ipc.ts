@@ -211,6 +211,23 @@ export function setupIPC(
     }
   })
 
+  ipcMain.handle('dialog:openFiles', async () => {
+    try {
+      const result = await dialog.showOpenDialog(window, {
+        properties: ['openFile', 'multiSelections']
+      })
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: true, data: null }
+      }
+
+      return { success: true, data: { paths: result.filePaths } }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
   // Settings management
   ipcMain.handle('settings:get', async () => {
     try {
@@ -268,6 +285,56 @@ export function setupIPC(
     try {
       const exists = await fileSystemManager.fileExists(path)
       return { success: true, exists }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('fs:createFile', async (_, { path, content }) => {
+    try {
+      const success = await fileSystemManager.createFile(path, content || '')
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('fs:createDirectory', async (_, { path }) => {
+    try {
+      const success = await fileSystemManager.createDirectory(path)
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('fs:rename', async (_, { oldPath, newPath }) => {
+    try {
+      const success = await fileSystemManager.rename(oldPath, newPath)
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('fs:delete', async (_, { path }) => {
+    try {
+      const success = await fileSystemManager.delete(path)
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('fs:copyFiles', async (_, { sourcePaths, destDir }) => {
+    try {
+      const result = await fileSystemManager.copyFiles(sourcePaths, destDir)
+      return { success: true, ...result }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       return { success: false, error: message }
