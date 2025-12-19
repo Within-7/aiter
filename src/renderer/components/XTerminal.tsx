@@ -61,6 +61,8 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
       fontSize: settings.fontSize,
       fontFamily: settings.fontFamily,
       scrollback: settings.scrollbackLines,
+      // macOS: Use Option key as Meta key (for shortcuts like Alt+t in CLI tools)
+      macOptionIsMeta: true,
       // Performance optimizations to reduce flickering
       allowProposedApi: true,
       smoothScrollDuration: 0, // Disable smooth scrolling to reduce jank
