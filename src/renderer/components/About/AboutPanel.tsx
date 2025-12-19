@@ -116,10 +116,6 @@ export const AboutPanel: React.FC = () => {
     }
   }
 
-  const handleOpenDownloadPage = () => {
-    window.api.update.download()
-  }
-
   const handleOpenWebsite = () => {
     if (window.api && window.api.shell) {
       window.api.shell.openExternal('http://aiter.within-7.com')
@@ -185,14 +181,6 @@ export const AboutPanel: React.FC = () => {
               >
                 {versionInfo.isChecking ? '检查中...' : '检查更新'}
               </button>
-              {versionInfo.updateAvailable && (
-                <button
-                  className="about-button success"
-                  onClick={handleOpenDownloadPage}
-                >
-                  下载更新
-                </button>
-              )}
             </div>
           </section>
 
@@ -218,10 +206,6 @@ export const AboutPanel: React.FC = () => {
               <button className="about-link-button" onClick={handleOpenWebsite}>
                 <span className="link-icon">🌐</span>
                 <span className="link-text">官方网站</span>
-              </button>
-              <button className="about-link-button" onClick={handleOpenDownloadPage}>
-                <span className="link-icon">⬇️</span>
-                <span className="link-text">下载页面</span>
               </button>
             </div>
           </section>
