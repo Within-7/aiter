@@ -1,7 +1,7 @@
 {
   "name": "airter",
   "productName": "AiTer",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "AiTer - A terminal client optimized for Minto CLI collaboration",
   "main": "dist-electron/main/index.js",
   "author": {
