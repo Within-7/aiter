@@ -132,8 +132,21 @@ docs/
 ├── index.html                     # 产品网站
 ├── USER_MANUAL.md                 # 用户手册
 ├── CONSULTING_WORKFLOW.md         # 咨询工作流指南
-└── BEST_PRACTICES.md              # 最佳实践指南
+├── BEST_PRACTICES.md              # 最佳实践指南
+├── RELEASE_GUIDE.md               # 发布指南
+├── CODE_SIGNING.md                # 代码签名指南
+├── TEAM_DOWNLOAD_GUIDE.md         # 团队下载指南
+├── PLUGIN_ISOLATION_FIX.md        # 插件隔离修复记录
+└── archive/                       # 归档的开发文档
+    └── README.md                  # 归档文档索引
 ```
+
+---
+
+### 📦 [归档文档](archive/README.md)
+**适合**: 开发者、需要了解历史设计决策的用户
+
+**内容**: 项目早期的开发计划、PRD、实现指南等历史文档
 
 ---
 

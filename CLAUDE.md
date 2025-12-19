@@ -181,7 +181,7 @@ This enables drag-and-drop reordering between different tab types.
 - No file modification required
 - Works with complex web apps (ES modules, fetch, etc.)
 
-See `FILE_SERVER_IMPLEMENTATION.md` for complete details.
+See `docs/archive/FILE_SERVER_IMPLEMENTATION.md` for complete implementation details.
 
 ### IPC Communication Pattern
 
