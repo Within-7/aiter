@@ -210,8 +210,9 @@ export class SecureFileSystemManager {
    * @param dirPath - Directory path to read
    * @param depth - Recursion depth limit (default 1)
    * @param projectRoot - Project root for gitignore checking (optional, defaults to dirPath)
+   * @param parentIgnored - Whether the parent directory is ignored (for inheritance)
    */
-  async readDirectory(dirPath: string, depth: number = 1, projectRoot?: string): Promise<FileNode[]> {
+  async readDirectory(dirPath: string, depth: number = 1, projectRoot?: string, parentIgnored: boolean = false): Promise<FileNode[]> {
     try {
       const validPath = this.validatePath(dirPath)
       const root = projectRoot || validPath
@@ -243,7 +244,8 @@ export class SecureFileSystemManager {
         const gitignorePath = entry.isDirectory() ? relativePath + '/' : relativePath
 
         // Check if file/directory is ignored by .gitignore
-        const isGitIgnored = ig ? ig.ignores(gitignorePath) : false
+        // If parent is ignored, children inherit the ignored status
+        const isGitIgnored = parentIgnored || (ig ? ig.ignores(gitignorePath) : false)
 
         const node: FileNode = {
           id: uuidv4(),
@@ -257,8 +259,9 @@ export class SecureFileSystemManager {
         }
 
         // Recursively read subdirectories if depth allows
+        // Pass isGitIgnored to children so they inherit the ignored status
         if (entry.isDirectory() && depth > 1) {
-          node.children = await this.readDirectory(fullPath, depth - 1, root)
+          node.children = await this.readDirectory(fullPath, depth - 1, root, isGitIgnored)
         }
 
         nodes.push(node)
