@@ -19,38 +19,6 @@
   color: #999;
 }
 
-.file-tree-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px 8px;
-  border-bottom: 1px solid #3e3e42;
-  background: #2d2d30;
-}
-
-.file-tree-toolbar .toolbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: #cccccc;
-  cursor: pointer;
-  transition: background-color 0.1s, color 0.1s;
-}
-
-.file-tree-toolbar .toolbar-btn:hover {
-  background: #3e3e42;
-  color: #ffffff;
-}
-
-.file-tree-toolbar .toolbar-btn:active {
-  background: #094771;
-}
-
 .file-tree-content {
   flex: 1;
   overflow-y: auto;

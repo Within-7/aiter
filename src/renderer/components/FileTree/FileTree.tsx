@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { VscNewFile, VscNewFolder, VscCloudUpload } from 'react-icons/vsc'
 import { FileNode, FileChange } from '../../../types'
 import { FileTreeNode } from './FileTreeNode'
 import { FileContextMenu, getFileContextMenuActions, ContextMenuAction } from './FileContextMenu'
@@ -352,31 +351,6 @@ export const FileTree: React.FC<FileTreeProps> = ({
       className="file-tree"
       onContextMenu={(e) => handleContextMenu(e, null, true)}
     >
-      {/* Toolbar for root operations */}
-      <div className="file-tree-toolbar">
-        <button
-          className="toolbar-btn"
-          onClick={() => setDialog({ type: 'new-file', targetPath: projectPath })}
-          title="New File"
-        >
-          <VscNewFile />
-        </button>
-        <button
-          className="toolbar-btn"
-          onClick={() => setDialog({ type: 'new-folder', targetPath: projectPath })}
-          title="New Folder"
-        >
-          <VscNewFolder />
-        </button>
-        <button
-          className="toolbar-btn"
-          onClick={() => handleUploadFiles(projectPath)}
-          title="Upload Files"
-        >
-          <VscCloudUpload />
-        </button>
-      </div>
-
       <div className="file-tree-content">
         {nodes.map(node => (
           <FileTreeNode
