@@ -73,7 +73,9 @@ jobs:
           name: macos-intel
           path: |
             release/**/AiTer-*-mac-x64.dmg
+            release/**/AiTer-*-mac-x64.dmg.blockmap
             release/**/AiTer-*-mac-x64.zip
+            release/**/AiTer-*-mac-x64.zip.blockmap
           retention-days: 7
 
       - name: Upload artifacts (macOS Apple Silicon)
@@ -83,7 +85,19 @@ jobs:
           name: macos-arm64
           path: |
             release/**/AiTer-*-mac-arm64.dmg
+            release/**/AiTer-*-mac-arm64.dmg.blockmap
             release/**/AiTer-*-mac-arm64.zip
+            release/**/AiTer-*-mac-arm64.zip.blockmap
+          retention-days: 7
+
+      - name: Upload artifacts (macOS Update Manifests)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-manifests
+          path: |
+            release/**/latest-mac.yml
+            release/**/latest.yml
           retention-days: 7
 
       - name: Upload artifacts (Windows)
@@ -93,6 +107,7 @@ jobs:
           name: windows
           path: |
             release/**/AiTer-*-win-x64.exe
+            release/**/AiTer-*-win-x64.exe.blockmap
             release/**/AiTer-*-win-x64.zip
           retention-days: 7
 
@@ -131,36 +146,63 @@ jobs:
 
             AI CLI 工具协作终端 - AI Terminal Client
 
-            ## 命令行安装 / Command Line Installation
+            ## 一键安装 / One-Click Installation（推荐 / Recommended）
+
+            使用自动安装脚本，自动处理系统检测、下载和权限问题：
+
+            Use the automatic installation script that handles system detection, download, and permissions:
+
+            ```bash
+            # macOS / Linux
+            curl -fsSL https://raw.githubusercontent.com/Within-7/aiter/main/scripts/install.sh | bash
+            ```
+
+            脚本会自动：
+            - 检测系统架构（Apple Silicon 或 Intel）
+            - 下载对应版本
+            - 自动安装到 /Applications
+            - 处理 macOS 安全限制（移除隔离属性）
+
+            The script will automatically:
+            - Detect system architecture (Apple Silicon or Intel)
+            - Download the correct version
+            - Install to /Applications
+            - Handle macOS security restrictions (remove quarantine attributes)
+
+            ---
+
+            ## 手动安装 / Manual Installation
 
             ### macOS (Apple Silicon M1/M2/M3)
 
             ```bash
-            # 下载并安装
+            # 下载并安装 / Download and install
             curl -fsSL https://github.com/Within-7/aiter/releases/download/v${{ steps.version.outputs.VERSION }}/AiTer-${{ steps.version.outputs.VERSION }}-mac-arm64.dmg -o /tmp/AiTer.dmg
             hdiutil attach /tmp/AiTer.dmg -mountpoint /tmp/AiTer-mount
             cp -R "/tmp/AiTer-mount/AiTer.app" /Applications/
             hdiutil detach /tmp/AiTer-mount
             rm /tmp/AiTer.dmg
+            sudo xattr -cr /Applications/AiTer.app
             echo "AiTer 已安装到 /Applications"
             ```
 
             ### macOS (Intel)
 
             ```bash
-            # 下载并安装
+            # 下载并安装 / Download and install
             curl -fsSL https://github.com/Within-7/aiter/releases/download/v${{ steps.version.outputs.VERSION }}/AiTer-${{ steps.version.outputs.VERSION }}-mac-x64.dmg -o /tmp/AiTer.dmg
             hdiutil attach /tmp/AiTer.dmg -mountpoint /tmp/AiTer-mount
             cp -R "/tmp/AiTer-mount/AiTer.app" /Applications/
             hdiutil detach /tmp/AiTer-mount
             rm /tmp/AiTer.dmg
+            sudo xattr -cr /Applications/AiTer.app
             echo "AiTer 已安装到 /Applications"
             ```
 
             ### Windows (PowerShell)
 
             ```powershell
-            # 下载并安装
+            # 下载并安装 / Download and install
             $url = "https://github.com/Within-7/aiter/releases/download/v${{ steps.version.outputs.VERSION }}/AiTer-${{ steps.version.outputs.VERSION }}-win-x64.exe"
             $installer = "$env:TEMP\AiTer-Setup.exe"
             Invoke-WebRequest -Uri $url -OutFile $installer
@@ -169,10 +211,10 @@ jobs:
             Write-Host "AiTer 安装完成"
             ```
 
-            ### Windows (静默安装)
+            ### Windows (静默安装 / Silent Install)
 
             ```powershell
-            # 静默安装（无 UI）
+            # 静默安装（无 UI）/ Silent install (no UI)
             $url = "https://github.com/Within-7/aiter/releases/download/v${{ steps.version.outputs.VERSION }}/AiTer-${{ steps.version.outputs.VERSION }}-win-x64.exe"
             $installer = "$env:TEMP\AiTer-Setup.exe"
             Invoke-WebRequest -Uri $url -OutFile $installer
@@ -218,6 +260,8 @@ jobs:
             artifacts/**/*.dmg
             artifacts/**/*.exe
             artifacts/**/*.zip
+            artifacts/**/*.blockmap
+            artifacts/**/*.yml
           draft: false
           prerelease: false
         env:
