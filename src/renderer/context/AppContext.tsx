@@ -66,6 +66,8 @@ export const initialState: AppState = {
     terminalTheme: 'homebrew',
     // Shell configuration
     shellLoginMode: true,
+    // macOS-specific
+    macOptionIsMeta: true,
     // Node.js configuration
     nodeSource: 'builtin',
     preserveVersionManagers: false,

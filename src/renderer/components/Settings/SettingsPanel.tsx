@@ -189,6 +189,26 @@ export const SettingsPanel: React.FC = () => {
             )}
           </section>
 
+          {/* macOS-specific section */}
+          {!isWindows && (
+            <section className="settings-section">
+              <h3>macOS</h3>
+
+              <div className="setting-item setting-item-checkbox">
+                <label htmlFor="mac-option-meta">Option as Meta Key</label>
+                <input
+                  id="mac-option-meta"
+                  type="checkbox"
+                  checked={settings.macOptionIsMeta ?? true}
+                  onChange={(e) => handleSettingChange('macOptionIsMeta', e.target.checked)}
+                />
+                <span className="setting-hint">
+                  Use Option key for Alt+key shortcuts (e.g., Alt+t)
+                </span>
+              </div>
+            </section>
+          )}
+
           {/* Windows-specific section */}
           {isWindows && (
             <section className="settings-section">

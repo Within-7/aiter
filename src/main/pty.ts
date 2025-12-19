@@ -98,6 +98,7 @@ export class PTYManager {
       cursorStyle: 'block',
       terminalTheme: 'homebrew',
       shellLoginMode: true,
+      macOptionIsMeta: true,
       nodeSource: 'builtin',
       preserveVersionManagers: false,
       windowsUseUtf8: true

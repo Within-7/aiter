@@ -18,6 +18,9 @@ const defaultSettings: AppSettings = {
   // Shell configuration
   shellLoginMode: true,              // Enable login shell by default (load ~/.zshrc etc.)
 
+  // macOS-specific
+  macOptionIsMeta: true,             // Use Option key as Meta key by default
+
   // Node.js configuration
   nodeSource: 'builtin',             // Use built-in Node.js by default
   preserveVersionManagers: false,    // Don't preserve version manager vars by default

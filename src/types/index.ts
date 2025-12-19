@@ -101,6 +101,9 @@ export interface AppSettings {
   // Shell configuration
   shellLoginMode: boolean           // Whether to use login shell (-l/--login)
 
+  // macOS-specific
+  macOptionIsMeta: boolean          // Use Option key as Meta key (for Alt+key shortcuts)
+
   // Node.js configuration
   nodeSource: 'builtin' | 'system' | 'auto'  // Which Node.js to use
   preserveVersionManagers: boolean  // Keep nvm/fnm/asdf environment variables

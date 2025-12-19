@@ -62,7 +62,7 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
       fontFamily: settings.fontFamily,
       scrollback: settings.scrollbackLines,
       // macOS: Use Option key as Meta key (for shortcuts like Alt+t in CLI tools)
-      macOptionIsMeta: true,
+      macOptionIsMeta: settings.macOptionIsMeta ?? true,
       // Performance optimizations to reduce flickering
       allowProposedApi: true,
       smoothScrollDuration: 0, // Disable smooth scrolling to reduce jank
@@ -311,6 +311,13 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
       xtermRef.current.options.theme = getTerminalTheme(settings.terminalTheme)
     }
   }, [settings.terminalTheme])
+
+  // Update macOptionIsMeta when it changes
+  useEffect(() => {
+    if (xtermRef.current) {
+      xtermRef.current.options.macOptionIsMeta = settings.macOptionIsMeta ?? true
+    }
+  }, [settings.macOptionIsMeta])
 
   return <div ref={terminalRef} className="xterm-wrapper" />
 })
