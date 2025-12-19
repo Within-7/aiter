@@ -372,6 +372,16 @@
   background-color: #4e4e4e;
 }
 
+.plugin-btn-warning {
+  background-color: transparent;
+  color: #ff9800;
+  border: 1px solid #ff9800;
+}
+
+.plugin-btn-warning:hover:not(:disabled) {
+  background-color: rgba(255, 152, 0, 0.1);
+}
+
 .plugin-btn-danger {
   background-color: transparent;
   color: #f48771;

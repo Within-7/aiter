@@ -27,7 +27,8 @@ interface PluginCardProps {
   plugin: PluginCardData
   onInstall: (pluginId: string) => void
   onUpdate: (pluginId: string) => void
-  onRemove: (pluginId: string) => void
+  onUninstall: (pluginId: string) => void
+  onDelete?: (pluginId: string) => void  // Only for custom plugins
   onConfigure: (pluginId: string) => void
   onCheckUpdate: (pluginId: string) => void
   isProcessing: boolean
@@ -37,7 +38,8 @@ export const PluginCard: React.FC<PluginCardProps> = ({
   plugin,
   onInstall,
   onUpdate,
-  onRemove,
+  onUninstall,
+  onDelete,
   onConfigure,
   onCheckUpdate,
   isProcessing
@@ -85,7 +87,8 @@ export const PluginCard: React.FC<PluginCardProps> = ({
   const isInstalled = plugin.status === 'installed' || plugin.status === 'update-available'
   const canInstall = plugin.status === 'not-installed' && !isProcessing
   const canUpdate = plugin.hasUpdate && !isProcessing
-  const canRemove = isInstalled && !isProcessing && !plugin.isBuiltIn
+  const canUninstall = isInstalled && !isProcessing  // Both built-in and custom can be uninstalled
+  const canDelete = !plugin.isBuiltIn && !isProcessing  // Only custom plugins can be deleted
   const canConfigure = isInstalled && !isProcessing
 
   return (
@@ -172,13 +175,25 @@ export const PluginCard: React.FC<PluginCardProps> = ({
           </button>
         )}
 
-        {canRemove && (
+        {canUninstall && (
+          <button
+            className="plugin-btn plugin-btn-warning"
+            onClick={() => onUninstall(plugin.id)}
+            disabled={isProcessing}
+            title="Uninstall plugin from system (can be reinstalled)"
+          >
+            Uninstall
+          </button>
+        )}
+
+        {canDelete && onDelete && (
           <button
             className="plugin-btn plugin-btn-danger"
-            onClick={() => onRemove(plugin.id)}
+            onClick={() => onDelete(plugin.id)}
             disabled={isProcessing}
+            title="Delete plugin from list (also uninstalls if installed)"
           >
-            Remove
+            Delete
           </button>
         )}
       </div>

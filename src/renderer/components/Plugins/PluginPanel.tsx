@@ -192,22 +192,77 @@ export const PluginPanel: React.FC = () => {
     }
   }
 
-  const handleRemove = async (pluginId: string) => {
-    if (!confirm(`Are you sure you want to remove ${pluginId}?`)) {
+  const handleUninstall = async (pluginId: string) => {
+    const plugin = plugins.find(p => p.id === pluginId)
+    const pluginName = plugin?.name || pluginId
+
+    if (!confirm(`Are you sure you want to uninstall ${pluginName}? You can reinstall it later.`)) {
       return
     }
 
     setProcessingPlugins((prev) => new Set(prev).add(pluginId))
+    setStatusMessage(`Uninstalling ${pluginName}...`)
 
     try {
       const result = await window.api.plugins.remove(pluginId)
       if (result.success) {
+        setStatusMessage(`✓ ${pluginName} uninstalled successfully`)
         await loadPlugins()
+        setTimeout(() => setStatusMessage(null), 5000)
       } else {
-        setError(result.error || 'Removal failed')
+        const errorMsg = result.error || 'Uninstall failed'
+        setStatusMessage(`✗ ${errorMsg}`)
+        setError(errorMsg)
+        setTimeout(() => setStatusMessage(null), 5000)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Removal failed')
+      const errorMsg = err instanceof Error ? err.message : 'Uninstall failed'
+      setStatusMessage(`✗ ${errorMsg}`)
+      setError(errorMsg)
+      setTimeout(() => setStatusMessage(null), 5000)
+    } finally {
+      setProcessingPlugins((prev) => {
+        const next = new Set(prev)
+        next.delete(pluginId)
+        return next
+      })
+    }
+  }
+
+  const handleDelete = async (pluginId: string) => {
+    const plugin = plugins.find(p => p.id === pluginId)
+    const pluginName = plugin?.name || pluginId
+
+    if (!confirm(`Are you sure you want to delete ${pluginName}? This will uninstall and remove it from the plugin list. This action cannot be undone.`)) {
+      return
+    }
+
+    setProcessingPlugins((prev) => new Set(prev).add(pluginId))
+    setStatusMessage(`Deleting ${pluginName}...`)
+
+    try {
+      // First uninstall if installed
+      if (plugin?.installed) {
+        await window.api.plugins.remove(pluginId)
+      }
+
+      // Then remove from registry
+      const result = await window.api.plugins.removeCustom(pluginId)
+      if (result.success) {
+        setStatusMessage(`✓ ${pluginName} deleted successfully`)
+        await loadPlugins()
+        setTimeout(() => setStatusMessage(null), 5000)
+      } else {
+        const errorMsg = result.error || 'Delete failed'
+        setStatusMessage(`✗ ${errorMsg}`)
+        setError(errorMsg)
+        setTimeout(() => setStatusMessage(null), 5000)
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Delete failed'
+      setStatusMessage(`✗ ${errorMsg}`)
+      setError(errorMsg)
+      setTimeout(() => setStatusMessage(null), 5000)
     } finally {
       setProcessingPlugins((prev) => {
         const next = new Set(prev)
@@ -379,7 +434,7 @@ export const PluginPanel: React.FC = () => {
                         plugin={plugin}
                         onInstall={handleInstall}
                         onUpdate={handleUpdate}
-                        onRemove={handleRemove}
+                        onUninstall={handleUninstall}
                         onConfigure={handleConfigure}
                         onCheckUpdate={handleCheckUpdate}
                         isProcessing={processingPlugins.has(plugin.id)}
@@ -398,7 +453,8 @@ export const PluginPanel: React.FC = () => {
                         plugin={plugin}
                         onInstall={handleInstall}
                         onUpdate={handleUpdate}
-                        onRemove={handleRemove}
+                        onUninstall={handleUninstall}
+                        onDelete={handleDelete}
                         onConfigure={handleConfigure}
                         onCheckUpdate={handleCheckUpdate}
                         isProcessing={processingPlugins.has(plugin.id)}
