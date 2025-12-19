@@ -28,8 +28,16 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Setup Python (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install dependencies
         run: npm ci
+        env:
+          npm_config_canvas_binary_host_mirror: "https://example.invalid/"
 
       - name: Download Node.js binaries
         run: bash scripts/download-nodejs.sh
@@ -42,6 +50,15 @@ jobs:
         run: npm run build:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove canvas module (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          if (Test-Path "node_modules/canvas") {
+            Remove-Item -Recurse -Force "node_modules/canvas"
+            Write-Host "Removed canvas module (not needed in Electron)"
+          }
+        shell: pwsh
 
       - name: Build application (Windows)
         if: matrix.os == 'windows-latest'
