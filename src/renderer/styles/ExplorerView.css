@@ -99,14 +99,16 @@
 }
 
 .drag-handle {
+  position: absolute;
+  left: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #666;
   cursor: grab;
-  padding: 0 2px;
   opacity: 0;
   transition: opacity 0.15s ease;
+  z-index: 1;
 }
 
 .project-header:hover .drag-handle {
