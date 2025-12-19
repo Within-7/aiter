@@ -497,13 +497,27 @@
             使用自动安装脚本，自动处理系统检测、下载和权限问题<br>
             Use the automatic installation script that handles system detection, download, and permissions
           </p>
+
+          <h4 style="margin-top: 24px; margin-bottom: 12px;">macOS / Linux</h4>
           <div class="code-block">
-            <button class="copy-btn" data-target="code-auto-install">复制</button>
-            <pre id="code-auto-install"><span class="comment"># macOS / Linux - 一键安装</span>
+            <button class="copy-btn" data-target="code-auto-install-mac">复制</button>
+            <pre id="code-auto-install-mac"><span class="comment"># 一键安装 / One-click install</span>
 curl -fsSL https://raw.githubusercontent.com/Within-7/aiter/main/scripts/install.sh | bash</pre>
           </div>
-          <p style="color: var(--text-muted); margin-top: 12px; font-size: 14px;">
-            脚本会自动检测系统架构并安装对应版本 / Automatically detects system architecture and installs the correct version
+          <p style="color: var(--text-muted); margin-top: 8px; font-size: 14px;">
+            脚本会自动检测系统架构（Apple Silicon 或 Intel）并安装对应版本<br>
+            Automatically detects system architecture (Apple Silicon or Intel) and installs the correct version
+          </p>
+
+          <h4 style="margin-top: 32px; margin-bottom: 12px;">Windows</h4>
+          <div class="code-block">
+            <button class="copy-btn" data-target="code-auto-install-win">复制</button>
+            <pre id="code-auto-install-win"><span class="comment"># 以管理员身份运行 PowerShell / Run PowerShell as Administrator</span>
+irm https://raw.githubusercontent.com/Within-7/aiter/main/scripts/install.ps1 | iex</pre>
+          </div>
+          <p style="color: var(--text-muted); margin-top: 8px; font-size: 14px;">
+            脚本会自动下载并安装最新版本 / Automatically downloads and installs the latest version<br>
+            <strong>注意：需要管理员权限 / Note: Requires administrator privileges</strong>
           </p>
         </div>
 

@@ -10,8 +10,10 @@
 
 使用自动安装脚本，自动处理系统检测、下载和权限问题：
 
+#### macOS / Linux
+
 ```bash
-# macOS / Linux
+# 一键安装
 curl -fsSL https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.sh | bash
 
 # 或者下载后执行
@@ -19,6 +21,27 @@ curl -O https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.sh
 chmod +x install.sh
 ./install.sh
 ```
+
+#### Windows
+
+```powershell
+# 以管理员身份运行 PowerShell，然后执行：
+
+# 一键安装（推荐）
+irm https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.ps1 | iex
+
+# 或者下载后执行
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.ps1" -OutFile "install.ps1"
+powershell -ExecutionPolicy Bypass -File install.ps1
+
+# 静默安装（无 UI）
+irm https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.ps1 | iex -Silent
+
+# 完全自定义
+powershell -ExecutionPolicy Bypass -File install.ps1 -Silent -NoDesktopShortcut
+```
+
+**注意：** Windows 脚本需要管理员权限。右键点击 PowerShell 选择"以管理员身份运行"。
 
 ### 手动安装
 
@@ -155,8 +178,10 @@ rm -rf ~/Library/Application\ Support/AiTer
 
 Use the automatic installation script that handles system detection, download, and permissions:
 
+#### macOS / Linux
+
 ```bash
-# macOS / Linux
+# One-click install
 curl -fsSL https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.sh | bash
 
 # Or download and run
@@ -164,6 +189,27 @@ curl -O https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.sh
 chmod +x install.sh
 ./install.sh
 ```
+
+#### Windows
+
+```powershell
+# Run PowerShell as Administrator, then execute:
+
+# One-click install (Recommended)
+irm https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.ps1 | iex
+
+# Or download and run
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.ps1" -OutFile "install.ps1"
+powershell -ExecutionPolicy Bypass -File install.ps1
+
+# Silent install (no UI)
+irm https://raw.githubusercontent.com/within-7/aiter/main/scripts/install.ps1 | iex -Silent
+
+# Full customization
+powershell -ExecutionPolicy Bypass -File install.ps1 -Silent -NoDesktopShortcut
+```
+
+**Note:** Windows script requires administrator privileges. Right-click PowerShell and select "Run as Administrator".
 
 ### Manual Installation
 
