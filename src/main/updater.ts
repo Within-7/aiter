@@ -48,6 +48,14 @@ export class AutoUpdateManager {
     autoUpdater.autoInstallOnAppQuit = true // 退出时自动安装
     autoUpdater.allowDowngrade = false // 不允许降级
 
+    // macOS: 禁用签名验证（仅用于开发/测试环境）
+    // 生产环境应该使用代码签名和公证
+    // @ts-ignore - electron-updater 内部属性
+    if (process.platform === 'darwin') {
+      // 设置为不验证签名
+      autoUpdater.forceDevUpdateConfig = true
+    }
+
     // 设置事件监听
     this.setupEventListeners()
   }

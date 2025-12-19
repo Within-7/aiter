@@ -30,6 +30,7 @@ export const UpdateNotification: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [isVisible, setIsVisible] = useState(false)
   const [currentVersion, setCurrentVersion] = useState<string>('')
+  const [isBackgroundDownload, setIsBackgroundDownload] = useState(false)
 
   // Get current version on mount
   useEffect(() => {
@@ -59,8 +60,10 @@ export const UpdateNotification: React.FC = () => {
         setError(data.error)
       }
 
-      // Show notification for these statuses
-      if (data.status === 'available' || data.status === 'downloading' || data.status === 'downloaded' || data.status === 'error') {
+      // Show notification for these statuses (except when background downloading)
+      if (data.status === 'available' || data.status === 'downloaded' || data.status === 'error') {
+        setIsVisible(true)
+      } else if (data.status === 'downloading' && !isBackgroundDownload) {
         setIsVisible(true)
       }
     })
@@ -68,7 +71,7 @@ export const UpdateNotification: React.FC = () => {
     return () => {
       unsubscribe()
     }
-  }, [])
+  }, [isBackgroundDownload])
 
   const handleDownload = useCallback(async () => {
     try {
@@ -95,8 +98,19 @@ export const UpdateNotification: React.FC = () => {
     setIsVisible(false)
   }
 
+  const handleBackgroundDownload = () => {
+    setIsBackgroundDownload(true)
+    setIsVisible(false)
+  }
+
   const handleClose = () => {
     setIsVisible(false)
+  }
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      handleClose()
+    }
   }
 
   // Format bytes to human readable
@@ -122,7 +136,7 @@ export const UpdateNotification: React.FC = () => {
   }
 
   return (
-    <div className="update-notification-overlay">
+    <div className="update-notification-overlay" onClick={handleOverlayClick}>
       <div className="update-notification">
         <button className="update-close-button" onClick={handleClose}>×</button>
 
@@ -157,12 +171,6 @@ export const UpdateNotification: React.FC = () => {
               </div>
             </div>
 
-            {updateInfo?.releaseDate && (
-              <div className="update-release-date">
-                发布日期: {updateInfo.releaseDate}
-              </div>
-            )}
-
             {status === 'downloading' && progress && (
               <div className="update-progress">
                 <div className="progress-bar-container">
@@ -178,17 +186,6 @@ export const UpdateNotification: React.FC = () => {
                   </span>
                   <span className="progress-speed">{formatSpeed(progress.bytesPerSecond)}</span>
                 </div>
-              </div>
-            )}
-
-            {updateInfo?.releaseNotes && (
-              <div className="update-changelog">
-                <h3>更新内容</h3>
-                <ul>
-                  {parseReleaseNotes(updateInfo.releaseNotes).map((item, index) => (
-                    <li key={index}>{item}</li>
-                  ))}
-                </ul>
               </div>
             )}
 
@@ -208,7 +205,7 @@ export const UpdateNotification: React.FC = () => {
               )}
 
               {status === 'downloading' && (
-                <button className="update-button dismiss" onClick={handleDismiss}>
+                <button className="update-button dismiss" onClick={handleBackgroundDownload}>
                   后台下载
                 </button>
               )}
