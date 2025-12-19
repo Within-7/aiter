@@ -8,7 +8,7 @@ interface StoreSchema {
 
 const defaultSettings: AppSettings = {
   theme: 'dark',
-  fontSize: 14,
+  fontSize: 12,
   fontFamily: 'Menlo, Monaco, "Courier New", monospace',
   scrollbackLines: 1000,
   cursorBlink: true,

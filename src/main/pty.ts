@@ -91,7 +91,7 @@ export class PTYManager {
     // Use default settings if not provided
     const effectiveSettings: AppSettings = settings || {
       theme: 'dark',
-      fontSize: 14,
+      fontSize: 12,
       fontFamily: 'Menlo, Monaco, "Courier New", monospace',
       scrollbackLines: 1000,
       cursorBlink: true,
