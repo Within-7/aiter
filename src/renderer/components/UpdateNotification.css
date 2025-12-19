@@ -200,6 +200,69 @@
   color: #333;
 }
 
+.update-button.install {
+  background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+  color: white;
+}
+
+.update-button.install:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 200, 83, 0.4);
+}
+
+/* Progress bar styles */
+.update-progress {
+  margin-bottom: 24px;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
+}
+
+.progress-percent {
+  font-weight: 600;
+  color: #333;
+}
+
+.progress-size {
+  color: #888;
+}
+
+.progress-speed {
+  color: #667eea;
+  font-weight: 500;
+}
+
+/* Error styles */
+.update-error {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.update-error p {
+  color: #e53935;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
 /* Scrollbar styles */
 .update-notification::-webkit-scrollbar {
   width: 6px;

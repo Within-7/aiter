@@ -7,7 +7,7 @@ import { PTYManager } from './pty'
 import { StoreManager } from './store'
 import { ProjectServerManager } from './fileServer/ProjectServerManager'
 import { PluginManager } from './plugins/PluginManager'
-import { initUpdateManager } from './updater'
+import { initAutoUpdateManager } from './updater'
 import { NodeManager } from './nodejs/manager'
 import { WorkspaceManager } from './workspace'
 
@@ -56,8 +56,8 @@ function getWorkspaceIdFromArgs(): string {
   return process.env.AITER_WORKSPACE || 'default'
 }
 
-// Update check URL (可以通过环境变量配置)
-const UPDATE_CHECK_URL = process.env.UPDATE_CHECK_URL || 'http://aiter.within-7.com/latest.json'
+// electron-updater 会自动从 electron-builder.yml 中的 publish 配置获取更新源
+// 不再需要手动配置 UPDATE_CHECK_URL
 
 async function initialize() {
   try {
@@ -128,9 +128,10 @@ async function initialize() {
     // Start plugin auto-check after window is created
     pluginManager.startAutoCheck()
 
-    // Initialize and start update checker
-    const updateManager = initUpdateManager(UPDATE_CHECK_URL)
-    updateManager.startAutoCheck(mainWindow)
+    // Initialize and start auto-updater
+    const autoUpdateManager = initAutoUpdateManager()
+    autoUpdateManager.setMainWindow(mainWindow)
+    autoUpdateManager.startAutoCheck()
 
     console.log('AiTer initialized successfully')
   } catch (error) {

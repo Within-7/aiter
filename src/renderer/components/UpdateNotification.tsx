@@ -1,63 +1,124 @@
-import React, { useState, useEffect } from 'react';
-import './UpdateNotification.css';
+import React, { useState, useEffect, useCallback } from 'react'
+import './UpdateNotification.css'
+
+type UpdateStatus = 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
 
 interface UpdateInfo {
-  currentVersion: string;
-  latestVersion: string;
-  changelog: string[];
-  releaseDate: string;
+  version?: string
+  releaseDate?: string
+  releaseNotes?: string | null
+}
+
+interface DownloadProgress {
+  percent: number
+  bytesPerSecond: number
+  total: number
+  transferred: number
+}
+
+interface UpdateEventData {
+  status: UpdateStatus
+  info?: UpdateInfo
+  progress?: DownloadProgress
+  error?: string
 }
 
 export const UpdateNotification: React.FC = () => {
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [status, setStatus] = useState<UpdateStatus | null>(null)
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [progress, setProgress] = useState<DownloadProgress | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isVisible, setIsVisible] = useState(false)
+  const [currentVersion, setCurrentVersion] = useState<string>('')
 
+  // Get current version on mount
   useEffect(() => {
-    // 监听更新可用事件
-    const unsubscribe = window.api.update.onAvailable((data) => {
-      console.log('[UpdateNotification] Update available:', data);
-      setUpdateInfo(data);
-      setIsVisible(true);
-    });
+    window.api.autoUpdate.getVersion().then(result => {
+      if (result.success && result.version) {
+        setCurrentVersion(result.version)
+      }
+    })
+  }, [])
+
+  // Listen for update events
+  useEffect(() => {
+    const unsubscribe = window.api.autoUpdate.onStatus((data: UpdateEventData) => {
+      console.log('[UpdateNotification] Status update:', data)
+
+      setStatus(data.status)
+
+      if (data.info) {
+        setUpdateInfo(data.info)
+      }
+
+      if (data.progress) {
+        setProgress(data.progress)
+      }
+
+      if (data.error) {
+        setError(data.error)
+      }
+
+      // Show notification for these statuses
+      if (data.status === 'available' || data.status === 'downloading' || data.status === 'downloaded' || data.status === 'error') {
+        setIsVisible(true)
+      }
+    })
 
     return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  const handleDownload = async () => {
-    if (!updateInfo) return;
-
-    setIsDownloading(true);
-    try {
-      const result = await window.api.update.download();
-      if (result.success) {
-        console.log('[UpdateNotification] Download started successfully');
-        // 下载成功后可以选择关闭通知
-        // setIsVisible(false);
-      } else {
-        console.error('[UpdateNotification] Download failed:', result.error);
-        alert('下载更新失败: ' + result.error);
-      }
-    } catch (error) {
-      console.error('[UpdateNotification] Download error:', error);
-      alert('下载更新时出错');
-    } finally {
-      setIsDownloading(false);
+      unsubscribe()
     }
-  };
+  }, [])
+
+  const handleDownload = useCallback(async () => {
+    try {
+      const result = await window.api.autoUpdate.download()
+      if (!result.success) {
+        setError(result.error || 'Download failed')
+      }
+    } catch (err) {
+      console.error('[UpdateNotification] Download error:', err)
+      setError('Download failed')
+    }
+  }, [])
+
+  const handleInstall = useCallback(async () => {
+    try {
+      await window.api.autoUpdate.install()
+    } catch (err) {
+      console.error('[UpdateNotification] Install error:', err)
+      setError('Installation failed')
+    }
+  }, [])
 
   const handleDismiss = () => {
-    setIsVisible(false);
-  };
+    setIsVisible(false)
+  }
 
   const handleClose = () => {
-    setIsVisible(false);
-  };
+    setIsVisible(false)
+  }
 
-  if (!isVisible || !updateInfo) {
-    return null;
+  // Format bytes to human readable
+  const formatBytes = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  // Format speed
+  const formatSpeed = (bytesPerSecond: number): string => {
+    return `${formatBytes(bytesPerSecond)}/s`
+  }
+
+  // Parse release notes into array
+  const parseReleaseNotes = (notes: string | null | undefined): string[] => {
+    if (!notes) return []
+    return notes.split('\n').filter(line => line.trim())
+  }
+
+  if (!isVisible) {
+    return null
   }
 
   return (
@@ -66,46 +127,109 @@ export const UpdateNotification: React.FC = () => {
         <button className="update-close-button" onClick={handleClose}>×</button>
 
         <div className="update-header">
-          <div className="update-icon">🎉</div>
-          <h2>发现新版本</h2>
-        </div>
-
-        <div className="update-version-info">
-          <div className="version-badge current">
-            当前版本: {updateInfo.currentVersion}
+          <div className="update-icon">
+            {status === 'error' ? '❌' : status === 'downloaded' ? '✅' : '🎉'}
           </div>
-          <div className="version-arrow">→</div>
-          <div className="version-badge latest">
-            最新版本: {updateInfo.latestVersion}
+          <h2>
+            {status === 'available' && '发现新版本'}
+            {status === 'downloading' && '正在下载更新'}
+            {status === 'downloaded' && '更新已就绪'}
+            {status === 'error' && '更新失败'}
+          </h2>
+        </div>
+
+        {status === 'error' ? (
+          <div className="update-error">
+            <p>{error || '未知错误'}</p>
+            <button className="update-button dismiss" onClick={handleDismiss}>
+              关闭
+            </button>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="update-version-info">
+              <div className="version-badge current">
+                当前版本: {currentVersion}
+              </div>
+              <div className="version-arrow">→</div>
+              <div className="version-badge latest">
+                最新版本: {updateInfo?.version || '未知'}
+              </div>
+            </div>
 
-        <div className="update-release-date">
-          发布日期: {updateInfo.releaseDate}
-        </div>
+            {updateInfo?.releaseDate && (
+              <div className="update-release-date">
+                发布日期: {updateInfo.releaseDate}
+              </div>
+            )}
 
-        <div className="update-changelog">
-          <h3>更新内容</h3>
-          <ul>
-            {updateInfo.changelog.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </div>
+            {status === 'downloading' && progress && (
+              <div className="update-progress">
+                <div className="progress-bar-container">
+                  <div
+                    className="progress-bar"
+                    style={{ width: `${progress.percent}%` }}
+                  />
+                </div>
+                <div className="progress-info">
+                  <span className="progress-percent">{progress.percent.toFixed(1)}%</span>
+                  <span className="progress-size">
+                    {formatBytes(progress.transferred)} / {formatBytes(progress.total)}
+                  </span>
+                  <span className="progress-speed">{formatSpeed(progress.bytesPerSecond)}</span>
+                </div>
+              </div>
+            )}
 
-        <div className="update-actions">
-          <button
-            className="update-button download"
-            onClick={handleDownload}
-            disabled={isDownloading}
-          >
-            {isDownloading ? '正在打开下载页面...' : '立即下载'}
-          </button>
-          <button className="update-button dismiss" onClick={handleDismiss}>
-            稍后提醒
-          </button>
-        </div>
+            {updateInfo?.releaseNotes && (
+              <div className="update-changelog">
+                <h3>更新内容</h3>
+                <ul>
+                  {parseReleaseNotes(updateInfo.releaseNotes).map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="update-actions">
+              {status === 'available' && (
+                <>
+                  <button
+                    className="update-button download"
+                    onClick={handleDownload}
+                  >
+                    立即下载
+                  </button>
+                  <button className="update-button dismiss" onClick={handleDismiss}>
+                    稍后提醒
+                  </button>
+                </>
+              )}
+
+              {status === 'downloading' && (
+                <button className="update-button dismiss" onClick={handleDismiss}>
+                  后台下载
+                </button>
+              )}
+
+              {status === 'downloaded' && (
+                <>
+                  <button
+                    className="update-button install"
+                    onClick={handleInstall}
+                  >
+                    立即安装并重启
+                  </button>
+                  <button className="update-button dismiss" onClick={handleDismiss}>
+                    稍后安装
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
-  );
-};
+  )
+}

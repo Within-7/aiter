@@ -24,18 +24,52 @@ export const AboutPanel: React.FC = () => {
     error: null
   })
 
-  // Get current version from package.json
+  // Get current version from autoUpdate API
   useEffect(() => {
     const loadVersion = async () => {
       try {
-        const response = await fetch('../package.json')
-        const packageData = await response.json()
-        setVersionInfo(prev => ({ ...prev, current: packageData.version }))
+        const result = await window.api.autoUpdate.getVersion()
+        if (result.success && result.version) {
+          setVersionInfo(prev => ({ ...prev, current: result.version }))
+        }
       } catch (error) {
         console.error('Failed to load version:', error)
       }
     }
     loadVersion()
+  }, [])
+
+  // Listen for auto-update status events
+  useEffect(() => {
+    const unsubscribe = window.api.autoUpdate.onStatus((data) => {
+      if (data.status === 'available' && data.info?.version) {
+        setVersionInfo(prev => ({
+          ...prev,
+          latest: data.info?.version || null,
+          isChecking: false,
+          lastCheckTime: new Date(),
+          updateAvailable: true,
+          error: null
+        }))
+      } else if (data.status === 'not-available') {
+        setVersionInfo(prev => ({
+          ...prev,
+          isChecking: false,
+          lastCheckTime: new Date(),
+          updateAvailable: false,
+          error: null
+        }))
+      } else if (data.status === 'error') {
+        setVersionInfo(prev => ({
+          ...prev,
+          isChecking: false,
+          lastCheckTime: new Date(),
+          error: data.error || '检查更新失败'
+        }))
+      }
+    })
+
+    return () => unsubscribe()
   }, [])
 
   const handleClose = () => {
@@ -46,24 +80,31 @@ export const AboutPanel: React.FC = () => {
     setVersionInfo(prev => ({ ...prev, isChecking: true, error: null }))
 
     try {
-      const result = await window.api.update.check()
+      // Trigger update check - results come via onStatus callback
+      const result = await window.api.autoUpdate.check()
 
-      if (result.success) {
-        setVersionInfo(prev => ({
-          ...prev,
-          latest: result.updateInfo?.version || prev.current,
-          isChecking: false,
-          lastCheckTime: new Date(),
-          updateAvailable: result.hasUpdate || false,
-          error: null
-        }))
-      } else {
+      if (!result.success) {
         setVersionInfo(prev => ({
           ...prev,
           isChecking: false,
           lastCheckTime: new Date(),
           error: result.error || '检查更新失败'
         }))
+      } else {
+        // Update check started, wait for status events
+        // Set a timeout to clear "isChecking" if no response
+        setTimeout(() => {
+          setVersionInfo(prev => {
+            if (prev.isChecking) {
+              return {
+                ...prev,
+                isChecking: false,
+                lastCheckTime: new Date()
+              }
+            }
+            return prev
+          })
+        }, 10000)
       }
     } catch (error) {
       setVersionInfo(prev => ({

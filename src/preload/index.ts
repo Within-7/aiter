@@ -195,24 +195,73 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
 
-  // Update APIs
+  // Auto-Update APIs
+  autoUpdate: {
+    check: () => ipcRenderer.invoke('autoUpdate:check'),
+    download: () => ipcRenderer.invoke('autoUpdate:download'),
+    install: () => ipcRenderer.invoke('autoUpdate:install'),
+    getVersion: () => ipcRenderer.invoke('autoUpdate:getVersion'),
+    onStatus: (callback: (data: {
+      status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+      info?: {
+        version?: string;
+        releaseDate?: string;
+        releaseNotes?: string | null;
+      };
+      progress?: {
+        percent: number;
+        bytesPerSecond: number;
+        total: number;
+        transferred: number;
+      };
+      error?: string;
+    }) => void) => {
+      const listener = (_: unknown, data: {
+        status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+        info?: {
+          version?: string;
+          releaseDate?: string;
+          releaseNotes?: string | null;
+        };
+        progress?: {
+          percent: number;
+          bytesPerSecond: number;
+          total: number;
+          transferred: number;
+        };
+        error?: string;
+      }) => callback(data)
+      ipcRenderer.on('autoUpdate:status', listener)
+      return () => ipcRenderer.removeListener('autoUpdate:status', listener)
+    }
+  },
+
+  // Legacy Update APIs (for backward compatibility)
   update: {
-    check: () => ipcRenderer.invoke('update:check'),
-    download: () => ipcRenderer.invoke('update:download'),
+    check: () => ipcRenderer.invoke('autoUpdate:check'),
+    download: () => ipcRenderer.invoke('autoUpdate:download'),
     onAvailable: (callback: (data: {
       currentVersion: string;
       latestVersion: string;
       changelog: string[];
       releaseDate: string;
     }) => void) => {
+      // Map new status events to old format
       const listener = (_: unknown, data: {
-        currentVersion: string;
-        latestVersion: string;
-        changelog: string[];
-        releaseDate: string;
-      }) => callback(data)
-      ipcRenderer.on('update:available', listener)
-      return () => ipcRenderer.removeListener('update:available', listener)
+        status: string;
+        info?: { version?: string; releaseDate?: string; releaseNotes?: string | null };
+      }) => {
+        if (data.status === 'available' && data.info) {
+          callback({
+            currentVersion: '',
+            latestVersion: data.info.version || '',
+            changelog: data.info.releaseNotes ? data.info.releaseNotes.split('\n') : [],
+            releaseDate: data.info.releaseDate || ''
+          })
+        }
+      }
+      ipcRenderer.on('autoUpdate:status', listener)
+      return () => ipcRenderer.removeListener('autoUpdate:status', listener)
     }
   },
 
@@ -443,17 +492,29 @@ export interface API {
     onInitialized(callback: () => void): () => void
     onStatusChanged(callback: () => void): () => void
   }
-  update: {
-    check(): Promise<{
-      success: boolean;
-      hasUpdate?: boolean;
-      updateInfo?: {
-        version: string;
-        releaseDate: string;
-        changelog: string[];
+  autoUpdate: {
+    check(): Promise<{ success: boolean; error?: string }>
+    download(): Promise<{ success: boolean; error?: string }>
+    install(): Promise<{ success: boolean; error?: string }>
+    getVersion(): Promise<{ success: boolean; version?: string; error?: string }>
+    onStatus(callback: (data: {
+      status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+      info?: {
+        version?: string;
+        releaseDate?: string;
+        releaseNotes?: string | null;
+      };
+      progress?: {
+        percent: number;
+        bytesPerSecond: number;
+        total: number;
+        transferred: number;
       };
       error?: string;
-    }>
+    }) => void): () => void
+  }
+  update: {
+    check(): Promise<{ success: boolean; error?: string }>
     download(): Promise<{ success: boolean; error?: string }>
     onAvailable(callback: (data: {
       currentVersion: string;

@@ -7,7 +7,7 @@ import { StoreManager } from './store'
 import { fileSystemManager } from './filesystem'
 import { ProjectServerManager } from './fileServer/ProjectServerManager'
 import { PluginManager } from './plugins/PluginManager'
-import { getUpdateManager } from './updater'
+import { getAutoUpdateManager } from './updater'
 import { NodeManager } from './nodejs/manager'
 import { NodeDetector } from './nodejs/detector'
 import { NodeDownloader } from './nodejs/downloader'
@@ -648,35 +648,63 @@ export function setupIPC(
     }
   })
 
-  // Update management
-  ipcMain.handle('update:check', async () => {
+  // Auto-update management
+  ipcMain.handle('autoUpdate:check', async () => {
     try {
-      const updateManager = getUpdateManager()
-      if (!updateManager) {
-        return { success: false, error: 'Update manager not initialized' }
+      const autoUpdateManager = getAutoUpdateManager()
+      if (!autoUpdateManager) {
+        return { success: false, error: 'Auto-update manager not initialized' }
       }
 
-      const updateInfo = await updateManager.checkForUpdates(window)
-      return {
-        success: true,
-        hasUpdate: updateInfo !== null,
-        updateInfo: updateInfo || undefined
-      }
+      await autoUpdateManager.checkForUpdates()
+      return { success: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       return { success: false, error: message }
     }
   })
 
-  ipcMain.handle('update:download', async () => {
+  ipcMain.handle('autoUpdate:download', async () => {
     try {
-      const updateManager = getUpdateManager()
-      if (!updateManager) {
-        return { success: false, error: 'Update manager not initialized' }
+      const autoUpdateManager = getAutoUpdateManager()
+      if (!autoUpdateManager) {
+        return { success: false, error: 'Auto-update manager not initialized' }
       }
 
-      const success = await updateManager.downloadUpdate()
-      return { success }
+      await autoUpdateManager.downloadUpdate()
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('autoUpdate:install', async () => {
+    try {
+      const autoUpdateManager = getAutoUpdateManager()
+      if (!autoUpdateManager) {
+        return { success: false, error: 'Auto-update manager not initialized' }
+      }
+
+      autoUpdateManager.quitAndInstall()
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('autoUpdate:getVersion', async () => {
+    try {
+      const autoUpdateManager = getAutoUpdateManager()
+      if (!autoUpdateManager) {
+        return { success: false, error: 'Auto-update manager not initialized' }
+      }
+
+      return {
+        success: true,
+        version: autoUpdateManager.getCurrentVersion()
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       return { success: false, error: message }

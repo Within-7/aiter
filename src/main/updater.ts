@@ -1,246 +1,336 @@
-import { app, shell, BrowserWindow } from 'electron';
-import https from 'https';
+/**
+ * 自动更新模块
+ * 使用 electron-updater 实现自动检查、下载和安装更新
+ */
 
-interface UpdateInfo {
-  version: string;
-  releaseDate: string;
-  changelog: string[];
-  downloads: {
-    mac: {
-      arm64: { url: string; size: string; sha256: string };
-      x64: { url: string; size: string; sha256: string };
-    };
-    win: {
-      x64: { url: string; size: string; sha256: string };
-    };
-  };
+import { app, BrowserWindow } from 'electron'
+import { autoUpdater, UpdateInfo, ProgressInfo, UpdateDownloadedEvent } from 'electron-updater'
+import log from 'electron-log'
+
+// 配置日志
+autoUpdater.logger = log
+log.transports.file.level = 'info'
+
+// 更新状态
+export type UpdateStatus =
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error'
+
+// 更新事件数据
+export interface UpdateEventData {
+  status: UpdateStatus
+  info?: {
+    version?: string
+    releaseDate?: string
+    releaseNotes?: string | null
+  }
+  progress?: {
+    percent: number
+    bytesPerSecond: number
+    total: number
+    transferred: number
+  }
+  error?: string
 }
 
-export class UpdateManager {
-  private updateCheckUrl: string;
-  private checkInterval: NodeJS.Timeout | null = null;
-  private lastCheckTime: number = 0;
-  private updateInfo: UpdateInfo | null = null;
+export class AutoUpdateManager {
+  private mainWindow: BrowserWindow | null = null
+  private isCheckingForUpdate = false
+  private updateDownloaded = false
 
-  constructor(updateCheckUrl: string) {
-    this.updateCheckUrl = updateCheckUrl;
+  constructor() {
+    // 配置 autoUpdater
+    autoUpdater.autoDownload = false // 手动控制下载
+    autoUpdater.autoInstallOnAppQuit = true // 退出时自动安装
+    autoUpdater.allowDowngrade = false // 不允许降级
+
+    // 设置事件监听
+    this.setupEventListeners()
   }
 
   /**
-   * 启动自动检查更新（每 6 小时检查一次）
+   * 设置主窗口引用（用于发送更新事件）
    */
-  startAutoCheck(window: BrowserWindow) {
-    // 立即检查一次
-    this.checkForUpdates(window);
-
-    // 设置定时检查（6 小时）
-    this.checkInterval = setInterval(() => {
-      this.checkForUpdates(window);
-    }, 6 * 60 * 60 * 1000);
+  setMainWindow(window: BrowserWindow) {
+    this.mainWindow = window
   }
 
   /**
-   * 停止自动检查
+   * 设置事件监听器
    */
-  stopAutoCheck() {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
-  }
+  private setupEventListeners() {
+    // 检查更新时
+    autoUpdater.on('checking-for-update', () => {
+      log.info('[AutoUpdater] Checking for update...')
+      this.sendToRenderer({
+        status: 'checking'
+      })
+    })
 
-  /**
-   * 手动检查更新
-   */
-  async checkForUpdates(window: BrowserWindow): Promise<UpdateInfo | null> {
-    try {
-      console.log('[UpdateManager] Checking for updates...');
-
-      const updateInfo = await this.fetchUpdateInfo();
-
-      if (!updateInfo) {
-        console.log('[UpdateManager] Failed to fetch update info');
-        return null;
-      }
-
-      this.updateInfo = updateInfo;
-      this.lastCheckTime = Date.now();
-
-      const currentVersion = app.getVersion();
-      const latestVersion = updateInfo.version;
-
-      console.log(`[UpdateManager] Current version: ${currentVersion}`);
-      console.log(`[UpdateManager] Latest version: ${latestVersion}`);
-
-      if (this.isNewerVersion(latestVersion, currentVersion)) {
-        console.log('[UpdateManager] New version available!');
-
-        // 通知渲染进程有新版本
-        window.webContents.send('update:available', {
-          currentVersion,
-          latestVersion,
-          changelog: updateInfo.changelog,
-          releaseDate: updateInfo.releaseDate,
-        });
-
-        return updateInfo;
-      } else {
-        console.log('[UpdateManager] Already up to date');
-        return null;
-      }
-    } catch (error) {
-      console.error('[UpdateManager] Check update failed:', error);
-      return null;
-    }
-  }
-
-  /**
-   * 获取下载 URL
-   */
-  getDownloadUrl(): string | null {
-    if (!this.updateInfo) {
-      return null;
-    }
-
-    const platform = process.platform;
-    const arch = process.arch;
-
-    try {
-      if (platform === 'darwin') {
-        if (arch === 'arm64') {
-          return this.updateInfo.downloads.mac.arm64.url;
-        } else {
-          return this.updateInfo.downloads.mac.x64.url;
+    // 有可用更新
+    autoUpdater.on('update-available', (info: UpdateInfo) => {
+      log.info('[AutoUpdater] Update available:', info.version)
+      this.sendToRenderer({
+        status: 'available',
+        info: {
+          version: info.version,
+          releaseDate: info.releaseDate,
+          releaseNotes: typeof info.releaseNotes === 'string'
+            ? info.releaseNotes
+            : Array.isArray(info.releaseNotes)
+              ? info.releaseNotes.map(n => n.note || '').join('\n')
+              : null
         }
-      } else if (platform === 'win32') {
-        return this.updateInfo.downloads.win.x64.url;
-      }
-    } catch (error) {
-      console.error('[UpdateManager] Failed to get download URL:', error);
-    }
+      })
+    })
 
-    return null;
+    // 没有可用更新
+    autoUpdater.on('update-not-available', (info: UpdateInfo) => {
+      log.info('[AutoUpdater] No update available, current version:', info.version)
+      this.sendToRenderer({
+        status: 'not-available',
+        info: {
+          version: info.version
+        }
+      })
+    })
+
+    // 下载进度
+    autoUpdater.on('download-progress', (progress: ProgressInfo) => {
+      log.info(`[AutoUpdater] Download progress: ${progress.percent.toFixed(1)}%`)
+      this.sendToRenderer({
+        status: 'downloading',
+        progress: {
+          percent: progress.percent,
+          bytesPerSecond: progress.bytesPerSecond,
+          total: progress.total,
+          transferred: progress.transferred
+        }
+      })
+    })
+
+    // 下载完成
+    autoUpdater.on('update-downloaded', (event: UpdateDownloadedEvent) => {
+      log.info('[AutoUpdater] Update downloaded:', event.version)
+      this.updateDownloaded = true
+      this.sendToRenderer({
+        status: 'downloaded',
+        info: {
+          version: event.version,
+          releaseDate: event.releaseDate,
+          releaseNotes: typeof event.releaseNotes === 'string'
+            ? event.releaseNotes
+            : Array.isArray(event.releaseNotes)
+              ? event.releaseNotes.map(n => n.note || '').join('\n')
+              : null
+        }
+      })
+    })
+
+    // 错误
+    autoUpdater.on('error', (error: Error) => {
+      log.error('[AutoUpdater] Error:', error)
+      this.sendToRenderer({
+        status: 'error',
+        error: error.message
+      })
+    })
   }
 
   /**
-   * 下载更新
+   * 发送事件到渲染进程
    */
-  async downloadUpdate(): Promise<boolean> {
-    const downloadUrl = this.getDownloadUrl();
-
-    if (!downloadUrl) {
-      console.error('[UpdateManager] No download URL available');
-      return false;
+  private sendToRenderer(data: UpdateEventData) {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send('autoUpdate:status', data)
     }
+  }
+
+  /**
+   * 检查更新
+   */
+  async checkForUpdates(): Promise<void> {
+    if (this.isCheckingForUpdate) {
+      log.info('[AutoUpdater] Already checking for updates')
+      return
+    }
+
+    this.isCheckingForUpdate = true
 
     try {
-      // 如果是绝对 URL，直接在浏览器中打开
-      if (downloadUrl.startsWith('http://') || downloadUrl.startsWith('https://')) {
-        await shell.openExternal(downloadUrl);
-        return true;
-      }
-
-      // 如果是相对 URL，需要拼接完整 URL
-      const baseUrl = this.updateCheckUrl.replace('/latest.json', '');
-      const fullUrl = `${baseUrl}/${downloadUrl}`;
-
-      await shell.openExternal(fullUrl);
-      return true;
+      await autoUpdater.checkForUpdates()
     } catch (error) {
-      console.error('[UpdateManager] Failed to open download URL:', error);
-      return false;
+      log.error('[AutoUpdater] Check for updates failed:', error)
+    } finally {
+      this.isCheckingForUpdate = false
     }
   }
 
   /**
-   * 获取更新信息（从远程服务器）
+   * 开始下载更新
    */
-  private async fetchUpdateInfo(): Promise<UpdateInfo | null> {
-    return new Promise((resolve) => {
-      const request = https.get(this.updateCheckUrl, (response) => {
-        let data = '';
-
-        response.on('data', (chunk) => {
-          data += chunk;
-        });
-
-        response.on('end', () => {
-          try {
-            const updateInfo = JSON.parse(data);
-            resolve(updateInfo);
-          } catch (error) {
-            console.error('[UpdateManager] Failed to parse update info:', error);
-            resolve(null);
-          }
-        });
-      });
-
-      request.on('error', (error) => {
-        console.error('[UpdateManager] Request failed:', error);
-        resolve(null);
-      });
-
-      request.setTimeout(10000, () => {
-        console.error('[UpdateManager] Request timeout');
-        request.destroy();
-        resolve(null);
-      });
-    });
+  async downloadUpdate(): Promise<void> {
+    log.info('[AutoUpdater] Starting download...')
+    try {
+      await autoUpdater.downloadUpdate()
+    } catch (error) {
+      log.error('[AutoUpdater] Download failed:', error)
+      throw error
+    }
   }
 
   /**
-   * 比较版本号（语义化版本）
+   * 安装更新并重启
    */
-  private isNewerVersion(latestVersion: string, currentVersion: string): boolean {
-    const parseVersion = (version: string): number[] => {
-      return version
-        .replace(/^v/, '')
-        .split('.')
-        .map((num) => parseInt(num, 10) || 0);
-    };
-
-    const latest = parseVersion(latestVersion);
-    const current = parseVersion(currentVersion);
-
-    for (let i = 0; i < Math.max(latest.length, current.length); i++) {
-      const latestPart = latest[i] || 0;
-      const currentPart = current[i] || 0;
-
-      if (latestPart > currentPart) {
-        return true;
-      } else if (latestPart < currentPart) {
-        return false;
-      }
+  quitAndInstall(): void {
+    if (!this.updateDownloaded) {
+      log.warn('[AutoUpdater] No update downloaded')
+      return
     }
 
-    return false;
+    log.info('[AutoUpdater] Quitting and installing...')
+    autoUpdater.quitAndInstall(false, true)
   }
 
   /**
-   * 获取最后检查时间
+   * 获取当前版本
    */
-  getLastCheckTime(): number {
-    return this.lastCheckTime;
+  getCurrentVersion(): string {
+    return app.getVersion()
   }
 
   /**
-   * 获取当前缓存的更新信息
+   * 是否有已下载的更新
    */
-  getUpdateInfo(): UpdateInfo | null {
-    return this.updateInfo;
+  hasDownloadedUpdate(): boolean {
+    return this.updateDownloaded
+  }
+
+  /**
+   * 启动自动检查更新（每 6 小时）
+   */
+  startAutoCheck() {
+    // 启动后 10 秒检查一次
+    setTimeout(() => {
+      this.checkForUpdates()
+    }, 10000)
+
+    // 每 6 小时检查一次
+    setInterval(() => {
+      this.checkForUpdates()
+    }, 6 * 60 * 60 * 1000)
   }
 }
 
 // 单例
-let updateManager: UpdateManager | null = null;
+let autoUpdateManager: AutoUpdateManager | null = null
+
+export function initAutoUpdateManager(): AutoUpdateManager {
+  if (!autoUpdateManager) {
+    autoUpdateManager = new AutoUpdateManager()
+  }
+  return autoUpdateManager
+}
+
+export function getAutoUpdateManager(): AutoUpdateManager | null {
+  return autoUpdateManager
+}
+
+// ==========================================
+// 兼容旧版 UpdateManager（可选，用于回退）
+// ==========================================
+
+interface LegacyUpdateInfo {
+  version: string
+  releaseDate: string
+  changelog: string[]
+  downloads: {
+    mac: {
+      arm64: { url: string; size: string; sha256: string }
+      x64: { url: string; size: string; sha256: string }
+    }
+    win: {
+      x64: { url: string; size: string; sha256: string }
+    }
+  }
+}
+
+/**
+ * @deprecated 使用 AutoUpdateManager 代替
+ */
+export class UpdateManager {
+  private updateCheckUrl: string
+  private checkInterval: NodeJS.Timeout | null = null
+  private lastCheckTime: number = 0
+  private updateInfo: LegacyUpdateInfo | null = null
+
+  constructor(updateCheckUrl: string) {
+    this.updateCheckUrl = updateCheckUrl
+  }
+
+  startAutoCheck(window: BrowserWindow) {
+    this.checkForUpdates(window)
+    this.checkInterval = setInterval(() => {
+      this.checkForUpdates(window)
+    }, 6 * 60 * 60 * 1000)
+  }
+
+  stopAutoCheck() {
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval)
+      this.checkInterval = null
+    }
+  }
+
+  async checkForUpdates(window: BrowserWindow): Promise<LegacyUpdateInfo | null> {
+    // 使用新的 AutoUpdateManager
+    const manager = getAutoUpdateManager()
+    if (manager) {
+      manager.setMainWindow(window)
+      await manager.checkForUpdates()
+    }
+    return null
+  }
+
+  getDownloadUrl(): string | null {
+    return null
+  }
+
+  async downloadUpdate(): Promise<boolean> {
+    const manager = getAutoUpdateManager()
+    if (manager) {
+      try {
+        await manager.downloadUpdate()
+        return true
+      } catch {
+        return false
+      }
+    }
+    return false
+  }
+
+  getLastCheckTime(): number {
+    return this.lastCheckTime
+  }
+
+  getUpdateInfo(): LegacyUpdateInfo | null {
+    return this.updateInfo
+  }
+}
+
+let updateManager: UpdateManager | null = null
 
 export function initUpdateManager(updateCheckUrl: string): UpdateManager {
   if (!updateManager) {
-    updateManager = new UpdateManager(updateCheckUrl);
+    updateManager = new UpdateManager(updateCheckUrl)
   }
-  return updateManager;
+  return updateManager
 }
 
 export function getUpdateManager(): UpdateManager | null {
-  return updateManager;
+  return updateManager
 }

@@ -1,19 +1,39 @@
 appId: com.within7.aiter
 productName: AiTer
 copyright: Copyright © 2025-2026 Within-7.com - 任小姐出海战略咨询
+
 directories:
   buildResources: build
   output: release/${version}
+
 files:
   - dist-electron
   - dist-renderer
+
+asar: true
 asarUnpack:
   - node_modules/node-pty/**/*
+
 extraResources:
   - from: resources/nodejs
     to: nodejs
     filter:
       - '**/*'
+
+# ==========================================
+# GitHub Releases 发布配置
+# ==========================================
+publish:
+  provider: github
+  owner: within-7
+  repo: airter
+  releaseType: release
+  # 如果是私有仓库，需要设置 token
+  # token: ${GH_TOKEN}
+
+# ==========================================
+# macOS 配置
+# ==========================================
 mac:
   target:
     - target: dmg
@@ -27,6 +47,39 @@ mac:
   category: public.app-category.developer-tools
   icon: build/icon.icns
   artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # 代码签名配置
+  # 需要设置环境变量:
+  # - CSC_LINK: base64 编码的 .p12 证书文件，或证书文件路径
+  # - CSC_KEY_PASSWORD: 证书密码
+  # 或者使用 Keychain (推荐):
+  # - CSC_NAME: 证书名称 (如 "Developer ID Application: Your Name (XXXXXXXXXX)")
+  identity: null  # 设为 null 时自动从 Keychain 查找
+
+# macOS 公证配置 (需要 Apple Developer 账号)
+# 需要设置环境变量:
+# - APPLE_ID: Apple ID 邮箱
+# - APPLE_APP_SPECIFIC_PASSWORD: App 专用密码 (https://appleid.apple.com)
+# - APPLE_TEAM_ID: 开发者团队 ID
+afterSign: scripts/notarize.js
+
+# DMG 配置
+dmg:
+  sign: false  # DMG 不需要单独签名
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+# ==========================================
+# Windows 配置
+# ==========================================
 win:
   target:
     - target: nsis
@@ -37,9 +90,29 @@ win:
         - x64
   icon: build/icon.ico
   artifactName: ${productName}-${version}-win-${arch}.${ext}
+  # Windows 代码签名配置
+  # 需要设置环境变量:
+  # - CSC_LINK: base64 编码的 .pfx 证书文件，或证书文件路径
+  # - CSC_KEY_PASSWORD: 证书密码
+  # 或使用 Windows 签名工具:
+  # - WIN_CSC_LINK: Windows 证书路径
+  # - WIN_CSC_KEY_PASSWORD: Windows 证书密码
+  signingHashAlgorithms:
+    - sha256
+  signDlls: false
+  # 时间戳服务器 (可选，推荐使用)
+  timeStampServer: http://timestamp.digicert.com
+
+# NSIS 安装程序配置
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: AiTer
+  # 允许提升权限安装
+  allowElevation: true
+  # 安装完成后运行应用
+  runAfterFinish: true
+  # 差量更新
+  differentialPackage: true
