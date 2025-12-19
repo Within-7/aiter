@@ -109,16 +109,21 @@
   flex-shrink: 0;
 }
 
+/* Unified git status colors (same as EXPLORER) */
 .file-change-item .status-icon.added {
-  color: #4ec9b0;
+  color: #89d185;
 }
 
 .file-change-item .status-icon.modified {
-  color: #ce9178;
+  color: #e2c08d;
 }
 
 .file-change-item .status-icon.deleted {
-  color: #f48771;
+  color: #f14c4c;
+}
+
+.file-change-item .status-icon.untracked {
+  color: #73c991;
 }
 
 .file-change-item .file-path {
@@ -137,20 +142,24 @@
   flex-shrink: 0;
 }
 
-.file-change-item .status-badge.added,
+.file-change-item .status-badge.added {
+  background-color: rgba(137, 209, 133, 0.2);
+  color: #89d185;
+}
+
 .file-change-item .status-badge.untracked {
-  background-color: rgba(78, 201, 176, 0.2);
-  color: #4ec9b0;
+  background-color: rgba(115, 201, 145, 0.2);
+  color: #73c991;
 }
 
 .file-change-item .status-badge.modified {
-  background-color: rgba(206, 145, 120, 0.2);
-  color: #ce9178;
+  background-color: rgba(226, 192, 141, 0.2);
+  color: #e2c08d;
 }
 
 .file-change-item .status-badge.deleted {
-  background-color: rgba(244, 135, 113, 0.2);
-  color: #f48771;
+  background-color: rgba(241, 76, 76, 0.2);
+  color: #f14c4c;
 }
 
 .no-changes {
@@ -730,16 +739,17 @@
   flex-shrink: 0;
 }
 
+/* Unified git status colors for commit files */
 .commit-file-item .status-icon.added {
-  color: #4ec9b0;
+  color: #89d185;
 }
 
 .commit-file-item .status-icon.modified {
-  color: #ce9178;
+  color: #e2c08d;
 }
 
 .commit-file-item .status-icon.deleted {
-  color: #f48771;
+  color: #f14c4c;
 }
 
 .commit-file-item .status-icon.renamed {
@@ -764,18 +774,18 @@
 }
 
 .commit-file-status.added {
-  background-color: rgba(78, 201, 176, 0.2);
-  color: #4ec9b0;
+  background-color: rgba(137, 209, 133, 0.2);
+  color: #89d185;
 }
 
 .commit-file-status.modified {
-  background-color: rgba(206, 145, 120, 0.2);
-  color: #ce9178;
+  background-color: rgba(226, 192, 141, 0.2);
+  color: #e2c08d;
 }
 
 .commit-file-status.deleted {
-  background-color: rgba(244, 135, 113, 0.2);
-  color: #f48771;
+  background-color: rgba(241, 76, 76, 0.2);
+  color: #f14c4c;
 }
 
 .commit-file-status.renamed {

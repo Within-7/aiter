@@ -86,14 +86,15 @@
   flex-shrink: 0;
 }
 
+/* Unified git status colors (same as SOURCE CONTROL) */
 .git-status-modified,
 .git-status-modified .git-status {
-  color: #f9e64f;
+  color: #e2c08d;
 }
 
 .git-status-added,
 .git-status-added .git-status {
-  color: #73c991;
+  color: #89d185;
 }
 
 .git-status-deleted,
@@ -103,7 +104,7 @@
 
 .git-status-untracked,
 .git-status-untracked .git-status {
-  color: #e2a14e;
+  color: #73c991;
 }
 
 .git-status-recent-commit,
