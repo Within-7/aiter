@@ -6,6 +6,8 @@
 import { app, BrowserWindow } from 'electron'
 import { autoUpdater, UpdateInfo, ProgressInfo, UpdateDownloadedEvent } from 'electron-updater'
 import log from 'electron-log'
+import * as fs from 'fs'
+import * as path from 'path'
 
 // 配置日志
 autoUpdater.logger = log
@@ -146,6 +148,8 @@ export class AutoUpdateManager {
         status: 'error',
         error: error.message
       })
+      // 发生错误时清理缓存
+      this.clearUpdateCache()
     })
   }
 
@@ -201,7 +205,85 @@ export class AutoUpdateManager {
     }
 
     log.info('[AutoUpdater] Quitting and installing...')
+
+    // 安装前清理旧的更新缓存
+    // 注意：安装后的清理会在下次启动时进行，因为应用会立即退出
+    this.clearUpdateCache()
+
     autoUpdater.quitAndInstall(false, true)
+  }
+
+  /**
+   * 清理更新缓存文件
+   */
+  private clearUpdateCache(): void {
+    try {
+      // electron-updater 的缓存目录路径
+      // macOS: ~/Library/Caches/<app-name>.ShipIt/
+      // Windows: %LOCALAPPDATA%\<app-name>-updater\
+      const cacheDir = this.getUpdateCacheDir()
+
+      if (!cacheDir || !fs.existsSync(cacheDir)) {
+        log.info('[AutoUpdater] No update cache to clear')
+        return
+      }
+
+      log.info('[AutoUpdater] Clearing update cache:', cacheDir)
+
+      // 递归删除缓存目录
+      this.deleteFolderRecursive(cacheDir)
+
+      log.info('[AutoUpdater] Update cache cleared successfully')
+    } catch (error) {
+      log.error('[AutoUpdater] Failed to clear update cache:', error)
+      // 不抛出错误，避免影响主流程
+    }
+  }
+
+  /**
+   * 获取更新缓存目录路径
+   */
+  private getUpdateCacheDir(): string | null {
+    const appName = app.getName()
+
+    if (process.platform === 'darwin') {
+      // macOS: ~/Library/Caches/com.within7.aiter.ShipIt/
+      const homeDir = app.getPath('home')
+      return path.join(homeDir, 'Library', 'Caches', `${appName}.ShipIt`)
+    } else if (process.platform === 'win32') {
+      // Windows: %LOCALAPPDATA%\aiter-updater\
+      const localAppData = app.getPath('userData')
+      const parentDir = path.dirname(localAppData)
+      return path.join(parentDir, `${appName}-updater`)
+    }
+
+    return null
+  }
+
+  /**
+   * 递归删除文件夹
+   */
+  private deleteFolderRecursive(folderPath: string): void {
+    if (!fs.existsSync(folderPath)) {
+      return
+    }
+
+    const files = fs.readdirSync(folderPath)
+
+    for (const file of files) {
+      const curPath = path.join(folderPath, file)
+
+      if (fs.lstatSync(curPath).isDirectory()) {
+        // 递归删除子文件夹
+        this.deleteFolderRecursive(curPath)
+      } else {
+        // 删除文件
+        fs.unlinkSync(curPath)
+      }
+    }
+
+    // 删除空文件夹
+    fs.rmdirSync(folderPath)
   }
 
   /**
@@ -222,6 +304,11 @@ export class AutoUpdateManager {
    * 启动自动检查更新（每 6 小时）
    */
   startAutoCheck() {
+    // 启动时清理旧的更新缓存（来自上次更新）
+    setTimeout(() => {
+      this.clearUpdateCache()
+    }, 3000)
+
     // 启动后 10 秒检查一次
     setTimeout(() => {
       this.checkForUpdates()
