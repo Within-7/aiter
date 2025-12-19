@@ -129,31 +129,69 @@ jobs:
           body: |
             # AiTer v${{ steps.version.outputs.VERSION }}
 
-            **PROPRIETARY SOFTWARE - For Authorized Use Only**
+            AI CLI 工具协作终端 - AI Terminal Client
 
-            This is a proprietary software release for authorized users only.
+            ## 命令行安装 / Command Line Installation
 
-            ## 下载说明 / Download Instructions
+            ### macOS (Apple Silicon M1/M2/M3)
 
-            ### macOS 用户
-            - **Apple Silicon (M1/M2/M3)**: 下载 `AiTer-*-mac-arm64.dmg`
-            - **Intel 芯片**: 下载 `AiTer-*-mac-x64.dmg`
+            ```bash
+            # 下载并安装
+            curl -fsSL https://github.com/Within-7/aiter/releases/download/v${{ steps.version.outputs.VERSION }}/AiTer-${{ steps.version.outputs.VERSION }}-mac-arm64.dmg -o /tmp/AiTer.dmg
+            hdiutil attach /tmp/AiTer.dmg -mountpoint /tmp/AiTer-mount
+            cp -R "/tmp/AiTer-mount/AiTer.app" /Applications/
+            hdiutil detach /tmp/AiTer-mount
+            rm /tmp/AiTer.dmg
+            echo "AiTer 已安装到 /Applications"
+            ```
 
-            ### Windows 用户
-            - 下载 `AiTer-*-win-x64.exe`
+            ### macOS (Intel)
 
-            ## 安装步骤 / Installation
+            ```bash
+            # 下载并安装
+            curl -fsSL https://github.com/Within-7/aiter/releases/download/v${{ steps.version.outputs.VERSION }}/AiTer-${{ steps.version.outputs.VERSION }}-mac-x64.dmg -o /tmp/AiTer.dmg
+            hdiutil attach /tmp/AiTer.dmg -mountpoint /tmp/AiTer-mount
+            cp -R "/tmp/AiTer-mount/AiTer.app" /Applications/
+            hdiutil detach /tmp/AiTer-mount
+            rm /tmp/AiTer.dmg
+            echo "AiTer 已安装到 /Applications"
+            ```
 
-            ### macOS
-            1. 下载对应版本的 `.dmg` 文件
-            2. 双击打开 DMG 文件
-            3. 将 AiTer 拖到 Applications 文件夹
-            4. 首次打开时，右键点击 → 打开（绕过 Gatekeeper）
+            ### Windows (PowerShell)
 
-            ### Windows
-            1. 下载 `.exe` 安装程序
-            2. 双击运行安装程序
-            3. 按照安装向导完成安装
+            ```powershell
+            # 下载并安装
+            $url = "https://github.com/Within-7/aiter/releases/download/v${{ steps.version.outputs.VERSION }}/AiTer-${{ steps.version.outputs.VERSION }}-win-x64.exe"
+            $installer = "$env:TEMP\AiTer-Setup.exe"
+            Invoke-WebRequest -Uri $url -OutFile $installer
+            Start-Process -FilePath $installer -Wait
+            Remove-Item $installer
+            Write-Host "AiTer 安装完成"
+            ```
+
+            ### Windows (静默安装)
+
+            ```powershell
+            # 静默安装（无 UI）
+            $url = "https://github.com/Within-7/aiter/releases/download/v${{ steps.version.outputs.VERSION }}/AiTer-${{ steps.version.outputs.VERSION }}-win-x64.exe"
+            $installer = "$env:TEMP\AiTer-Setup.exe"
+            Invoke-WebRequest -Uri $url -OutFile $installer
+            Start-Process -FilePath $installer -ArgumentList "/S" -Wait
+            Remove-Item $installer
+            Write-Host "AiTer 静默安装完成"
+            ```
+
+            ---
+
+            ## 手动下载 / Manual Download
+
+            | 平台 | 架构 | 文件 |
+            |------|------|------|
+            | macOS | Apple Silicon (M1/M2/M3) | `AiTer-${{ steps.version.outputs.VERSION }}-mac-arm64.dmg` |
+            | macOS | Intel | `AiTer-${{ steps.version.outputs.VERSION }}-mac-x64.dmg` |
+            | Windows | x64 | `AiTer-${{ steps.version.outputs.VERSION }}-win-x64.exe` |
+
+            ---
 
             ## 主要功能 / Features
 
@@ -164,24 +202,18 @@ jobs:
             - 📋 Markdown 预览
             - 🔌 插件系统
             - ⚡ 高性能终端（xterm.js）
-            - 🎨 优雅的暗色主题
+            - 🔄 自动更新
 
             ## 系统要求 / Requirements
 
-            - **macOS**: 10.12 (Sierra) or later
-            - **Windows**: Windows 10 or later
-            - **RAM**: 4GB minimum, 8GB recommended
-            - **Disk**: 500MB free space
-
-            ## 许可协议 / License
-
-            This software is proprietary. See LICENSE for details.
-
-            **版权所有 © 2025-2026 Within-7.com - 任小姐出海战略咨询**
+            - **macOS**: 10.12 (Sierra) 或更高版本
+            - **Windows**: Windows 10 或更高版本
+            - **RAM**: 最低 4GB，推荐 8GB
+            - **磁盘**: 500MB 可用空间
 
             ---
 
-            For internal use only. Do not redistribute.
+            **版权所有 © 2025-2026 Within-7.com**
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.exe
