@@ -4,11 +4,14 @@ import path from 'path'
 import { Workspace, WorkspaceSettings } from '../types'
 
 const DEFAULT_WORKSPACE_ID = 'default'
+const SAVE_DEBOUNCE_MS = 100
 
 export class WorkspaceManager {
   private currentWorkspaceId: string
   private settingsPath: string
   private settings: WorkspaceSettings
+  private saveTimeout: NodeJS.Timeout | null = null
+  private isSaving = false
 
   constructor(workspaceId?: string) {
     this.settingsPath = path.join(app.getPath('userData'), 'workspaces.json')
@@ -20,13 +23,12 @@ export class WorkspaceManager {
       const workspace = this.getWorkspace(this.currentWorkspaceId)
       if (workspace) {
         workspace.lastUsedAt = Date.now()
-        this.saveSettings()
       }
     }
 
-    // Update last used workspace id
+    // Update last used workspace id and save once (sync on startup)
     this.settings.lastUsedWorkspaceId = this.currentWorkspaceId
-    this.saveSettings()
+    this.saveSettingsSync()
   }
 
   private loadSettings(): WorkspaceSettings {
@@ -42,6 +44,36 @@ export class WorkspaceManager {
   }
 
   private saveSettings(): void {
+    // Debounce saves to avoid blocking main thread with frequent writes
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout)
+    }
+
+    this.saveTimeout = setTimeout(() => {
+      this.doSave()
+    }, SAVE_DEBOUNCE_MS)
+  }
+
+  private doSave(): void {
+    if (this.isSaving) return
+
+    this.isSaving = true
+    const data = JSON.stringify(this.settings, null, 2)
+
+    fs.writeFile(this.settingsPath, data, (error) => {
+      this.isSaving = false
+      if (error) {
+        console.error('[WorkspaceManager] Failed to save settings:', error)
+      }
+    })
+  }
+
+  // Synchronous save for critical operations (e.g., app shutdown)
+  saveSettingsSync(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout)
+      this.saveTimeout = null
+    }
     try {
       fs.writeFileSync(this.settingsPath, JSON.stringify(this.settings, null, 2))
     } catch (error) {
@@ -88,7 +120,7 @@ export class WorkspaceManager {
 
   createWorkspace(name: string, projectIds?: string[]): Workspace {
     const workspace: Workspace = {
-      id: `workspace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `workspace-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       name,
       visibleProjectIds: projectIds || [],
       createdAt: Date.now(),

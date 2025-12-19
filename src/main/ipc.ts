@@ -1072,7 +1072,9 @@ export function setupIPC(
         }).unref()
       } else {
         // Development mode: use electron with the app path
-        const electronPath = path.join(app.getAppPath(), 'node_modules', '.bin', 'electron')
+        const isWindows = process.platform === 'win32'
+        const electronBin = isWindows ? 'electron.cmd' : 'electron'
+        const electronPath = path.join(app.getAppPath(), 'node_modules', '.bin', electronBin)
         const appRoot = app.getAppPath()
 
         // Set environment variable for workspace (command line args may be filtered by electron)
@@ -1081,7 +1083,8 @@ export function setupIPC(
         spawn(electronPath, [appRoot, `--workspace=${workspaceId}`], {
           detached: true,
           stdio: 'ignore',
-          env
+          env,
+          shell: isWindows // Use shell on Windows to properly execute .cmd files
         }).unref()
       }
       return { success: true }
