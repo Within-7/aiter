@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, dialog, shell, app } from 'electron'
 import { spawn } from 'child_process'
+import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { PTYManager } from './pty'
 import { StoreManager } from './store'
@@ -1062,11 +1063,27 @@ export function setupIPC(
   ipcMain.handle('workspace:launch', async (_, { workspaceId }) => {
     try {
       // Launch new instance with specified workspace
-      const appPath = app.getPath('exe')
-      spawn(appPath, [`--workspace=${workspaceId}`], {
-        detached: true,
-        stdio: 'ignore'
-      }).unref()
+      if (app.isPackaged) {
+        // Production mode: use the app executable
+        const appPath = app.getPath('exe')
+        spawn(appPath, [`--workspace=${workspaceId}`], {
+          detached: true,
+          stdio: 'ignore'
+        }).unref()
+      } else {
+        // Development mode: use electron with the app path
+        const electronPath = path.join(app.getAppPath(), 'node_modules', '.bin', 'electron')
+        const appRoot = app.getAppPath()
+
+        // Set environment variable for workspace (command line args may be filtered by electron)
+        const env = { ...process.env, AITER_WORKSPACE: workspaceId }
+
+        spawn(electronPath, [appRoot, `--workspace=${workspaceId}`], {
+          detached: true,
+          stdio: 'ignore',
+          env
+        }).unref()
+      }
       return { success: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
