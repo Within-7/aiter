@@ -64,9 +64,6 @@ mac:
   #
   # 设为 null 时禁用代码签名（开发/测试环境）
   identity: null
-  # 明确设置环境变量以禁用签名
-  env:
-    CSC_IDENTITY_AUTO_DISCOVERY: false
 
 # macOS 公证配置 (需要 Apple Developer 账号)
 # 需要设置环境变量:
