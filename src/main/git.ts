@@ -3,7 +3,30 @@ import { promisify } from 'util'
 import * as path from 'path'
 import * as fs from 'fs'
 
-const execAsync = promisify(exec)
+const execAsyncRaw = promisify(exec)
+
+/**
+ * Execute git command with proper UTF-8/encoding support
+ * Sets core.quotepath=false to display non-ASCII characters correctly
+ * Also sets proper encoding environment variables
+ */
+async function execAsync(command: string, options: { cwd: string }) {
+  // Add git config to disable quotepath for non-ASCII filenames
+  const gitCommand = command.startsWith('git ')
+    ? `git -c core.quotepath=false ${command.slice(4)}`
+    : command
+
+  return execAsyncRaw(gitCommand, {
+    ...options,
+    env: {
+      ...process.env,
+      // Ensure UTF-8 encoding for git output
+      LANG: 'en_US.UTF-8',
+      LC_ALL: 'en_US.UTF-8',
+      GIT_TERMINAL_PROMPT: '0'
+    }
+  })
+}
 
 export interface GitStatus {
   isRepo: boolean

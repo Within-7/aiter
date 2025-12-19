@@ -117,7 +117,11 @@ export class PTYManager {
         FORCE_COLOR: '1',
         // Ensure proper line editing behavior
         TERM_PROGRAM: 'AiTer',
-        TERM_PROGRAM_VERSION: '0.1.0'
+        TERM_PROGRAM_VERSION: '0.1.0',
+        // UTF-8 locale settings for proper international character support
+        LANG: process.env.LANG || 'en_US.UTF-8',
+        LC_ALL: process.env.LC_ALL || 'en_US.UTF-8',
+        LC_CTYPE: process.env.LC_CTYPE || 'en_US.UTF-8'
       } as { [key: string]: string }
 
       // Get shell arguments based on settings (login shell mode, etc.)
