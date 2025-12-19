@@ -10,6 +10,14 @@ interface FileTreeNodeProps {
   onContextMenu: (e: React.MouseEvent, node: FileNode, isProjectRoot?: boolean) => void
   activeFilePath?: string
   gitChanges?: Map<string, ExtendedGitStatus>
+  // Drag and drop props
+  onDragStart?: (e: React.DragEvent, path: string) => void
+  onDragOver?: (e: React.DragEvent, node: FileNode) => void
+  onDragLeave?: (e: React.DragEvent) => void
+  onDrop?: (e: React.DragEvent, node: FileNode) => void
+  onDragEnd?: () => void
+  draggedPath?: string | null
+  dropTargetPath?: string | null
 }
 
 const getFileIcon = (node: FileNode): string => {
@@ -188,7 +196,14 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   onClick,
   onContextMenu,
   activeFilePath,
-  gitChanges
+  gitChanges,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  draggedPath,
+  dropTargetPath
 }) => {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -217,14 +232,22 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   const gitStatusClass = getGitStatusClass(effectiveGitStatus)
   const isActive = node.type === 'file' && activeFilePath === node.path
   const isIgnored = node.isGitIgnored
+  const isDragging = draggedPath === node.path
+  const isDropTarget = dropTargetPath === node.path && node.type === 'directory'
 
   return (
     <div className="file-tree-node">
       <div
-        className={`file-tree-item ${gitStatusClass} ${isActive ? 'selected' : ''} ${isIgnored ? 'gitignored' : ''}`}
+        className={`file-tree-item ${gitStatusClass} ${isActive ? 'selected' : ''} ${isIgnored ? 'gitignored' : ''} ${isDragging ? 'dragging' : ''} ${isDropTarget ? 'drop-target' : ''}`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
+        draggable
+        onDragStart={(e) => onDragStart?.(e, node.path)}
+        onDragOver={(e) => onDragOver?.(e, node)}
+        onDragLeave={(e) => onDragLeave?.(e)}
+        onDrop={(e) => onDrop?.(e, node)}
+        onDragEnd={onDragEnd}
       >
         {node.type === 'directory' && (
           <span className="expand-icon">
@@ -248,6 +271,13 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
               onContextMenu={onContextMenu}
               activeFilePath={activeFilePath}
               gitChanges={gitChanges}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              onDragEnd={onDragEnd}
+              draggedPath={draggedPath}
+              dropTargetPath={dropTargetPath}
             />
           ))}
         </div>

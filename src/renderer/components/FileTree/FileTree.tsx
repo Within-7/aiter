@@ -14,6 +14,11 @@ interface FileTreeProps {
   activeFilePath?: string
 }
 
+interface FileDragState {
+  draggedPath: string | null
+  dropTargetPath: string | null
+}
+
 // Extended status type to include recently committed files
 export type ExtendedGitStatus = FileChange['status'] | 'recent-commit'
 
@@ -42,6 +47,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
   const gitPollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [dialog, setDialog] = useState<DialogState>({ type: null, targetPath: '' })
+  const [fileDragState, setFileDragState] = useState<FileDragState>({ draggedPath: null, dropTargetPath: null })
 
   // Load git file changes (uncommitted) and last commit files
   const loadGitChanges = useCallback(async () => {
@@ -330,6 +336,74 @@ export const FileTree: React.FC<FileTreeProps> = ({
     return null
   }, [])
 
+  // File drag and drop handlers
+  const handleFileDragStart = useCallback((e: React.DragEvent, path: string) => {
+    e.stopPropagation()
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('application/x-file-path', path)
+    setFileDragState({ draggedPath: path, dropTargetPath: null })
+  }, [])
+
+  const handleFileDragOver = useCallback((e: React.DragEvent, node: FileNode) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Only allow drop on directories
+    if (node.type !== 'directory') return
+
+    const draggedPath = fileDragState.draggedPath
+    if (!draggedPath) return
+
+    // Don't allow dropping on self or parent
+    if (draggedPath === node.path || node.path.startsWith(draggedPath + '/')) return
+
+    e.dataTransfer.dropEffect = 'move'
+    setFileDragState(prev => ({ ...prev, dropTargetPath: node.path }))
+  }, [fileDragState.draggedPath])
+
+  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    e.stopPropagation()
+    setFileDragState(prev => ({ ...prev, dropTargetPath: null }))
+  }, [])
+
+  const handleFileDrop = useCallback(async (e: React.DragEvent, targetNode: FileNode) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const draggedPath = e.dataTransfer.getData('application/x-file-path')
+    if (!draggedPath || targetNode.type !== 'directory') {
+      setFileDragState({ draggedPath: null, dropTargetPath: null })
+      return
+    }
+
+    // Don't drop on self or into own subdirectory
+    if (draggedPath === targetNode.path || targetNode.path.startsWith(draggedPath + '/')) {
+      setFileDragState({ draggedPath: null, dropTargetPath: null })
+      return
+    }
+
+    // Get the file/folder name
+    const name = draggedPath.substring(draggedPath.lastIndexOf('/') + 1)
+    const newPath = `${targetNode.path}/${name}`
+
+    try {
+      const result = await window.api.fs.rename(draggedPath, newPath)
+      if (result.success) {
+        loadDirectory(projectPath)
+      } else {
+        console.error('Failed to move file:', result.error)
+      }
+    } catch (err) {
+      console.error('Error moving file:', err)
+    }
+
+    setFileDragState({ draggedPath: null, dropTargetPath: null })
+  }, [projectPath])
+
+  const handleFileDragEnd = useCallback(() => {
+    setFileDragState({ draggedPath: null, dropTargetPath: null })
+  }, [])
+
   if (loading && nodes.length === 0) {
     return (
       <div className="file-tree">
@@ -362,6 +436,13 @@ export const FileTree: React.FC<FileTreeProps> = ({
             onContextMenu={handleContextMenu}
             activeFilePath={activeFilePath}
             gitChanges={gitChanges}
+            onDragStart={handleFileDragStart}
+            onDragOver={handleFileDragOver}
+            onDragLeave={handleFileDragLeave}
+            onDrop={handleFileDrop}
+            onDragEnd={handleFileDragEnd}
+            draggedPath={fileDragState.draggedPath}
+            dropTargetPath={fileDragState.dropTargetPath}
           />
         ))}
       </div>

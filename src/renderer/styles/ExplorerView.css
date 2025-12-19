@@ -73,3 +73,55 @@
 .explorer-view-content::-webkit-scrollbar-thumb:hover {
   background: #4e4e4e;
 }
+
+/* Project Drag and Drop Styles */
+.project-section {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.project-section.dragging {
+  opacity: 0.5;
+}
+
+.project-section.drop-target {
+  border-top: 2px solid #007acc;
+}
+
+.project-section.drop-target::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: #007acc;
+  z-index: 1;
+}
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  cursor: grab;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.project-header:hover .drag-handle {
+  opacity: 0.6;
+}
+
+.drag-handle:hover {
+  opacity: 1 !important;
+  color: #999;
+}
+
+.project-section[draggable] {
+  cursor: default;
+}
+
+.project-section.dragging .drag-handle {
+  cursor: grabbing;
+}

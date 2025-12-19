@@ -23,6 +23,7 @@ export type AppAction =
   | { type: 'SET_PROJECTS'; payload: Project[] }
   | { type: 'ADD_PROJECT'; payload: Project }
   | { type: 'REMOVE_PROJECT'; payload: string }
+  | { type: 'REORDER_PROJECTS'; payload: Project[] }
   | { type: 'SET_ACTIVE_PROJECT'; payload: string }
   | { type: 'ADD_TERMINAL'; payload: Terminal }
   | { type: 'REMOVE_TERMINAL'; payload: string }
@@ -98,6 +99,9 @@ export function appReducer(state: AppState, action: AppAction): AppState {
             ? undefined
             : state.activeProjectId
       }
+
+    case 'REORDER_PROJECTS':
+      return { ...state, projects: action.payload }
 
     case 'SET_ACTIVE_PROJECT':
       return { ...state, activeProjectId: action.payload }

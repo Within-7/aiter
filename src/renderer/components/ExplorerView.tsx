@@ -1,5 +1,5 @@
-import { useContext, useState, useEffect, useMemo, useCallback } from 'react'
-import { VscTerminal, VscFiles, VscNewFile, VscNewFolder, VscCloudUpload } from 'react-icons/vsc'
+import { useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { VscTerminal, VscFiles, VscNewFile, VscNewFolder, VscCloudUpload, VscGripper } from 'react-icons/vsc'
 import { AppContext } from '../context/AppContext'
 import { FileTree } from './FileTree/FileTree'
 import { InputDialog } from './FileTree/InputDialog'
@@ -15,11 +15,18 @@ interface DialogState {
   projectName?: string
 }
 
+interface DragState {
+  draggedId: string | null
+  dropTargetId: string | null
+}
+
 export function ExplorerView() {
   const { state, dispatch } = useContext(AppContext)
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
   const [dialog, setDialog] = useState<DialogState>({ type: null })
   const [fileTreeRefreshKey, setFileTreeRefreshKey] = useState(0)
+  const [dragState, setDragState] = useState<DragState>({ draggedId: null, dropTargetId: null })
+  const dragImageRef = useRef<HTMLDivElement | null>(null)
 
   // Calculate which project the active tab belongs to
   const activeProjectId = useMemo(() => {
@@ -143,6 +150,70 @@ export function ExplorerView() {
     return null
   }, [])
 
+  // Project drag and drop handlers
+  const handleProjectDragStart = useCallback((e: React.DragEvent, projectId: string) => {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('application/x-project-id', projectId)
+    setDragState({ draggedId: projectId, dropTargetId: null })
+
+    // Create custom drag image
+    const project = state.projects.find(p => p.id === projectId)
+    if (project && dragImageRef.current) {
+      dragImageRef.current.textContent = project.name
+      dragImageRef.current.style.display = 'block'
+      e.dataTransfer.setDragImage(dragImageRef.current, 0, 0)
+      setTimeout(() => {
+        if (dragImageRef.current) {
+          dragImageRef.current.style.display = 'none'
+        }
+      }, 0)
+    }
+  }, [state.projects])
+
+  const handleProjectDragOver = useCallback((e: React.DragEvent, projectId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragState.draggedId && dragState.draggedId !== projectId) {
+      setDragState(prev => ({ ...prev, dropTargetId: projectId }))
+    }
+  }, [dragState.draggedId])
+
+  const handleProjectDragLeave = useCallback(() => {
+    setDragState(prev => ({ ...prev, dropTargetId: null }))
+  }, [])
+
+  const handleProjectDrop = useCallback(async (e: React.DragEvent, targetProjectId: string) => {
+    e.preventDefault()
+    const draggedId = e.dataTransfer.getData('application/x-project-id')
+    if (!draggedId || draggedId === targetProjectId) {
+      setDragState({ draggedId: null, dropTargetId: null })
+      return
+    }
+
+    // Reorder projects
+    const projects = [...state.projects]
+    const draggedIndex = projects.findIndex(p => p.id === draggedId)
+    const targetIndex = projects.findIndex(p => p.id === targetProjectId)
+
+    if (draggedIndex !== -1 && targetIndex !== -1) {
+      const [draggedProject] = projects.splice(draggedIndex, 1)
+      projects.splice(targetIndex, 0, draggedProject)
+
+      // Update local state immediately
+      dispatch({ type: 'REORDER_PROJECTS', payload: projects })
+
+      // Persist to store
+      const projectIds = projects.map(p => p.id)
+      await window.api.projects.reorder(projectIds)
+    }
+
+    setDragState({ draggedId: null, dropTargetId: null })
+  }, [state.projects, dispatch])
+
+  const handleProjectDragEnd = useCallback(() => {
+    setDragState({ draggedId: null, dropTargetId: null })
+  }, [])
+
   const handleToggleProject = (projectId: string) => {
     setExpandedProjects(prev => {
       if (prev.has(projectId)) {
@@ -190,16 +261,48 @@ export function ExplorerView() {
         </button>
       </div>
 
+      {/* Drag image element (hidden) */}
+      <div
+        ref={dragImageRef}
+        className="project-drag-image"
+        style={{
+          position: 'absolute',
+          top: '-1000px',
+          left: '-1000px',
+          padding: '4px 8px',
+          background: '#007acc',
+          color: '#fff',
+          borderRadius: '4px',
+          fontSize: '12px',
+          whiteSpace: 'nowrap',
+          display: 'none'
+        }}
+      />
+
       <div className="explorer-view-content">
         {state.projects.map(project => {
           const projectColor = getProjectColor(project.id, project.color)
+          const isDragging = dragState.draggedId === project.id
+          const isDropTarget = dragState.dropTargetId === project.id
 
           return (
-            <div key={project.id} className="project-section">
+            <div
+              key={project.id}
+              className={`project-section ${isDragging ? 'dragging' : ''} ${isDropTarget ? 'drop-target' : ''}`}
+              draggable
+              onDragStart={(e) => handleProjectDragStart(e, project.id)}
+              onDragOver={(e) => handleProjectDragOver(e, project.id)}
+              onDragLeave={handleProjectDragLeave}
+              onDrop={(e) => handleProjectDrop(e, project.id)}
+              onDragEnd={handleProjectDragEnd}
+            >
               <div
                 className="project-header"
                 onClick={() => handleToggleProject(project.id)}
               >
+                <span className="drag-handle">
+                  <VscGripper />
+                </span>
                 <span className="expand-icon">
                   {expandedProjects.has(project.id) ? '▼' : '▶'}
                 </span>

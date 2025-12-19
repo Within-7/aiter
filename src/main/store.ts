@@ -128,6 +128,29 @@ export class StoreManager {
     return true
   }
 
+  reorderProjects(projectIds: string[]): Project[] {
+    const projects = this.getProjects()
+    const projectMap = new Map(projects.map(p => [p.id, p]))
+
+    // Reorder based on provided IDs
+    const reordered: Project[] = []
+    for (const id of projectIds) {
+      const project = projectMap.get(id)
+      if (project) {
+        reordered.push(project)
+        projectMap.delete(id)
+      }
+    }
+
+    // Add any remaining projects that weren't in the list
+    for (const project of projectMap.values()) {
+      reordered.push(project)
+    }
+
+    this.store.set('projects', reordered)
+    return reordered
+  }
+
   getProjectById(id: string): Project | undefined {
     return this.getProjects().find((p) => p.id === id)
   }

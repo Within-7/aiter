@@ -142,3 +142,18 @@
 .file-tree-content::-webkit-scrollbar-thumb:hover {
   background: #4e4e4e;
 }
+
+/* File Drag and Drop Styles */
+.file-tree-item[draggable] {
+  cursor: default;
+}
+
+.file-tree-item.dragging {
+  opacity: 0.5;
+}
+
+.file-tree-item.drop-target {
+  background: rgba(0, 122, 204, 0.3) !important;
+  border: 1px dashed #007acc;
+  border-radius: 4px;
+}

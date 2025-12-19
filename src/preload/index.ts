@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('api', {
     add: (path: string, name?: string) =>
       ipcRenderer.invoke('project:add', { path, name }),
     remove: (id: string) => ipcRenderer.invoke('project:remove', { id }),
+    reorder: (projectIds: string[]) =>
+      ipcRenderer.invoke('projects:reorder', { projectIds }),
     onUpdated: (callback: (projects: Project[]) => void) => {
       const listener = (_: unknown, { projects }: { projects: Project[] }) =>
         callback(projects)
@@ -289,6 +291,7 @@ export interface API {
       name?: string
     ): Promise<{ success: boolean; project?: Project; error?: string }>
     remove(id: string): Promise<{ success: boolean; error?: string }>
+    reorder(projectIds: string[]): Promise<{ success: boolean; projects?: Project[]; error?: string }>
     onUpdated(callback: (projects: Project[]) => void): () => void
   }
   terminal: {

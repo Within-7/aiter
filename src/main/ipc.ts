@@ -110,6 +110,17 @@ export function setupIPC(
     }
   })
 
+  ipcMain.handle('projects:reorder', async (_, { projectIds }) => {
+    try {
+      const projects = storeManager.reorderProjects(projectIds)
+      window.webContents.send('projects:updated', { projects })
+      return { success: true, projects }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
   ipcMain.handle('projects:list', async () => {
     try {
       const projects = storeManager.getProjects()
