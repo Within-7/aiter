@@ -43,6 +43,44 @@
   color: #cccccc;
 }
 
+/* Filter Buttons */
+.plugin-panel-filters {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #1e1e1e;
+  border-bottom: 1px solid #3c3c3c;
+}
+
+.plugin-filter-btn {
+  padding: 6px 12px;
+  background-color: #3c3c3c;
+  border: 1px solid #555555;
+  border-radius: 4px;
+  color: #cccccc;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.plugin-filter-btn:hover {
+  background-color: #454545;
+  border-color: #666666;
+}
+
+.plugin-filter-btn.active {
+  background-color: #0e639c;
+  border-color: #1177bb;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.plugin-filter-btn.active:hover {
+  background-color: #1177bb;
+  border-color: #1a86d0;
+}
+
 /* Status Message */
 .plugin-panel-status {
   padding: 12px 20px;

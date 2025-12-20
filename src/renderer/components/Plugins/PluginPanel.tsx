@@ -15,6 +15,8 @@ interface PluginCardData extends Plugin {
   platforms: string[]
 }
 
+type PluginFilter = 'all' | 'installed' | 'not-installed'
+
 export const PluginPanel: React.FC = () => {
   const { state, dispatch } = useContext(AppContext)
   const isOpen = state.showPluginPanel
@@ -31,6 +33,7 @@ export const PluginPanel: React.FC = () => {
   const [currentConfig, setCurrentConfig] = useState<MintoConfig>({})
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [addPluginDialogOpen, setAddPluginDialogOpen] = useState(false)
+  const [filter, setFilter] = useState<PluginFilter>('all')
 
   // Load plugins on mount
   const loadPlugins = useCallback(async () => {
@@ -372,6 +375,35 @@ export const PluginPanel: React.FC = () => {
     }
   }
 
+  // Sort and filter plugins
+  const sortedAndFilteredPlugins = React.useMemo(() => {
+    // First, filter plugins based on selected filter
+    let filtered = plugins
+    if (filter === 'installed') {
+      filtered = plugins.filter(p => p.installed)
+    } else if (filter === 'not-installed') {
+      filtered = plugins.filter(p => !p.installed)
+    }
+
+    // Then, sort: installed plugins first, then not-installed
+    return filtered.sort((a, b) => {
+      // Installed plugins come first
+      if (a.installed && !b.installed) return -1
+      if (!a.installed && b.installed) return 1
+
+      // Within same installation status, sort by name
+      return a.name.localeCompare(b.name)
+    })
+  }, [plugins, filter])
+
+  // Separate built-in and custom plugins after sorting/filtering
+  const builtInPlugins = sortedAndFilteredPlugins.filter(p => p.isBuiltIn)
+  const customPlugins = sortedAndFilteredPlugins.filter(p => !p.isBuiltIn)
+
+  // Count plugins by status
+  const installedCount = plugins.filter(p => p.installed).length
+  const notInstalledCount = plugins.filter(p => !p.installed).length
+
   if (!isOpen) return null
 
   return (
@@ -398,6 +430,28 @@ export const PluginPanel: React.FC = () => {
             </div>
           </div>
 
+          {/* Filter buttons */}
+          <div className="plugin-panel-filters">
+            <button
+              className={`plugin-filter-btn ${filter === 'all' ? 'active' : ''}`}
+              onClick={() => setFilter('all')}
+            >
+              All ({plugins.length})
+            </button>
+            <button
+              className={`plugin-filter-btn ${filter === 'installed' ? 'active' : ''}`}
+              onClick={() => setFilter('installed')}
+            >
+              Installed ({installedCount})
+            </button>
+            <button
+              className={`plugin-filter-btn ${filter === 'not-installed' ? 'active' : ''}`}
+              onClick={() => setFilter('not-installed')}
+            >
+              Not Installed ({notInstalledCount})
+            </button>
+          </div>
+
           {statusMessage && (
             <div className="plugin-panel-status">
               {statusMessage}
@@ -422,13 +476,17 @@ export const PluginPanel: React.FC = () => {
               <div className="plugin-panel-empty">
                 <p>No plugins available</p>
               </div>
+            ) : sortedAndFilteredPlugins.length === 0 ? (
+              <div className="plugin-panel-empty">
+                <p>No plugins found for this filter</p>
+              </div>
             ) : (
               <div className="plugin-panel-list">
                 {/* Built-in plugins section */}
-                {plugins.some(p => p.isBuiltIn) && (
+                {builtInPlugins.length > 0 && (
                   <div className="plugin-section">
                     <h3 className="plugin-section-title">Built-in Plugins</h3>
-                    {plugins.filter(p => p.isBuiltIn).map((plugin) => (
+                    {builtInPlugins.map((plugin) => (
                       <PluginCard
                         key={plugin.id}
                         plugin={plugin}
@@ -444,10 +502,10 @@ export const PluginPanel: React.FC = () => {
                 )}
 
                 {/* Custom plugins section */}
-                {plugins.some(p => !p.isBuiltIn) && (
+                {customPlugins.length > 0 && (
                   <div className="plugin-section">
                     <h3 className="plugin-section-title">Custom Plugins</h3>
-                    {plugins.filter(p => !p.isBuiltIn).map((plugin) => (
+                    {customPlugins.map((plugin) => (
                       <PluginCard
                         key={plugin.id}
                         plugin={plugin}
