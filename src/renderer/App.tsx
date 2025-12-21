@@ -22,6 +22,9 @@ function App() {
   // Track if session has been restored to avoid overwriting with empty state
   const sessionRestoredRef = useRef(false)
 
+  // Track if initial data has been loaded (prevent double-load in StrictMode)
+  const initialDataLoadedRef = useRef(false)
+
   // Save session state to disk (debounced)
   const saveSessionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const saveSession = useCallback(() => {
@@ -81,6 +84,12 @@ function App() {
   useEffect(() => {
     // Load initial data
     const loadInitialData = async () => {
+      // Prevent double-load in React StrictMode
+      if (initialDataLoadedRef.current) {
+        return
+      }
+      initialDataLoadedRef.current = true
+
       // Load projects
       const projectsResult = await window.api.projects.list()
       if (projectsResult.success && projectsResult.projects) {
