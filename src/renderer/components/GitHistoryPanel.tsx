@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react'
 import { VscGitCommit, VscRefresh, VscCheck, VscFile, VscDiffAdded, VscDiffModified, VscDiffRemoved, VscCloudUpload, VscCloudDownload, VscSync, VscAdd, VscRemove, VscChevronDown, VscChevronRight } from 'react-icons/vsc'
 import { GitCommit, GitStatus, EditorTab } from '../../types'
 import { AppContext } from '../context/AppContext'
+import { Tooltip } from './common/Tooltip'
 import '../styles/GitHistoryPanel.css'
 
 interface GitHistoryPanelProps {
@@ -562,9 +563,15 @@ ${lines.map(line => `+${line}`).join('\n')}`
                       title={`Click to view diff: ${change.path}`}
                     >
                       {getStatusIcon(change.status)}
-                      <span className="file-path">
-                        {change.path}
-                      </span>
+                      <Tooltip
+                        content={change.path}
+                        showOnlyWhenTruncated={true}
+                        delay={400}
+                      >
+                        <span className="file-path">
+                          {change.path}
+                        </span>
+                      </Tooltip>
                       <span className={`status-badge ${change.status}`}>
                         {change.status}
                       </span>
@@ -643,7 +650,14 @@ ${lines.map(line => `+${line}`).join('\n')}`
                         <VscGitCommit />
                       </div>
                       <div className="commit-details">
-                        <div className="commit-message">{commit.message}</div>
+                        <Tooltip
+                          content={commit.message}
+                          showOnlyWhenTruncated={true}
+                          delay={400}
+                          maxWidth={500}
+                        >
+                          <div className="commit-message">{commit.message}</div>
+                        </Tooltip>
                         <div className="commit-meta">
                           <span className="commit-author">{commit.author}</span>
                           <span className="commit-separator">•</span>
@@ -665,9 +679,15 @@ ${lines.map(line => `+${line}`).join('\n')}`
                               title={`Click to view diff: ${file.path}`}
                             >
                               {getCommitFileStatusIcon(file.status)}
-                              <span className="commit-file-path">
-                                {file.path}
-                              </span>
+                              <Tooltip
+                                content={file.path}
+                                showOnlyWhenTruncated={true}
+                                delay={400}
+                              >
+                                <span className="commit-file-path">
+                                  {file.path}
+                                </span>
+                              </Tooltip>
                               <span className={`commit-file-status ${file.status}`}>
                                 {file.status}
                               </span>

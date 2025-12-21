@@ -1,0 +1,63 @@
+.tooltip-container {
+  /* Use contents to not affect flex layout */
+  display: contents;
+}
+
+/* When used with flex items, ensure proper sizing */
+.commit-details .tooltip-container,
+.file-change-item .tooltip-container,
+.commit-file-item .tooltip-container {
+  display: contents;
+}
+
+.tooltip-content {
+  position: fixed;
+  z-index: 10000;
+  padding: 8px 12px;
+  background-color: #1e1e1e;
+  border: 1px solid #454545;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* Text styling */
+  font-size: 12px;
+  line-height: 1.5;
+  color: #cccccc;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+
+  /* Animation */
+  animation: tooltipFadeIn 0.15s ease-out;
+
+  /* Pointer events */
+  pointer-events: none;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Styling for commit message tooltips specifically */
+.tooltip-content.commit-tooltip {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* First line (title) styling when message has multiple lines */
+.tooltip-content .tooltip-title {
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #3e3e42;
+}
+
+.tooltip-content .tooltip-body {
+  color: #aaaaaa;
+}
