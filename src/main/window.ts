@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, app } from 'electron'
+import { BrowserWindow, screen, app, dialog } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { WindowState } from '../types'
@@ -99,21 +99,42 @@ export function createMainWindow(workspaceManager?: WorkspaceManager): BrowserWi
     window.loadFile(path.join(__dirname, '../../dist-renderer/index.html'))
   }
 
-  // Disable refresh shortcuts to prevent accidental session loss
-  // These shortcuts would cause all terminals and editor tabs to be lost
+  // Intercept refresh shortcuts to show confirmation dialog
+  // This prevents accidental session loss (terminals and editor tabs)
   // Applied in both dev and production environments
-  window.webContents.on('before-input-event', (event, input) => {
-    // Block Ctrl+R, Cmd+R (reload)
-    if ((input.control || input.meta) && input.key.toLowerCase() === 'r') {
+  let isShowingRefreshDialog = false
+  window.webContents.on('before-input-event', async (event, input) => {
+    const isRefreshShortcut =
+      // Ctrl+R, Cmd+R (reload)
+      ((input.control || input.meta) && !input.shift && input.key.toLowerCase() === 'r') ||
+      // Ctrl+Shift+R, Cmd+Shift+R (hard reload)
+      ((input.control || input.meta) && input.shift && input.key.toLowerCase() === 'r') ||
+      // F5 (reload)
+      input.key === 'F5'
+
+    if (isRefreshShortcut) {
       event.preventDefault()
-    }
-    // Block Ctrl+Shift+R, Cmd+Shift+R (hard reload)
-    if ((input.control || input.meta) && input.shift && input.key.toLowerCase() === 'r') {
-      event.preventDefault()
-    }
-    // Block F5 (reload)
-    if (input.key === 'F5') {
-      event.preventDefault()
+
+      // Prevent multiple dialogs
+      if (isShowingRefreshDialog) return
+      isShowingRefreshDialog = true
+
+      const result = await dialog.showMessageBox(window, {
+        type: 'warning',
+        buttons: ['取消', '刷新'],
+        defaultId: 0,
+        cancelId: 0,
+        title: '确认刷新',
+        message: '确定要刷新应用吗？',
+        detail: '刷新将关闭所有终端和编辑器标签页。会话状态会在重启后自动恢复。'
+      })
+
+      isShowingRefreshDialog = false
+
+      if (result.response === 1) {
+        // User confirmed, reload the window
+        window.webContents.reload()
+      }
     }
   })
 
