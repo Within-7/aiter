@@ -106,6 +106,10 @@ function App() {
             terminals: session.terminals.length
           })
 
+          // IMPORTANT: Clear session immediately to prevent accumulation bug
+          // The session will be re-saved with new IDs after restoration completes
+          await window.api.session.clear()
+
           // Restore editor tabs (reloading content from files)
           for (const tabInfo of session.editorTabs) {
             // Skip diff tabs as they can't be restored easily
@@ -133,8 +137,15 @@ function App() {
             }
           }
 
+          // Limit restored terminals to prevent runaway accumulation
+          const MAX_RESTORED_TERMINALS = 10
+          const terminalsToRestore = session.terminals.slice(0, MAX_RESTORED_TERMINALS)
+          if (session.terminals.length > MAX_RESTORED_TERMINALS) {
+            console.warn(`[Session] Limiting terminal restoration from ${session.terminals.length} to ${MAX_RESTORED_TERMINALS}`)
+          }
+
           // Restore terminals (create new PTY processes)
-          for (const termInfo of session.terminals) {
+          for (const termInfo of terminalsToRestore) {
             try {
               // Find project for this terminal
               const project = projectsResult.projects?.find(p => p.id === termInfo.projectId)
@@ -160,17 +171,8 @@ function App() {
             }
           }
 
-          // Restore tab order after all tabs are added
-          if (session.tabOrder.length > 0) {
-            dispatch({ type: 'REORDER_TABS', payload: session.tabOrder })
-          }
-
-          // Restore active tab
-          if (session.activeEditorTabId) {
-            dispatch({ type: 'SET_ACTIVE_EDITOR_TAB', payload: session.activeEditorTabId })
-          } else if (session.activeTerminalId) {
-            dispatch({ type: 'SET_ACTIVE_TERMINAL', payload: session.activeTerminalId })
-          }
+          // Note: We don't restore tab order since IDs have changed
+          // The new tabs are added in order, so the order is preserved
 
           // Restore active project
           if (session.activeProjectId) {
