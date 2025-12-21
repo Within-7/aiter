@@ -126,7 +126,7 @@ export function createMainWindow(workspaceManager?: WorkspaceManager): BrowserWi
         cancelId: 0,
         title: '确认刷新',
         message: '确定要刷新应用吗？',
-        detail: '刷新将关闭所有终端和编辑器标签页。会话状态会在重启后自动恢复。'
+        detail: '刷新将关闭所有终端和编辑器标签页。正在执行的任务将被终止，未保存的更改可能会丢失。'
       })
 
       isShowingRefreshDialog = false
