@@ -10,6 +10,8 @@
   justify-content: center;
   z-index: 1001;
   animation: overlayFadeIn 0.15s ease-out;
+  /* Disable window dragging so overlay can be clicked */
+  -webkit-app-region: no-drag;
 }
 
 @keyframes overlayFadeIn {

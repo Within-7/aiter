@@ -10,6 +10,8 @@
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(2px);
+  /* Disable window dragging so overlay can be clicked */
+  -webkit-app-region: no-drag;
 }
 
 .settings-panel {

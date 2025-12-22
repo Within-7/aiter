@@ -180,7 +180,10 @@ export class StoreManager {
 
   // Settings management
   getSettings(): AppSettings {
-    return this.store.get('settings', defaultSettings)
+    const stored = this.store.get('settings', defaultSettings)
+    // Merge with defaults to ensure new settings fields are included
+    // This handles the case where stored settings are missing new fields
+    return { ...defaultSettings, ...stored }
   }
 
   updateSettings(settings: Partial<AppSettings>): AppSettings {

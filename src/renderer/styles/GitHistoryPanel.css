@@ -620,6 +620,8 @@
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  /* Disable window dragging so overlay can be clicked */
+  -webkit-app-region: no-drag;
 }
 
 .diff-modal {

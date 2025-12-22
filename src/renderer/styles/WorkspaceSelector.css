@@ -194,6 +194,8 @@
   align-items: center;
   justify-content: center;
   z-index: 2000;
+  /* Disable window dragging so overlay can be clicked */
+  -webkit-app-region: no-drag;
 }
 
 .workspace-confirm-dialog {
