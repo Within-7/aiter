@@ -568,12 +568,16 @@ export class SecureFileSystemManager {
 
   /**
    * Copy files from external paths to a destination directory
+   * Note: Source paths are NOT validated against allowed roots because
+   * users can upload files from anywhere on their system.
+   * Only the destination directory must be within an allowed project root.
    */
   async copyFiles(sourcePaths: string[], destDir: string): Promise<{ success: boolean; copied: string[]; errors: string[] }> {
     const copied: string[] = []
     const errors: string[] = []
 
     try {
+      // Only validate destination directory (must be within an allowed project)
       const validDestDir = this.validatePath(destDir)
 
       // Ensure destination directory exists
@@ -581,18 +585,20 @@ export class SecureFileSystemManager {
 
       for (const sourcePath of sourcePaths) {
         try {
-          const validSourcePath = this.validatePath(sourcePath)
-          const fileName = path.basename(validSourcePath)
+          // Normalize source path but don't restrict to allowed roots
+          // (users can upload files from anywhere on their system)
+          const normalizedSourcePath = path.resolve(path.normalize(sourcePath))
+          const fileName = path.basename(normalizedSourcePath)
           const destPath = path.join(validDestDir, fileName)
 
-          const stats = await fs.promises.stat(validSourcePath)
+          const stats = await fs.promises.stat(normalizedSourcePath)
 
           if (stats.isDirectory()) {
             // Copy directory recursively
-            await this.copyDirectoryRecursive(validSourcePath, destPath)
+            await this.copyDirectoryRecursive(normalizedSourcePath, destPath)
           } else {
             // Copy file
-            await fs.promises.copyFile(validSourcePath, destPath)
+            await fs.promises.copyFile(normalizedSourcePath, destPath)
           }
 
           copied.push(fileName)
