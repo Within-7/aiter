@@ -161,9 +161,19 @@ export abstract class NpmPluginInstaller implements PluginInstaller {
     });
 
     try {
-      // Install globally with npm
+      // Install globally with npm using optimized flags
+      // --prefer-offline: Use cached packages when available
+      // --no-audit: Skip vulnerability audit (faster)
+      // --no-fund: Skip funding message
+      // --progress=false: Disable progress bar (faster in non-TTY)
       console.log(`[NpmPluginInstaller] Installing ${this.packageName} using npm: ${this.npmPath}`);
-      await execFileAsync(this.npmPath, ['install', '-g', this.packageName], {
+      await execFileAsync(this.npmPath, [
+        'install', '-g', this.packageName,
+        '--prefer-offline',
+        '--no-audit',
+        '--no-fund',
+        '--progress=false'
+      ], {
         maxBuffer: 10 * 1024 * 1024,
         env: this.env,
       });
@@ -237,9 +247,15 @@ export abstract class NpmPluginInstaller implements PluginInstaller {
     });
 
     try {
-      // Update globally with npm
+      // Update globally with npm using optimized flags
       console.log(`[NpmPluginInstaller] Updating ${this.packageName} using npm: ${this.npmPath}`);
-      await execFileAsync(this.npmPath, ['update', '-g', this.packageName], {
+      await execFileAsync(this.npmPath, [
+        'update', '-g', this.packageName,
+        '--prefer-offline',
+        '--no-audit',
+        '--no-fund',
+        '--progress=false'
+      ], {
         maxBuffer: 10 * 1024 * 1024,
         env: this.env,
       });
