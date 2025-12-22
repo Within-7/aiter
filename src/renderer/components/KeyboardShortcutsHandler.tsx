@@ -48,8 +48,8 @@ export const KeyboardShortcutsHandler: React.FC = () => {
       }
 
       case 'newWindow': {
-        // Open new window - handled by WorkspaceSelector
-        // This is already handled there with Cmd+Shift+N
+        // Open a new window
+        await window.api.window.create()
         break
       }
 

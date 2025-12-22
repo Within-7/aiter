@@ -1247,6 +1247,37 @@ export function setupIPC(
     }
   })
 
+  // Window management - create a new window
+  ipcMain.handle('window:create', async () => {
+    try {
+      // Launch new instance without a specific workspace (default workspace)
+      if (app.isPackaged) {
+        // Production mode: use the app executable
+        const appPath = app.getPath('exe')
+        spawn(appPath, [], {
+          detached: true,
+          stdio: 'ignore'
+        }).unref()
+      } else {
+        // Development mode: use electron with the app path
+        const isWindows = process.platform === 'win32'
+        const electronBin = isWindows ? 'electron.cmd' : 'electron'
+        const electronPath = path.join(app.getAppPath(), 'node_modules', '.bin', electronBin)
+        const appRoot = app.getAppPath()
+
+        spawn(electronPath, [appRoot], {
+          detached: true,
+          stdio: 'ignore',
+          shell: isWindows // Use shell on Windows to properly execute .cmd files
+        }).unref()
+      }
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
   // File watcher management
   ipcMain.handle('fileWatcher:watch', async (_, { projectPath }) => {
     try {

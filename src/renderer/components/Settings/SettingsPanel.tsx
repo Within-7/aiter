@@ -122,10 +122,18 @@ export const SettingsPanel: React.FC = () => {
   }, [handleSettingChange])
 
   // Format path for display (shorten home directory)
+  // Note: We can't access process.env in renderer, so we detect ~ prefix from the path patterns
   const formatPath = (path: string): string => {
-    const home = isWindows ? process.env.USERPROFILE : process.env.HOME
-    if (home && path.startsWith(home)) {
-      return '~' + path.slice(home.length)
+    // Common home directory patterns on different platforms
+    const homePatterns = isWindows
+      ? [/^C:\\Users\\[^\\]+/, /^\/c\/Users\/[^/]+/]
+      : [/^\/Users\/[^/]+/, /^\/home\/[^/]+/]
+
+    for (const pattern of homePatterns) {
+      const match = path.match(pattern)
+      if (match) {
+        return '~' + path.slice(match[0].length)
+      }
     }
     return path
   }

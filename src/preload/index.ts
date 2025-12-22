@@ -112,6 +112,11 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
 
+  // Window APIs
+  window: {
+    create: () => ipcRenderer.invoke('window:create')
+  },
+
   // Shell APIs
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', { url }),
@@ -484,6 +489,9 @@ export interface API {
   }
   app: {
     onError(callback: (error: { message: string; stack?: string }) => void): () => void
+  }
+  window: {
+    create(): Promise<{ success: boolean; error?: string }>
   }
   shell: {
     openExternal(url: string): Promise<{ success: boolean; error?: string }>
