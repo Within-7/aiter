@@ -273,6 +273,12 @@ contextBridge.exposeInMainWorld('api', {
     download: (version: string) => ipcRenderer.invoke('nodejs:download', { version }),
     getRecommendedVersion: () => ipcRenderer.invoke('nodejs:getRecommendedVersion'),
     uninstall: () => ipcRenderer.invoke('nodejs:uninstall'),
+    // Cache management for MCP compatibility
+    cleanNpxCache: () => ipcRenderer.invoke('nodejs:cleanNpxCache'),
+    cleanNpmCache: () => ipcRenderer.invoke('nodejs:cleanNpmCache'),
+    // Version upgrade management
+    checkUpgrade: () => ipcRenderer.invoke('nodejs:checkUpgrade'),
+    upgrade: () => ipcRenderer.invoke('nodejs:upgrade'),
     onDownloadProgress: (callback: (progress: {
       percent: number;
       downloaded: number;
@@ -573,6 +579,26 @@ export interface API {
     download(version: string): Promise<{ success: boolean; error?: string }>
     getRecommendedVersion(): Promise<{ success: boolean; version?: string | null; error?: string }>
     uninstall(): Promise<{ success: boolean; error?: string }>
+    // Cache management for MCP compatibility
+    cleanNpxCache(): Promise<{ success: boolean; error?: string }>
+    cleanNpmCache(): Promise<{ success: boolean; error?: string }>
+    // Version upgrade management
+    checkUpgrade(): Promise<{
+      success: boolean;
+      needed?: boolean;
+      reason?: string;
+      installedVersion?: string | null;
+      bundledVersion?: string | null;
+      error?: string;
+    }>
+    upgrade(): Promise<{
+      success: boolean;
+      upgraded?: boolean;
+      oldVersion?: string | null;
+      newVersion?: string | null;
+      reason?: string;
+      error?: string;
+    }>
     onDownloadProgress(callback: (progress: {
       percent: number;
       downloaded: number;

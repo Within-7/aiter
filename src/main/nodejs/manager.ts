@@ -10,6 +10,20 @@ export interface NodeInfo {
   npmPath: string;
 }
 
+export interface NodeUpgradeResult {
+  upgraded: boolean;
+  oldVersion: string | null;
+  newVersion: string | null;
+  reason: string;
+}
+
+/**
+ * Minimum required Node.js version for MCP compatibility
+ * MCP servers often depend on packages requiring Node.js 20.19.0+
+ * We use v22.x LTS as the bundled version for best compatibility
+ */
+const MINIMUM_NODE_VERSION = '22.0.0';
+
 export class NodeManager {
   private nodejsDir: string;
   private platform: string;
@@ -112,6 +126,223 @@ export class NodeManager {
       console.error('[NodeManager] Error getting node info:', error);
       return null;
     }
+  }
+
+  /**
+   * Get the bundled Node.js version from resources
+   */
+  async getBundledNodeVersion(): Promise<string | null> {
+    try {
+      const resourcesPath = this.getResourcesPath();
+      if (!resourcesPath || !(await fs.pathExists(resourcesPath))) {
+        return null;
+      }
+
+      const nodePath = this.platform === 'win32'
+        ? path.join(resourcesPath, 'node.exe')
+        : path.join(resourcesPath, 'bin', 'node');
+
+      if (!(await fs.pathExists(nodePath))) {
+        return null;
+      }
+
+      const { execFile } = await import('child_process');
+      const { promisify } = await import('util');
+      const execFileAsync = promisify(execFile);
+
+      const { stdout } = await execFileAsync(nodePath, ['--version']);
+      return stdout.trim();
+    } catch (error) {
+      console.error('[NodeManager] Error getting bundled node version:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse version string to comparable numbers
+   * e.g., "v22.21.1" -> [22, 21, 1]
+   */
+  private parseVersion(versionStr: string): number[] {
+    const cleaned = versionStr.replace(/^v/, '');
+    return cleaned.split('.').map(n => parseInt(n, 10) || 0);
+  }
+
+  /**
+   * Compare two version arrays
+   * @returns positive if v1 > v2, negative if v1 < v2, 0 if equal
+   */
+  private compareVersions(v1: number[], v2: number[]): number {
+    for (let i = 0; i < Math.max(v1.length, v2.length); i++) {
+      const num1 = v1[i] || 0;
+      const num2 = v2[i] || 0;
+      if (num1 !== num2) return num1 - num2;
+    }
+    return 0;
+  }
+
+  /**
+   * Check if upgrade is needed based on version comparison
+   */
+  async needsUpgrade(): Promise<{ needed: boolean; reason: string; installedVersion: string | null; bundledVersion: string | null }> {
+    const nodeInfo = await this.getNodeInfo();
+    const bundledVersion = await this.getBundledNodeVersion();
+
+    if (!nodeInfo) {
+      return {
+        needed: true,
+        reason: 'Node.js not installed',
+        installedVersion: null,
+        bundledVersion,
+      };
+    }
+
+    if (!bundledVersion) {
+      return {
+        needed: false,
+        reason: 'Cannot determine bundled version',
+        installedVersion: nodeInfo.version,
+        bundledVersion: null,
+      };
+    }
+
+    const installed = this.parseVersion(nodeInfo.version);
+    const bundled = this.parseVersion(bundledVersion);
+    const minimum = this.parseVersion(MINIMUM_NODE_VERSION);
+
+    // Check if installed version is below minimum required
+    if (this.compareVersions(installed, minimum) < 0) {
+      return {
+        needed: true,
+        reason: `Installed version ${nodeInfo.version} is below minimum required ${MINIMUM_NODE_VERSION} for MCP compatibility`,
+        installedVersion: nodeInfo.version,
+        bundledVersion,
+      };
+    }
+
+    // Check if bundled version is newer
+    if (this.compareVersions(bundled, installed) > 0) {
+      return {
+        needed: true,
+        reason: `Bundled version ${bundledVersion} is newer than installed ${nodeInfo.version}`,
+        installedVersion: nodeInfo.version,
+        bundledVersion,
+      };
+    }
+
+    return {
+      needed: false,
+      reason: 'Node.js is up to date',
+      installedVersion: nodeInfo.version,
+      bundledVersion,
+    };
+  }
+
+  /**
+   * Upgrade Node.js to the bundled version if needed
+   */
+  async upgradeIfNeeded(): Promise<NodeUpgradeResult> {
+    const checkResult = await this.needsUpgrade();
+
+    if (!checkResult.needed) {
+      return {
+        upgraded: false,
+        oldVersion: checkResult.installedVersion,
+        newVersion: checkResult.installedVersion,
+        reason: checkResult.reason,
+      };
+    }
+
+    console.log(`[NodeManager] Upgrading: ${checkResult.reason}`);
+
+    // Clean npx cache before upgrade to avoid stale package issues
+    await this.cleanNpxCache();
+
+    // Perform the upgrade
+    const success = await this.installFromResources();
+
+    if (success) {
+      const newInfo = await this.getNodeInfo();
+      return {
+        upgraded: true,
+        oldVersion: checkResult.installedVersion,
+        newVersion: newInfo?.version || null,
+        reason: checkResult.reason,
+      };
+    }
+
+    return {
+      upgraded: false,
+      oldVersion: checkResult.installedVersion,
+      newVersion: null,
+      reason: 'Upgrade failed',
+    };
+  }
+
+  /**
+   * Clean npx cache to fix corrupted packages
+   * This is especially important after Node.js version upgrades
+   */
+  async cleanNpxCache(): Promise<boolean> {
+    try {
+      const npxCachePath = path.join(this.nodejsDir, '.npm-cache', '_npx');
+
+      if (await fs.pathExists(npxCachePath)) {
+        console.log(`[NodeManager] Cleaning npx cache at: ${npxCachePath}`);
+        await fs.remove(npxCachePath);
+        console.log('[NodeManager] npx cache cleaned successfully');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[NodeManager] Error cleaning npx cache:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Clean entire npm cache
+   */
+  async cleanNpmCache(): Promise<boolean> {
+    try {
+      const npmCachePath = path.join(this.nodejsDir, '.npm-cache');
+
+      if (await fs.pathExists(npmCachePath)) {
+        console.log(`[NodeManager] Cleaning npm cache at: ${npmCachePath}`);
+        await fs.remove(npmCachePath);
+        await fs.ensureDir(npmCachePath);
+        console.log('[NodeManager] npm cache cleaned successfully');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[NodeManager] Error cleaning npm cache:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get the resources path for bundled Node.js
+   */
+  private getResourcesPath(): string | null {
+    const isDev = !app.isPackaged;
+
+    if (isDev) {
+      return path.join(app.getAppPath(), 'resources', 'nodejs', this.getPlatformId());
+    }
+
+    const possiblePaths = [
+      path.join(process.resourcesPath, 'nodejs', this.getPlatformId()),
+      path.join(app.getAppPath(), '..', 'Resources', 'nodejs', this.getPlatformId()),
+      path.join(app.getAppPath(), 'resources', 'nodejs', this.getPlatformId()),
+    ];
+
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        return p;
+      }
+    }
+
+    return possiblePaths[0];
   }
 
   /**

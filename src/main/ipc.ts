@@ -848,6 +848,50 @@ export function setupIPC(
     }
   })
 
+  // Clean npx cache (fixes MCP and other npx-based tool issues)
+  ipcMain.handle('nodejs:cleanNpxCache', async () => {
+    try {
+      const success = await nodeManager.cleanNpxCache()
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  // Clean entire npm cache
+  ipcMain.handle('nodejs:cleanNpmCache', async () => {
+    try {
+      const success = await nodeManager.cleanNpmCache()
+      return { success }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  // Check if Node.js upgrade is available
+  ipcMain.handle('nodejs:checkUpgrade', async () => {
+    try {
+      const result = await nodeManager.needsUpgrade()
+      return { success: true, ...result }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  // Upgrade Node.js if needed
+  ipcMain.handle('nodejs:upgrade', async () => {
+    try {
+      const result = await nodeManager.upgradeIfNeeded()
+      return { success: true, ...result }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
   // Git management
   ipcMain.handle('git:getStatus', async (_, { projectPath }) => {
     try {

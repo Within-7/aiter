@@ -118,20 +118,21 @@ async function initialize() {
     workspaceManager = new WorkspaceManager(workspaceId)
     console.log(`[WorkspaceManager] Using workspace: ${workspaceId}`)
 
-    // Initialize Node.js manager and install if needed
+    // Initialize Node.js manager with automatic version management
     nodeManager = new NodeManager()
-    const installed = await nodeManager.isInstalled()
-    if (!installed) {
-      console.log('[NodeManager] Built-in Node.js not found, installing...')
-      const success = await nodeManager.installFromResources()
-      if (success) {
-        console.log('[NodeManager] Built-in Node.js installed successfully')
+
+    // Check if upgrade is needed (handles both fresh install and version upgrades)
+    const upgradeResult = await nodeManager.upgradeIfNeeded()
+
+    if (upgradeResult.upgraded) {
+      if (upgradeResult.oldVersion) {
+        console.log(`[NodeManager] Upgraded Node.js from ${upgradeResult.oldVersion} to ${upgradeResult.newVersion}`)
+        console.log(`[NodeManager] Reason: ${upgradeResult.reason}`)
       } else {
-        console.warn('[NodeManager] Failed to install built-in Node.js, terminals will use system Node.js')
+        console.log(`[NodeManager] Installed Node.js ${upgradeResult.newVersion}`)
       }
     } else {
-      const nodeInfo = await nodeManager.getNodeInfo()
-      console.log(`[NodeManager] Built-in Node.js already installed: ${nodeInfo?.version}`)
+      console.log(`[NodeManager] Node.js ${upgradeResult.oldVersion} is up to date`)
     }
 
     // Auto-configure shell for seamless Node.js integration
