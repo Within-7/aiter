@@ -74,6 +74,36 @@
   padding-left: 10px;
 }
 
+/* Multi-select styling */
+.work-area-tab.selected {
+  background: rgba(0, 122, 204, 0.15);
+  opacity: 0.9;
+}
+
+.work-area-tab.selected:not(.active) {
+  /* Subtle highlight border for selected non-active tabs */
+  box-shadow: inset 0 0 0 1px rgba(0, 122, 204, 0.4);
+}
+
+.work-area-tab.selected:hover {
+  background: rgba(0, 122, 204, 0.25);
+}
+
+.work-area-tab.multi-selected {
+  /* Additional styling when multiple tabs are selected */
+  background: rgba(0, 122, 204, 0.2);
+}
+
+.work-area-tab.multi-selected:not(.active) {
+  box-shadow: inset 0 0 0 1px rgba(0, 122, 204, 0.5);
+}
+
+.work-area-tab.multi-selected.dragging {
+  /* When dragging multiple tabs, show a more prominent effect */
+  opacity: 0.6;
+  background: rgba(0, 122, 204, 0.3);
+}
+
 .tab-icon {
   font-size: 13px;
   flex-shrink: 0;
