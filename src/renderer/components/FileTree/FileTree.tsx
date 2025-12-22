@@ -6,6 +6,53 @@ import { InputDialog } from './InputDialog'
 import { ConfirmDialog } from './ConfirmDialog'
 import './FileTree.css'
 
+// 收集所有展开的文件夹路径
+const collectExpandedPaths = (nodes: FileNode[]): Set<string> => {
+  const expanded = new Set<string>()
+
+  const traverse = (nodeList: FileNode[]) => {
+    for (const node of nodeList) {
+      if (node.type === 'directory' && node.isExpanded) {
+        expanded.add(node.path)
+        if (node.children) {
+          traverse(node.children)
+        }
+      }
+    }
+  }
+
+  traverse(nodes)
+  return expanded
+}
+
+// 恢复展开状态到新节点树（异步加载子目录内容）
+const restoreExpandedState = async (
+  newNodes: FileNode[],
+  expandedPaths: Set<string>
+): Promise<FileNode[]> => {
+  const restoreNode = async (node: FileNode): Promise<FileNode> => {
+    if (node.type === 'directory' && expandedPaths.has(node.path)) {
+      try {
+        // 重新加载子目录内容
+        const result = await window.api.fs.readDir(node.path, 1)
+        if (result.success && result.nodes) {
+          // 递归恢复子节点的展开状态
+          const restoredChildren = await Promise.all(
+            result.nodes.map(child => restoreNode(child))
+          )
+          return { ...node, isExpanded: true, children: restoredChildren }
+        }
+      } catch {
+        // 如果加载失败，保持节点但不展开
+        return node
+      }
+    }
+    return node
+  }
+
+  return Promise.all(newNodes.map(node => restoreNode(node)))
+}
+
 interface FileTreeProps {
   projectId: string
   projectPath: string
@@ -45,9 +92,15 @@ export const FileTree: React.FC<FileTreeProps> = ({
   const [error, setError] = useState<string | null>(null)
   const [gitChanges, setGitChanges] = useState<Map<string, ExtendedGitStatus>>(new Map())
   const gitPollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const nodesRef = useRef<FileNode[]>([]) // 用于在刷新时访问当前节点状态
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [dialog, setDialog] = useState<DialogState>({ type: null, targetPath: '' })
   const [fileDragState, setFileDragState] = useState<FileDragState>({ draggedPath: null, dropTargetPath: null })
+
+  // 保持 nodesRef 与 nodes 同步
+  useEffect(() => {
+    nodesRef.current = nodes
+  }, [nodes])
 
   // Load git file changes (uncommitted) and last commit files
   const loadGitChanges = useCallback(async () => {
@@ -116,9 +169,18 @@ export const FileTree: React.FC<FileTreeProps> = ({
     setError(null)
 
     try {
+      // 先收集当前展开的路径
+      const expandedPaths = collectExpandedPaths(nodesRef.current)
+
       const result = await window.api.fs.readDir(path, 1)
       if (result.success && result.nodes) {
-        setNodes(result.nodes)
+        // 如果有展开的文件夹，恢复展开状态
+        if (expandedPaths.size > 0) {
+          const restoredNodes = await restoreExpandedState(result.nodes, expandedPaths)
+          setNodes(restoredNodes)
+        } else {
+          setNodes(result.nodes)
+        }
       } else {
         setError(result.error || 'Failed to load directory')
       }
