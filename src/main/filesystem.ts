@@ -3,6 +3,7 @@ import * as path from 'path'
 import { FileNode } from '../types'
 import { v4 as uuidv4 } from 'uuid'
 import ignore, { Ignore } from 'ignore'
+import { getFileType as getFileTypeFromConfig } from '../shared/fileTypeConfig'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB for reading
 const MAX_WRITE_SIZE = 50 * 1024 * 1024 // 50MB for writing (DoS protection)
@@ -141,143 +142,10 @@ export class SecureFileSystemManager {
 
   /**
    * Detect file type based on extension
+   * Uses the centralized file type configuration from shared/fileTypeConfig.ts
    */
   private getFileType(filePath: string): string {
-    const ext = path.extname(filePath).toLowerCase()
-
-    const typeMap: Record<string, string> = {
-      // JavaScript/TypeScript
-      '.js': 'javascript',
-      '.jsx': 'javascript',
-      '.mjs': 'javascript',
-      '.cjs': 'javascript',
-      '.ts': 'typescript',
-      '.tsx': 'typescript',
-      '.mts': 'typescript',
-      '.cts': 'typescript',
-      // Web
-      '.html': 'html',
-      '.htm': 'html',
-      '.css': 'css',
-      '.scss': 'css',
-      '.sass': 'css',
-      '.less': 'css',
-      // Data formats
-      '.json': 'json',
-      '.jsonc': 'json',
-      '.json5': 'json',
-      // Markdown
-      '.md': 'markdown',
-      '.markdown': 'markdown',
-      '.mdx': 'markdown',
-      // Python
-      '.py': 'python',
-      '.pyw': 'python',
-      '.pyi': 'python',
-      '.pyx': 'python',
-      // Java
-      '.java': 'java',
-      '.jar': 'java',
-      '.class': 'java',
-      // C/C++
-      '.c': 'c',
-      '.h': 'c',
-      '.cpp': 'cpp',
-      '.cxx': 'cpp',
-      '.cc': 'cpp',
-      '.hpp': 'cpp',
-      '.hxx': 'cpp',
-      '.hh': 'cpp',
-      // Go
-      '.go': 'go',
-      // Rust
-      '.rs': 'rust',
-      // Ruby
-      '.rb': 'ruby',
-      '.erb': 'ruby',
-      '.rake': 'ruby',
-      '.gemspec': 'ruby',
-      // PHP
-      '.php': 'php',
-      '.phtml': 'php',
-      '.php3': 'php',
-      '.php4': 'php',
-      '.php5': 'php',
-      '.php7': 'php',
-      '.phps': 'php',
-      // Shell
-      '.sh': 'shell',
-      '.bash': 'shell',
-      '.zsh': 'shell',
-      '.fish': 'shell',
-      '.ksh': 'shell',
-      '.csh': 'shell',
-      '.tcsh': 'shell',
-      '.ps1': 'shell',
-      '.psm1': 'shell',
-      '.bat': 'shell',
-      '.cmd': 'shell',
-      // SQL
-      '.sql': 'sql',
-      '.mysql': 'sql',
-      '.pgsql': 'sql',
-      '.plsql': 'sql',
-      // YAML
-      '.yaml': 'yaml',
-      '.yml': 'yaml',
-      // XML
-      '.xml': 'xml',
-      '.xsd': 'xml',
-      '.xsl': 'xml',
-      '.xslt': 'xml',
-      '.plist': 'xml',
-      // Docker
-      '.dockerfile': 'dockerfile',
-      // Config files (treat as their format)
-      '.env': 'shell',
-      '.gitignore': 'text',
-      '.gitattributes': 'text',
-      '.editorconfig': 'text',
-      '.prettierrc': 'json',
-      '.eslintrc': 'json',
-      '.babelrc': 'json',
-      // Text
-      '.txt': 'text',
-      '.log': 'text',
-      '.ini': 'text',
-      '.cfg': 'text',
-      '.conf': 'text',
-      '.properties': 'text',
-      '.toml': 'text',
-      // Images
-      '.png': 'image',
-      '.jpg': 'image',
-      '.jpeg': 'image',
-      '.gif': 'image',
-      '.webp': 'image',
-      '.bmp': 'image',
-      '.ico': 'image',
-      '.tiff': 'image',
-      '.tif': 'image',
-      '.svg': 'image',
-      // PDF
-      '.pdf': 'pdf',
-      // Office documents
-      '.doc': 'word',
-      '.docx': 'word',
-      '.rtf': 'word',
-      '.odt': 'word',
-      '.xls': 'excel',
-      '.xlsx': 'excel',
-      '.xlsm': 'excel',
-      '.ods': 'excel',
-      '.csv': 'excel',
-      '.ppt': 'powerpoint',
-      '.pptx': 'powerpoint',
-      '.odp': 'powerpoint',
-    }
-
-    return typeMap[ext] || 'other'
+    return getFileTypeFromConfig(filePath)
   }
 
   /**

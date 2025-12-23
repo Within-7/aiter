@@ -6,6 +6,7 @@ import { InputDialog } from './FileTree/InputDialog'
 import { ConfirmDialog } from './FileTree/ConfirmDialog'
 import { FileNode, EditorTab } from '../../types'
 import { getProjectColor } from '../utils/projectColors'
+import { getFileType, isExternalOpenCandidate, FileType } from '../../shared/fileTypeConfig'
 import '../styles/ExplorerView.css'
 
 interface DialogState {
@@ -227,6 +228,24 @@ export function ExplorerView() {
   const handleFileClick = async (file: FileNode) => {
     if (file.type === 'file') {
       try {
+        // Check if this file type should be opened externally
+        const fileType = getFileType(file.path) as FileType
+        const openExternallyConfig = state.settings.openExternally?.find(
+          config => config.fileType === fileType && config.enabled
+        )
+
+        if (openExternallyConfig || (isExternalOpenCandidate(fileType) && state.settings.openExternally === undefined)) {
+          // For binary files that are external candidates with no explicit config,
+          // check if user prefers external opening (default behavior for Office files)
+          const shouldOpenExternally = openExternallyConfig?.enabled ||
+            (fileType === 'word' || fileType === 'excel' || fileType === 'powerpoint')
+
+          if (shouldOpenExternally) {
+            await window.api.shell.openPath(file.path)
+            return
+          }
+        }
+
         const result = await window.api.fs.readFile(file.path)
         if (result.success && result.content !== undefined && result.fileType) {
           const tab: EditorTab = {

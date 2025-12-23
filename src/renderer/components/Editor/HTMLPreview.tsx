@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useContext } from 'react'
+import Editor, { OnMount } from '@monaco-editor/react'
+import * as monaco from 'monaco-editor'
 import { AppContext } from '../../context/AppContext'
 import './HTMLPreview.css'
 
@@ -21,6 +23,7 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
 }) => {
   const { state, dispatch } = useContext(AppContext)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string>('')
   const [isLoadingUrl, setIsLoadingUrl] = useState(false)
 
@@ -79,7 +82,7 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
       // Only accept messages from our local file server
       if (!event.origin.startsWith('http://localhost:')) return
 
-      const { type, href, baseUrl } = event.data
+      const { type, href } = event.data
 
       if (type !== 'OPEN_IN_TAB' || !href) return
 
@@ -179,10 +182,21 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, currentFilePath, dispatch])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-      e.preventDefault()
+  const handleEditorDidMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor
+
+    // Add save keyboard shortcut
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       onSave()
+    })
+
+    // Focus the editor
+    editor.focus()
+  }
+
+  const handleEditorChange = (value: string | undefined) => {
+    if (value !== undefined) {
+      onChange(value)
     }
   }
 
@@ -190,13 +204,23 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
     <div className="html-preview">
       {mode === 'edit' ? (
         <div className="html-editor-pane-full">
-          <textarea
-            className="html-textarea"
+          <Editor
+            height="100%"
+            language="html"
             value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Write your HTML here..."
-            spellCheck={false}
+            theme="vs-dark"
+            onChange={handleEditorChange}
+            onMount={handleEditorDidMount}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              lineNumbers: 'on',
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              tabSize: 2,
+              wordWrap: 'on',
+              renderWhitespace: 'selection'
+            }}
           />
         </div>
       ) : (

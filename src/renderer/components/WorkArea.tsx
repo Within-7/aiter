@@ -351,6 +351,7 @@ export const WorkArea: React.FC = () => {
                 onChange={handleContentChange}
                 onSave={handleSave}
                 mode={currentMode}
+                currentFilePath={activeEditorTab.filePath}
               />
             ) : activeEditorTab.fileType === 'html' ? (
               <HTMLPreview

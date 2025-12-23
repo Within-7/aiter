@@ -118,6 +118,16 @@ export interface AppSettings {
   // AI CLI integration
   autoStartMinto: boolean           // Auto-start Minto when opening a new terminal
   mintoInstalled?: boolean          // Track if Minto CLI has been installed
+
+  // File handling preferences
+  openExternally?: ExternalOpenConfig[]  // File types to open with external apps
+}
+
+// Configuration for opening files with external applications
+export interface ExternalOpenConfig {
+  fileType: string              // File type (e.g., 'pdf', 'word', 'image')
+  enabled: boolean              // Whether to open externally
+  application?: string          // Optional: specific application path
 }
 
 // Shell type identifier
