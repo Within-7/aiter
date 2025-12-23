@@ -19,6 +19,11 @@ extraResources:
     to: nodejs
     filter:
       - '**/*'
+  # 更新脚本
+  - from: scripts/update.sh
+    to: scripts/update.sh
+  - from: scripts/update.ps1
+    to: scripts/update.ps1
 
 # ==========================================
 # GitHub Releases 发布配置

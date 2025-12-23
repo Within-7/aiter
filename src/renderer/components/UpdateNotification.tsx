@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import './UpdateNotification.css'
 
-type UpdateStatus = 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+type UpdateStatus = 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'installing' | 'error'
 
 interface UpdateInfo {
   version?: string
@@ -63,7 +63,7 @@ export const UpdateNotification: React.FC = () => {
       }
 
       // Show notification for these statuses (except when background downloading)
-      if (data.status === 'available' || data.status === 'downloaded' || data.status === 'error') {
+      if (data.status === 'available' || data.status === 'downloaded' || data.status === 'error' || data.status === 'installing') {
         setIsVisible(true)
       } else if (data.status === 'downloading' && !isBackgroundDownload) {
         setIsVisible(true)
@@ -138,12 +138,13 @@ export const UpdateNotification: React.FC = () => {
 
         <div className="update-header">
           <div className="update-icon">
-            {status === 'error' ? '❌' : status === 'downloaded' ? '✅' : '🎉'}
+            {status === 'error' ? '❌' : status === 'downloaded' ? '✅' : status === 'installing' ? '⏳' : '🎉'}
           </div>
           <h2>
             {status === 'available' && t('status.available')}
             {status === 'downloading' && t('status.downloading')}
             {status === 'downloaded' && t('status.ready')}
+            {status === 'installing' && t('status.installing')}
             {status === 'error' && t('status.failed')}
           </h2>
         </div>
@@ -218,6 +219,13 @@ export const UpdateNotification: React.FC = () => {
                     {t('actions.installLater')}
                   </button>
                 </>
+              )}
+
+              {status === 'installing' && (
+                <div className="update-installing">
+                  <div className="installing-spinner"></div>
+                  <p>{t('messages.installing')}</p>
+                </div>
               )}
             </div>
           </>

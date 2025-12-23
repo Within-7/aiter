@@ -681,6 +681,10 @@ export function setupIPC(
   })
 
   // Auto-update management
+  // macOS 使用脚本更新模式绕过 Squirrel.Mac 的签名验证
+  // Windows 可以使用标准 electron-updater 或脚本模式
+  const useScriptUpdate = process.platform === 'darwin'
+
   ipcMain.handle('autoUpdate:check', async () => {
     try {
       const autoUpdateManager = getAutoUpdateManager()
@@ -688,7 +692,11 @@ export function setupIPC(
         return { success: false, error: 'Auto-update manager not initialized' }
       }
 
-      await autoUpdateManager.checkForUpdates()
+      if (useScriptUpdate) {
+        await autoUpdateManager.checkForUpdatesScript()
+      } else {
+        await autoUpdateManager.checkForUpdates()
+      }
       return { success: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
@@ -703,7 +711,11 @@ export function setupIPC(
         return { success: false, error: 'Auto-update manager not initialized' }
       }
 
-      await autoUpdateManager.downloadUpdate()
+      if (useScriptUpdate) {
+        await autoUpdateManager.downloadUpdateScript()
+      } else {
+        await autoUpdateManager.downloadUpdate()
+      }
       return { success: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
@@ -718,7 +730,11 @@ export function setupIPC(
         return { success: false, error: 'Auto-update manager not initialized' }
       }
 
-      autoUpdateManager.quitAndInstall()
+      if (useScriptUpdate) {
+        await autoUpdateManager.installUpdateScript()
+      } else {
+        autoUpdateManager.quitAndInstall()
+      }
       return { success: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'

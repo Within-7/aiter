@@ -3,6 +3,7 @@
     "available": "New Version Available",
     "downloading": "Downloading Update",
     "ready": "Update Ready",
+    "installing": "Installing Update",
     "failed": "Update Failed",
     "checking": "Checking for Updates",
     "upToDate": "Up to Date",
@@ -33,6 +34,7 @@
     "downloadComplete": "Download complete. Ready to install.",
     "downloadFailed": "Download failed. Please try again.",
     "installPrompt": "The update has been downloaded. Restart to apply the update?",
+    "installing": "Installing update, the app will restart shortly...",
     "unknownError": "Unknown error occurred"
   },
   "releaseNotes": {
