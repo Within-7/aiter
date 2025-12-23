@@ -46,7 +46,10 @@ export const WorkArea: React.FC = () => {
     const tabsById = new Map<string, Tab>()
 
     state.editorTabs.forEach(t => {
-      const project = state.projects.find(p => t.filePath.startsWith(p.path))
+      // For diff tabs, use projectPath; for regular tabs, match by filePath
+      const project = t.projectPath
+        ? state.projects.find(p => p.path === t.projectPath)
+        : state.projects.find(p => t.filePath.startsWith(p.path))
       tabsById.set(`editor-${t.id}`, {
         id: `editor-${t.id}`,
         type: 'editor' as TabType,

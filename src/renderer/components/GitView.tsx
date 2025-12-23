@@ -3,6 +3,7 @@ import { VscSourceControl } from 'react-icons/vsc'
 import { AppContext } from '../context/AppContext'
 import { GitHistoryPanel } from './GitHistoryPanel'
 import { GitStatus } from '../../types'
+import { getProjectColor } from '../utils/projectColors'
 import '../styles/GitView.css'
 
 // Helper to compare git statuses for equality
@@ -132,6 +133,7 @@ export function GitView() {
             {gitProjects.map(project => {
               const gitStatus = gitStatuses.get(project.id)
               const isSelected = selectedProjectId === project.id
+              const projectColor = getProjectColor(project.id, project.color)
 
               return (
                 <div key={project.id} className="git-project-item">
@@ -139,6 +141,14 @@ export function GitView() {
                     className={`git-project-header ${isSelected ? 'selected' : ''}`}
                     onClick={() => setSelectedProjectId(isSelected ? null : project.id)}
                   >
+                    <span className="expand-icon">
+                      {isSelected ? '▼' : '▶'}
+                    </span>
+                    <span
+                      className="project-color-indicator"
+                      style={{ backgroundColor: projectColor }}
+                      title={`Project color: ${projectColor}`}
+                    />
                     <div className="project-info">
                       <span className="project-name">{project.name}</span>
                       {gitStatus && (
@@ -166,9 +176,6 @@ export function GitView() {
                         </div>
                       )}
                     </div>
-                    <span className="expand-icon">
-                      {isSelected ? '▼' : '▶'}
-                    </span>
                   </div>
 
                   {isSelected && gitStatus && (
