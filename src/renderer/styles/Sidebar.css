@@ -115,7 +115,6 @@
 
 .project-header .project-name {
   flex: 1;
-  min-width: 60px;
   font-size: 13px;
   font-weight: 600;
   color: #cccccc;
@@ -199,7 +198,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
 .project-header:hover .btn-file-op {
@@ -217,7 +215,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
 .btn-terminal:hover {
@@ -229,7 +226,6 @@
   font-weight: normal;
   opacity: 0.6;
   transition: opacity 0.1s;
-  flex-shrink: 0;
 }
 
 .btn-remove:hover {
