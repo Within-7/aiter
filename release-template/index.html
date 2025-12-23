@@ -488,7 +488,7 @@
 
       <!-- CLI Installation -->
       <section class="section">
-        <h2 class="section-title">💻 命令行安装</h2>
+        <h2 class="section-title">💻 命令行安装（推荐 / Recommended）</h2>
 
         <!-- One-Click Install (Recommended) -->
         <div class="cli-section">
@@ -685,28 +685,15 @@ Write-Host "AiTer 静默安装完成"</pre>
     async function fetchLatestRelease() {
       // 如果是 file:// 协议，直接使用 fallback（无法发起 CORS 请求）
       if (window.location.protocol === 'file:') {
-        console.log('Using fallback release data (file:// protocol detected)');
         return { ...FALLBACK_RELEASE, isFallback: true };
       }
 
       try {
-        console.log('Fetching from:', GITHUB_API);
-
         const res = await fetch(GITHUB_API);
-        console.log('Response status:', res.status);
-
-        if (!res.ok) {
-          console.error('Response not OK:', res.status, res.statusText);
-          throw new Error('Failed to fetch release: ' + res.status);
-        }
-
-        const data = await res.json();
-        console.log('Release data:', data.tag_name, 'Assets count:', data.assets?.length);
-        return data;
+        if (!res.ok) throw new Error('Failed to fetch release');
+        return await res.json();
       } catch (err) {
-        console.error('Error fetching release:', err.name, err.message);
-        // 网络错误时使用 fallback
-        console.log('Using fallback release data due to network error');
+        console.error('Error fetching release:', err);
         return { ...FALLBACK_RELEASE, isFallback: true };
       }
     }
