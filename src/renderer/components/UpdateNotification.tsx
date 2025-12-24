@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useContext } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AppContext } from '../context/AppContext'
 import './UpdateNotification.css'
 
 type UpdateStatus = 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'installing' | 'error'
+
+type UpdateMode = 'electron-updater' | 'install-script'
 
 interface UpdateInfo {
   version?: string
@@ -26,6 +29,7 @@ interface UpdateEventData {
 
 export const UpdateNotification: React.FC = () => {
   const { t } = useTranslation('update')
+  const { state, dispatch } = useContext(AppContext)
   const [status, setStatus] = useState<UpdateStatus | null>(null)
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [progress, setProgress] = useState<DownloadProgress | null>(null)
@@ -33,6 +37,7 @@ export const UpdateNotification: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false)
   const [currentVersion, setCurrentVersion] = useState<string>('')
   const [isBackgroundDownload, setIsBackgroundDownload] = useState(false)
+  const [updateMode, setUpdateMode] = useState<UpdateMode>('electron-updater')
 
   // Get current version on mount
   useEffect(() => {
@@ -81,8 +86,9 @@ export const UpdateNotification: React.FC = () => {
       if (!result.success) {
         setError(result.error || 'Download failed')
       } else if (result.skipDownload) {
-        // install-script 模式: 跳过下载，直接显示安装按钮
+        // install-script 模式: 跳过下载，直接显示更新按钮
         // 因为 install.sh 脚本会自己下载
+        setUpdateMode('install-script')
         setStatus('downloaded')
       }
     } catch (err) {
@@ -93,12 +99,44 @@ export const UpdateNotification: React.FC = () => {
 
   const handleInstall = useCallback(async () => {
     try {
-      await window.api.autoUpdate.install()
+      const result = await window.api.autoUpdate.install()
+
+      if (!result.success) {
+        setError(result.error || 'Installation failed')
+        return
+      }
+
+      if (result.mode === 'install-script' && result.command) {
+        // install-script 模式：在终端中运行更新命令
+        // 关闭更新通知
+        setIsVisible(false)
+
+        // 获取第一个项目（如果有的话）用于创建终端
+        const firstProject = state.projects[0]
+
+        // 创建新终端来执行更新命令
+        const terminalResult = await window.api.terminal.create(
+          firstProject?.id || 'update',
+          firstProject?.path || process.env.HOME || '~',
+          state.settings?.shell
+        )
+
+        if (terminalResult.success && terminalResult.terminal) {
+          // 添加终端到状态
+          dispatch({ type: 'ADD_TERMINAL', payload: terminalResult.terminal })
+
+          // 等待终端初始化后发送命令
+          setTimeout(() => {
+            window.api.terminal.write(terminalResult.terminal!.id, result.command + '\r')
+          }, 500)
+        }
+      }
+      // electron-updater 模式会自动退出并安装，不需要额外处理
     } catch (err) {
       console.error('[UpdateNotification] Install error:', err)
       setError('Installation failed')
     }
-  }, [])
+  }, [state.projects, state.settings?.shell, dispatch])
 
   const handleDismiss = () => {
     setIsVisible(false)
@@ -217,7 +255,9 @@ export const UpdateNotification: React.FC = () => {
                     className="update-button install"
                     onClick={handleInstall}
                   >
-                    {t('actions.installRestart')}
+                    {updateMode === 'install-script'
+                      ? t('actions.updateNow')
+                      : t('actions.installRestart')}
                   </button>
                   <button className="update-button dismiss" onClick={handleDismiss}>
                     {t('actions.installLater')}
