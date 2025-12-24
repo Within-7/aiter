@@ -296,11 +296,13 @@ export class AutoUpdateManager {
 
   /**
    * 检查更新
+   * 开发模式下使用 GitHub API 检查，生产模式下使用 electron-updater
    */
   async checkForUpdates(): Promise<void> {
-    // 开发环境下跳过更新检查
+    // 开发环境下使用脚本模式检查（通过 GitHub API）
     if (!app.isPackaged) {
-      log.info('[AutoUpdater] Skipping update check in development mode')
+      log.info('[AutoUpdater] Development mode: using GitHub API to check updates')
+      await this.checkForUpdatesScript()
       return
     }
 
@@ -526,14 +528,10 @@ export class AutoUpdateManager {
   }
 
   /**
-   * 使用脚本模式检查更新（用于未签名的 macOS 应用）
+   * 使用脚本模式检查更新（用于未签名的 macOS 应用和开发环境）
+   * 通过 GitHub API 获取最新版本信息
    */
   async checkForUpdatesScript(): Promise<void> {
-    if (!app.isPackaged) {
-      log.info('[AutoUpdater] Skipping script update check in development mode')
-      return
-    }
-
     if (this.isCheckingForUpdate) {
       log.info('[AutoUpdater] Already checking for updates')
       return
