@@ -1,7 +1,7 @@
 {
   "name": "airter",
   "productName": "AiTer",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "description": "AiTer - A terminal client optimized for AI CLI collaboration",
   "main": "dist-electron/main/index.js",
   "author": {
