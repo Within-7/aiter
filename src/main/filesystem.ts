@@ -4,6 +4,7 @@ import { FileNode } from '../types'
 import { v4 as uuidv4 } from 'uuid'
 import ignore, { Ignore } from 'ignore'
 import { getFileType as getFileTypeFromConfig } from '../shared/fileTypeConfig'
+import { extractLargestPNG, isValidICNS } from './utils/icnsParser'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB for reading
 const MAX_WRITE_SIZE = 50 * 1024 * 1024 // 50MB for writing (DoS protection)
@@ -257,7 +258,20 @@ export class SecureFileSystemManager {
       if (fileType === 'image') {
         // For images, return base64 encoded data
         const buffer = await fs.promises.readFile(validPath)
-        content = `data:image/${path.extname(validPath).slice(1)};base64,${buffer.toString('base64')}`
+        const ext = path.extname(validPath).toLowerCase()
+
+        // Special handling for .icns files (macOS icon format)
+        if (ext === '.icns' && isValidICNS(buffer)) {
+          const pngDataUri = extractLargestPNG(buffer)
+          if (pngDataUri) {
+            content = pngDataUri
+          } else {
+            // Fallback: return raw icns data (browser won't display it)
+            content = `data:image/icns;base64,${buffer.toString('base64')}`
+          }
+        } else {
+          content = `data:image/${ext.slice(1)};base64,${buffer.toString('base64')}`
+        }
       } else {
         // For text files, read as UTF-8
         content = await fs.promises.readFile(validPath, 'utf-8')

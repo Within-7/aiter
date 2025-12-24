@@ -214,7 +214,7 @@ export const FILE_TYPE_CONFIGS: FileTypeConfig[] = [
   {
     type: 'image',
     renderer: 'image',
-    extensions: ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.tiff', '.tif', '.svg'],
+    extensions: ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico', '.icns', '.tiff', '.tif', '.svg'],
     mimeType: 'image/*'
   },
 
