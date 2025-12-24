@@ -775,6 +775,16 @@ export function setupIPC(
     }
   })
 
+  // App operations
+  ipcMain.handle('app:getPath', async (_, { name }: { name: 'home' | 'appData' | 'userData' | 'temp' | 'desktop' | 'documents' | 'downloads' }) => {
+    try {
+      return app.getPath(name)
+    } catch (error) {
+      console.error('[IPC] app:getPath error:', error)
+      return ''
+    }
+  })
+
   // Shell operations
   ipcMain.handle('shell:openExternal', async (_, { url }) => {
     try {

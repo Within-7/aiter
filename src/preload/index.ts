@@ -109,7 +109,9 @@ contextBridge.exposeInMainWorld('api', {
       ) => callback(error)
       ipcRenderer.on('app:error', listener)
       return () => ipcRenderer.removeListener('app:error', listener)
-    }
+    },
+    getPath: (name: 'home' | 'appData' | 'userData' | 'temp' | 'desktop' | 'documents' | 'downloads'): Promise<string> =>
+      ipcRenderer.invoke('app:getPath', { name })
   },
 
   // Window APIs
@@ -489,6 +491,7 @@ export interface API {
   }
   app: {
     onError(callback: (error: { message: string; stack?: string }) => void): () => void
+    getPath(name: 'home' | 'appData' | 'userData' | 'temp' | 'desktop' | 'documents' | 'downloads'): Promise<string>
   }
   window: {
     create(): Promise<{ success: boolean; error?: string }>

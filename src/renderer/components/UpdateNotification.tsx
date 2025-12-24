@@ -108,16 +108,20 @@ export const UpdateNotification: React.FC = () => {
 
       if (result.mode === 'install-script' && result.command) {
         // install-script 模式：在终端中运行更新命令
-        // 关闭更新通知
+        // 关闭更新通知和 About 弹窗
         setIsVisible(false)
+        dispatch({ type: 'SET_ABOUT_PANEL', payload: false })
 
         // 获取第一个项目（如果有的话）用于创建终端
         const firstProject = state.projects[0]
 
+        // 获取用户主目录作为后备路径
+        const homePath = await window.api.app.getPath('home')
+
         // 创建新终端来执行更新命令
         const terminalResult = await window.api.terminal.create(
           firstProject?.id || 'update',
-          firstProject?.path || process.env.HOME || '~',
+          firstProject?.path || homePath || '/',
           state.settings?.shell
         )
 

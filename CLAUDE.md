@@ -39,17 +39,19 @@ Both processes hot-reload automatically. Watch for console output from both.
 
 ## Git Workflow Requirements
 
-**CRITICAL:** All file operations MUST be committed to git for rollback capability.
+**CRITICAL:** Only commit and push when explicitly requested by the user.
 
-### Commit After Every Logical Change
+### Wait for User Request
 
-Create a git commit immediately after:
-- Creating new files
-- Modifying existing files
-- Deleting files
-- Moving/renaming files
-- Completing a feature or fix
-- Reverting changes
+**DO NOT** automatically commit or push after every change. Wait for the user to explicitly ask:
+- "帮我提交" / "commit"
+- "推送到 GitHub" / "push"
+- "发布新版本" / "release"
+
+This allows the user to:
+- Review changes before committing
+- Batch multiple related changes into one commit
+- Decide when to push and release
 
 ### Commit Message Format
 
@@ -66,17 +68,9 @@ Detailed explanation if needed:
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
-### When to Commit
+### What NOT to Commit
 
-✅ **DO commit:**
-- After implementing a new component
-- After fixing a bug
-- After refactoring code
-- After adding/modifying documentation
-- Before attempting risky changes (safety checkpoint)
-- After reverting unwanted changes
-
-❌ **DON'T commit:**
+❌ **Never commit:**
 - Broken/non-compiling code (unless explicitly creating a WIP checkpoint)
 - Sensitive data (API keys, tokens, passwords)
 - Large binary files (use .gitignore)
