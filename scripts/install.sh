@@ -283,6 +283,8 @@ main() {
     echo ""
     print_success "🎉 All done! Enjoy using AiTer!"
     echo ""
+    print_info "If you were upgrading, please restart AiTer to use the new version."
+    echo ""
 }
 
 # Run main function

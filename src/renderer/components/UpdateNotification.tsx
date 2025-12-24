@@ -112,17 +112,18 @@ export const UpdateNotification: React.FC = () => {
         setIsVisible(false)
         dispatch({ type: 'SET_ABOUT_PANEL', payload: false })
 
-        // 获取第一个项目（如果有的话）用于创建终端
-        const firstProject = state.projects[0]
-
-        // 获取用户主目录作为后备路径
+        // 获取用户主目录作为工作目录（不依赖项目）
         const homePath = await window.api.app.getPath('home')
 
         // 创建新终端来执行更新命令
+        // terminal.create 签名: (cwd, projectId, projectName, shell?, skipStartupCommand?)
+        // 使用特殊的 'system' projectId，并跳过启动命令（如 minto）
         const terminalResult = await window.api.terminal.create(
-          firstProject?.id || 'update',
-          firstProject?.path || homePath || '/',
-          state.settings?.shell
+          homePath || '/',                        // cwd: 用户主目录
+          'system',                               // projectId: 系统级终端
+          'AiTer Update',                         // projectName: 显示名称
+          state.settings?.shell,                  // shell (可选)
+          true                                    // skipStartupCommand: 跳过启动命令
         )
 
         if (terminalResult.success && terminalResult.terminal) {
@@ -140,7 +141,7 @@ export const UpdateNotification: React.FC = () => {
       console.error('[UpdateNotification] Install error:', err)
       setError('Installation failed')
     }
-  }, [state.projects, state.settings?.shell, dispatch])
+  }, [state.settings?.shell, dispatch])
 
   const handleDismiss = () => {
     setIsVisible(false)

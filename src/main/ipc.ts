@@ -179,7 +179,7 @@ export function setupIPC(
   })
 
   // Terminal management
-  ipcMain.handle('terminal:create', async (_, { cwd, shell, projectId, projectName }) => {
+  ipcMain.handle('terminal:create', async (_, { cwd, shell, projectId, projectName, skipStartupCommand }) => {
     try {
       const id = uuidv4()
 
@@ -203,8 +203,8 @@ export function setupIPC(
         }
       )
 
-      // Run startup command if enabled in settings
-      if (settings.enableStartupCommand && settings.startupCommand) {
+      // Run startup command if enabled in settings (unless explicitly skipped)
+      if (!skipStartupCommand && settings.enableStartupCommand && settings.startupCommand) {
         // Wait a bit for the shell to initialize before sending command
         setTimeout(() => {
           if (ptyManager.exists(id)) {

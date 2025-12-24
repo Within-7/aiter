@@ -349,13 +349,26 @@ Thumbs.db
       }
 
       const changes: FileChange[] = []
-      const lines = stdout.trim().split('\n')
+      // Split by newline first, then filter empty lines
+      // Do NOT use trim() on stdout as it removes leading spaces from first line
+      // Git status --porcelain format: XY filename (positions 0-1 are status codes)
+      const lines = stdout.split('\n').filter(line => line.length >= 3)
 
       for (const line of lines) {
-        if (!line) continue
-
         const statusCode = line.substring(0, 2)
-        const filePath = line.substring(3).trim()
+        let filePath = line.substring(3)
+
+        // Remove surrounding quotes if present (git quotes paths with special chars)
+        if (filePath.startsWith('"') && filePath.endsWith('"')) {
+          filePath = filePath.slice(1, -1)
+          // Unescape escaped characters
+          filePath = filePath.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+        }
+
+        // Trim any remaining whitespace
+        filePath = filePath.trim()
+
+        if (!filePath) continue
 
         let status: FileChange['status'] = 'modified'
 

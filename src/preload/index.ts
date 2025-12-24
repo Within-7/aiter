@@ -22,8 +22,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Terminal APIs
   terminal: {
-    create: (cwd: string, projectId: string, projectName: string, shell?: string) =>
-      ipcRenderer.invoke('terminal:create', { cwd, projectId, projectName, shell }),
+    create: (cwd: string, projectId: string, projectName: string, shell?: string, skipStartupCommand?: boolean) =>
+      ipcRenderer.invoke('terminal:create', { cwd, projectId, projectName, shell, skipStartupCommand }),
     write: (id: string, data: string) =>
       ipcRenderer.invoke('terminal:write', { id, data }),
     resize: (id: string, cols: number, rows: number) =>
@@ -401,7 +401,8 @@ export interface API {
       cwd: string,
       projectId: string,
       projectName: string,
-      shell?: string
+      shell?: string,
+      skipStartupCommand?: boolean
     ): Promise<{ success: boolean; terminal?: Terminal; error?: string }>
     write(id: string, data: string): Promise<{ success: boolean; error?: string }>
     resize(
