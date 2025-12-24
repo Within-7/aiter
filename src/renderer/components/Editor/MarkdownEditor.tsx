@@ -16,7 +16,7 @@ interface TocItem {
 interface MarkdownEditorProps {
   value: string
   onChange: (value: string) => void
-  onSave: () => void
+  onSave: (content?: string) => void
   mode: 'preview' | 'edit'
   currentFilePath: string
 }
@@ -163,12 +163,19 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     setPreview(cleanHTML)
   }, [value, imageUrls])
 
+  // Keep onSave ref updated
+  const onSaveRef = useRef(onSave)
+  useEffect(() => {
+    onSaveRef.current = onSave
+  }, [onSave])
+
   const handleEditorDidMount: OnMount = (editor, monacoInstance) => {
     editorRef.current = editor
 
-    // Add save keyboard shortcut
+    // Add save keyboard shortcut - get content directly from editor
     editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
-      onSave()
+      const currentContent = editor.getValue()
+      onSaveRef.current(currentContent)
     })
 
     // Focus the editor

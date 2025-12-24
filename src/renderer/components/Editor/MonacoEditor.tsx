@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useEffect } from 'react'
 import Editor, { OnMount } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 
@@ -6,7 +6,7 @@ interface MonacoEditorProps {
   value: string
   language: string
   onChange: (value: string) => void
-  onSave: () => void
+  onSave: (content: string) => void
 }
 
 const languageMap: Record<string, string> = {
@@ -44,13 +44,20 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   onSave
 }) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const onSaveRef = useRef(onSave)
+
+  // Keep onSave ref updated
+  useEffect(() => {
+    onSaveRef.current = onSave
+  }, [onSave])
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
 
-    // Add save keyboard shortcut
+    // Add save keyboard shortcut - get content directly from editor
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      onSave()
+      const currentContent = editor.getValue()
+      onSaveRef.current(currentContent)
     })
 
     // Focus the editor

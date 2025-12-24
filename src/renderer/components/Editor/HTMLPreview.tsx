@@ -7,7 +7,7 @@ import './HTMLPreview.css'
 interface HTMLPreviewProps {
   value: string
   onChange: (value: string) => void
-  onSave: () => void
+  onSave: (content?: string) => void
   mode: 'preview' | 'edit'
   currentFilePath: string
   serverUrl?: string
@@ -182,12 +182,19 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, currentFilePath, dispatch])
 
-  const handleEditorDidMount: OnMount = (editor, monaco) => {
+  // Keep onSave ref updated
+  const onSaveRef = useRef(onSave)
+  useEffect(() => {
+    onSaveRef.current = onSave
+  }, [onSave])
+
+  const handleEditorDidMount: OnMount = (editor, monacoInstance) => {
     editorRef.current = editor
 
-    // Add save keyboard shortcut
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      onSave()
+    // Add save keyboard shortcut - get content directly from editor
+    editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
+      const currentContent = editor.getValue()
+      onSaveRef.current(currentContent)
     })
 
     // Focus the editor

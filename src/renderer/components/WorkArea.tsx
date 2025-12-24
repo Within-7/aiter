@@ -234,17 +234,29 @@ export const WorkArea: React.FC = () => {
     }
   }
 
-  const handleSave = async () => {
+  const handleSave = async (content?: string) => {
     const activeEditorTab = state.editorTabs.find(t => `editor-${t.id}` === activeTabId)
     if (!activeEditorTab) return
 
+    // Use provided content (from editor) or fall back to state content
+    const contentToSave = content !== undefined ? content : activeEditorTab.content
+
     try {
-      const result = await window.api.fs.writeFile(activeEditorTab.filePath, activeEditorTab.content)
+      const result = await window.api.fs.writeFile(activeEditorTab.filePath, contentToSave)
       if (result.success) {
+        // Update state with the saved content if it was provided
+        if (content !== undefined && content !== activeEditorTab.content) {
+          dispatch({
+            type: 'UPDATE_EDITOR_CONTENT',
+            payload: { id: activeEditorTab.id, content }
+          })
+        }
         dispatch({
           type: 'MARK_TAB_DIRTY',
           payload: { id: activeEditorTab.id, isDirty: false }
         })
+      } else {
+        console.error('Failed to save file:', result.error)
       }
     } catch (error) {
       console.error('Error saving file:', error)

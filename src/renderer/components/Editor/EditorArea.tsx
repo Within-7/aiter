@@ -26,12 +26,22 @@ export const EditorArea: React.FC = () => {
     }
   }
 
-  const handleSave = async () => {
+  const handleSave = async (content?: string) => {
     if (!activeTab) return
 
+    // Use provided content (from editor) or fall back to state content
+    const contentToSave = content !== undefined ? content : activeTab.content
+
     try {
-      const result = await window.api.fs.writeFile(activeTab.filePath, activeTab.content)
+      const result = await window.api.fs.writeFile(activeTab.filePath, contentToSave)
       if (result.success) {
+        // Update state with the saved content if it was provided
+        if (content !== undefined && content !== activeTab.content) {
+          dispatch({
+            type: 'UPDATE_EDITOR_CONTENT',
+            payload: { id: activeTab.id, content }
+          })
+        }
         dispatch({
           type: 'MARK_TAB_DIRTY',
           payload: { id: activeTab.id, isDirty: false }
