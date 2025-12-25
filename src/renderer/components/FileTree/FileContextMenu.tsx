@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { VscNewFile, VscNewFolder, VscEdit, VscTrash, VscCloudUpload, VscCopy } from 'react-icons/vsc'
 import './FileContextMenu.css'
 
@@ -72,7 +73,7 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
     }
   }, [x, y])
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
       className="file-context-menu"
@@ -96,7 +97,8 @@ export const FileContextMenu: React.FC<FileContextMenuProps> = ({
           {action.dividerAfter && <div className="context-menu-divider" />}
         </React.Fragment>
       ))}
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -1,10 +1,10 @@
 import { useContext, useState, useEffect, useRef } from 'react'
-import { VscFiles, VscSourceControl } from 'react-icons/vsc'
+import { VscFiles, VscSourceControl, VscSearch } from 'react-icons/vsc'
 import { AppContext } from '../context/AppContext'
 import { ExplorerView } from './ExplorerView'
 import { GitView } from './GitView'
+import { SearchView } from './SearchView'
 import { WorkspaceSelector } from './WorkspaceSelector'
-import { WorkspaceManagerDialog } from './WorkspaceManagerDialog'
 import '../styles/Sidebar.css'
 
 const MIN_WIDTH = 200
@@ -15,7 +15,6 @@ const STORAGE_KEY = 'sidebar-width'
 export function Sidebar() {
   const { state, dispatch } = useContext(AppContext)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [showWorkspaceManager, setShowWorkspaceManager] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH
@@ -96,7 +95,7 @@ export function Sidebar() {
     <div className="sidebar" ref={sidebarRef} style={{ width: `${sidebarWidth}px` }}>
       <div className="sidebar-header">
         <h2 className={!isFullscreen ? 'has-traffic-lights' : ''}>AiTer</h2>
-        <WorkspaceSelector onManageWorkspaces={() => setShowWorkspaceManager(true)} />
+        <WorkspaceSelector onManageWorkspaces={() => dispatch({ type: 'SET_WORKSPACE_MANAGER', payload: true })} />
       </div>
 
       {/* View Switcher */}
@@ -115,24 +114,26 @@ export function Sidebar() {
         >
           <VscSourceControl />
         </button>
+        <button
+          className={`view-button ${state.sidebarView === 'search' ? 'active' : ''}`}
+          onClick={() => dispatch({ type: 'SET_SIDEBAR_VIEW', payload: 'search' })}
+          title="Search"
+        >
+          <VscSearch />
+        </button>
       </div>
 
       {/* View Content */}
       <div className="sidebar-content">
         {state.sidebarView === 'explorer' && <ExplorerView />}
         {state.sidebarView === 'git' && <GitView />}
+        {state.sidebarView === 'search' && <SearchView />}
       </div>
 
       {/* Resize Handle */}
       <div
         className={`sidebar-resize-handle ${isResizing ? 'resizing' : ''}`}
         onMouseDown={handleResizeStart}
-      />
-
-      {/* Workspace Manager Dialog */}
-      <WorkspaceManagerDialog
-        isOpen={showWorkspaceManager}
-        onClose={() => setShowWorkspaceManager(false)}
       />
     </div>
   )

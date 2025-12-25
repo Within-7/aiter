@@ -7,6 +7,7 @@ import { StatusBar } from './components/StatusBar'
 import { PluginPanel } from './components/Plugins/PluginPanel'
 import { AboutPanel } from './components/About/AboutPanel'
 import { SettingsPanel } from './components/Settings/SettingsPanel'
+import { WorkspaceManagerDialog } from './components/WorkspaceManagerDialog'
 import { UpdateNotification } from './components/UpdateNotification'
 import { KeyboardShortcutsHandler } from './components/KeyboardShortcutsHandler'
 import './styles/App.css'
@@ -301,6 +302,10 @@ function App() {
         <PluginPanel />
         <AboutPanel />
         <SettingsPanel />
+        <WorkspaceManagerDialog
+          isOpen={state.showWorkspaceManager}
+          onClose={() => dispatch({ type: 'SET_WORKSPACE_MANAGER', payload: false })}
+        />
         <UpdateNotification />
         <KeyboardShortcutsHandler />
       </div>

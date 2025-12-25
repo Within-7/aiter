@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Project } from '../../types'
 import '../styles/ProjectItem.css'
 
@@ -16,9 +17,12 @@ export function ProjectItem({
   onRemove
 }: ProjectItemProps) {
   const [showMenu, setShowMenu] = useState(false)
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 })
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
+    setMenuPosition({ x: e.clientX, y: e.clientY })
     setShowMenu(true)
   }
 
@@ -29,6 +33,20 @@ export function ProjectItem({
       onRemove()
     }
   }
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!showMenu) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showMenu])
 
   return (
     <div
@@ -49,12 +67,18 @@ export function ProjectItem({
       >
         ×
       </button>
-      {showMenu && (
-        <div className="context-menu" onClick={() => setShowMenu(false)}>
+      {showMenu && createPortal(
+        <div
+          ref={menuRef}
+          className="context-menu"
+          style={{ left: menuPosition.x, top: menuPosition.y }}
+          onClick={() => setShowMenu(false)}
+        >
           <div className="context-menu-item" onClick={handleRemove}>
             Remove
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Workspace } from '../../types'
 import '../styles/WorkspaceSelector.css'
 
@@ -207,8 +208,8 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ onManageWo
         </div>
       )}
 
-      {/* Confirmation dialog for opening same workspace */}
-      {confirmState.isOpen && (
+      {/* Confirmation dialog for opening same workspace - rendered via portal to avoid drag region issues */}
+      {confirmState.isOpen && createPortal(
         <div className="workspace-confirm-overlay" onClick={handleCancelConfirm}>
           <div className="workspace-confirm-dialog" onClick={e => e.stopPropagation()}>
             <div className="workspace-confirm-header">
@@ -231,7 +232,8 @@ export const WorkspaceSelector: React.FC<WorkspaceSelectorProps> = ({ onManageWo
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

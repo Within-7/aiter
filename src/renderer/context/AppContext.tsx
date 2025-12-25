@@ -15,7 +15,7 @@ const defaultShortcuts: ShortcutConfig[] = [
   { action: 'focusEditor', label: 'Focus Editor', shortcut: { key: 'e', metaKey: true, shiftKey: true }, enabled: true }
 ]
 
-export type SidebarView = 'explorer' | 'git'
+export type SidebarView = 'explorer' | 'git' | 'search'
 
 export interface AppState {
   projects: Project[]
@@ -32,6 +32,7 @@ export interface AppState {
   showPluginPanel: boolean
   showAboutPanel: boolean
   showSettingsPanel: boolean
+  showWorkspaceManager: boolean
   sidebarView: SidebarView
 }
 
@@ -64,6 +65,8 @@ export type AppAction =
   | { type: 'SET_ABOUT_PANEL'; payload: boolean }
   | { type: 'TOGGLE_SETTINGS_PANEL' }
   | { type: 'SET_SETTINGS_PANEL'; payload: boolean }
+  | { type: 'TOGGLE_WORKSPACE_MANAGER' }
+  | { type: 'SET_WORKSPACE_MANAGER'; payload: boolean }
   | { type: 'SET_SIDEBAR_VIEW'; payload: SidebarView }
   | { type: 'SELECT_TAB'; payload: { tabId: string; shiftKey: boolean; ctrlKey: boolean } }
   | { type: 'CLEAR_TAB_SELECTION' }
@@ -108,6 +111,7 @@ export const initialState: AppState = {
   showPluginPanel: false,
   showAboutPanel: false,
   showSettingsPanel: false,
+  showWorkspaceManager: false,
   sidebarView: 'explorer'
 }
 
@@ -420,6 +424,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case 'SET_SETTINGS_PANEL':
       return { ...state, showSettingsPanel: action.payload }
+
+    case 'TOGGLE_WORKSPACE_MANAGER':
+      return { ...state, showWorkspaceManager: !state.showWorkspaceManager }
+
+    case 'SET_WORKSPACE_MANAGER':
+      return { ...state, showWorkspaceManager: action.payload }
 
     case 'SET_SIDEBAR_VIEW':
       return { ...state, sidebarView: action.payload }
