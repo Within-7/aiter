@@ -2,6 +2,7 @@ import { useContext, useState, useEffect, useCallback, useRef, useMemo } from 'r
 import { VscSearch, VscCaseSensitive, VscRegex, VscFile, VscChevronDown, VscChevronRight } from 'react-icons/vsc'
 import { AppContext } from '../context/AppContext'
 import { EditorTab } from '../../types'
+import { getProjectColor } from '../utils/projectColors'
 import '../styles/SearchView.css'
 
 interface FileResult {
@@ -335,7 +336,7 @@ export function SearchView() {
               )}
               <span
                 className="project-color-indicator"
-                style={{ backgroundColor: project.color || '#888888' }}
+                style={{ backgroundColor: getProjectColor(project.id, project.color) }}
               />
               <span className="project-name">{project.name}</span>
               <span className="project-match-count">
