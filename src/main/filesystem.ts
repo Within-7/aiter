@@ -3,7 +3,7 @@ import * as path from 'path'
 import { FileNode } from '../types'
 import { v4 as uuidv4 } from 'uuid'
 import ignore, { Ignore } from 'ignore'
-import { getFileType as getFileTypeFromConfig } from '../shared/fileTypeConfig'
+import { getFileType as getFileTypeFromConfig, isBinaryType, FileType } from '../shared/fileTypeConfig'
 import { extractLargestPNG, isValidICNS } from './utils/icnsParser'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB for reading
@@ -145,7 +145,7 @@ export class SecureFileSystemManager {
    * Detect file type based on extension
    * Uses the centralized file type configuration from shared/fileTypeConfig.ts
    */
-  private getFileType(filePath: string): string {
+  private getFileType(filePath: string): FileType {
     return getFileTypeFromConfig(filePath)
   }
 
@@ -272,6 +272,10 @@ export class SecureFileSystemManager {
         } else {
           content = `data:image/${ext.slice(1)};base64,${buffer.toString('base64')}`
         }
+      } else if (isBinaryType(fileType)) {
+        // For binary files (PDF, Office documents), return base64 encoded data
+        const buffer = await fs.promises.readFile(validPath)
+        content = buffer.toString('base64')
       } else {
         // For text files, read as UTF-8
         content = await fs.promises.readFile(validPath, 'utf-8')

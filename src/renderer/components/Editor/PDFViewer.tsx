@@ -37,12 +37,16 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ filePath, fileName }) => {
         }
 
         // Convert base64 to Uint8Array
-        const base64Data = result.content.split(',')[1] || result.content
-        const binaryString = atob(base64Data)
-        const bytes = new Uint8Array(binaryString.length)
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i)
-        }
+        // Handle both pure base64 and data URI format
+        const base64Data = result.content.includes(',')
+          ? result.content.split(',')[1]
+          : result.content
+
+        // Use fetch with data URI for reliable binary decoding
+        // This avoids issues with atob() and non-Latin1 characters
+        const response = await fetch(`data:application/pdf;base64,${base64Data}`)
+        const arrayBuffer = await response.arrayBuffer()
+        const bytes = new Uint8Array(arrayBuffer)
 
         // Load PDF document
         const loadingTask = pdfjsLib.getDocument({ data: bytes })
