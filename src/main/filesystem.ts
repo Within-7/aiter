@@ -516,6 +516,277 @@ export class SecureFileSystemManager {
       }
     }
   }
+
+  /**
+   * Search for files by name pattern
+   * @param projectPath - Project root directory to search in
+   * @param pattern - Search pattern (string or regex)
+   * @param options - Search options
+   */
+  async searchFiles(
+    projectPath: string,
+    pattern: string,
+    options: {
+      caseSensitive?: boolean
+      useRegex?: boolean
+      includeIgnored?: boolean
+      maxResults?: number
+    } = {}
+  ): Promise<Array<{ filePath: string; fileName: string; relativePath: string }>> {
+    const {
+      caseSensitive = false,
+      useRegex = false,
+      includeIgnored = false,
+      maxResults = 100
+    } = options
+
+    const validPath = this.validatePath(projectPath)
+    const results: Array<{ filePath: string; fileName: string; relativePath: string }> = []
+
+    // Create regex pattern for matching
+    let searchRegex: RegExp
+    try {
+      if (useRegex) {
+        searchRegex = new RegExp(pattern, caseSensitive ? '' : 'i')
+      } else {
+        // Escape special regex characters for literal search
+        const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        searchRegex = new RegExp(escaped, caseSensitive ? '' : 'i')
+      }
+    } catch {
+      throw new Error('Invalid regular expression pattern')
+    }
+
+    // Get gitignore
+    const gitRoot = await findGitRoot(validPath) || validPath
+    const ig = await getGitignore(gitRoot)
+
+    // Recursive search function
+    const searchDir = async (dirPath: string, parentIgnored: boolean): Promise<void> => {
+      if (results.length >= maxResults) return
+
+      try {
+        const entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
+
+        for (const entry of entries) {
+          if (results.length >= maxResults) break
+
+          // Skip excluded directories
+          if (this.shouldExclude(entry.name)) continue
+
+          const fullPath = path.join(dirPath, entry.name)
+          const relativePath = path.relative(validPath, fullPath)
+
+          // Check gitignore
+          const gitignorePath = entry.isDirectory() ? relativePath + '/' : relativePath
+          const isIgnored = parentIgnored || (ig ? ig.ignores(gitignorePath) : false)
+
+          // Skip ignored files unless includeIgnored is true
+          if (isIgnored && !includeIgnored) {
+            if (entry.isDirectory()) continue
+            continue
+          }
+
+          if (entry.isDirectory()) {
+            // Recurse into subdirectory
+            await searchDir(fullPath, isIgnored)
+          } else {
+            // Check if filename matches pattern
+            if (searchRegex.test(entry.name)) {
+              results.push({
+                filePath: fullPath,
+                fileName: entry.name,
+                relativePath
+              })
+            }
+          }
+        }
+      } catch (error) {
+        // Skip directories we can't read
+        console.warn(`Cannot read directory: ${dirPath}`, error)
+      }
+    }
+
+    await searchDir(validPath, false)
+    return results
+  }
+
+  /**
+   * Search for content within files
+   * @param projectPath - Project root directory to search in
+   * @param pattern - Search pattern (string or regex)
+   * @param options - Search options
+   */
+  async searchContent(
+    projectPath: string,
+    pattern: string,
+    options: {
+      caseSensitive?: boolean
+      useRegex?: boolean
+      includeIgnored?: boolean
+      maxResults?: number
+    } = {}
+  ): Promise<Array<{
+    filePath: string
+    fileName: string
+    relativePath: string
+    matches: Array<{
+      line: number
+      column: number
+      preview: string
+      contextBefore?: string
+      contextAfter?: string
+    }>
+  }>> {
+    const {
+      caseSensitive = false,
+      useRegex = false,
+      includeIgnored = false,
+      maxResults = 100
+    } = options
+
+    const validPath = this.validatePath(projectPath)
+    const results: Array<{
+      filePath: string
+      fileName: string
+      relativePath: string
+      matches: Array<{
+        line: number
+        column: number
+        preview: string
+        contextBefore?: string
+        contextAfter?: string
+      }>
+    }> = []
+
+    // Maximum file size for content search (1MB)
+    const MAX_CONTENT_SEARCH_SIZE = 1 * 1024 * 1024
+
+    // Binary file extensions to skip
+    const BINARY_EXTENSIONS = new Set([
+      '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.icns', '.webp', '.svg',
+      '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+      '.zip', '.tar', '.gz', '.rar', '.7z',
+      '.dll', '.so', '.dylib',
+      '.mp3', '.mp4', '.avi', '.mov', '.wav', '.flac',
+      '.woff', '.woff2', '.ttf', '.otf', '.eot',
+      '.pyc', '.class', '.o', '.obj'
+    ])
+
+    // Create regex pattern for matching
+    let searchRegex: RegExp
+    try {
+      if (useRegex) {
+        searchRegex = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
+      } else {
+        // Escape special regex characters for literal search
+        const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        searchRegex = new RegExp(escaped, caseSensitive ? 'g' : 'gi')
+      }
+    } catch {
+      throw new Error('Invalid regular expression pattern')
+    }
+
+    // Get gitignore
+    const gitRoot = await findGitRoot(validPath) || validPath
+    const ig = await getGitignore(gitRoot)
+
+    // Recursive search function
+    const searchDir = async (dirPath: string, parentIgnored: boolean): Promise<void> => {
+      if (results.length >= maxResults) return
+
+      try {
+        const entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
+
+        for (const entry of entries) {
+          if (results.length >= maxResults) break
+
+          // Skip excluded directories
+          if (this.shouldExclude(entry.name)) continue
+
+          const fullPath = path.join(dirPath, entry.name)
+          const relativePath = path.relative(validPath, fullPath)
+
+          // Check gitignore
+          const gitignorePath = entry.isDirectory() ? relativePath + '/' : relativePath
+          const isIgnored = parentIgnored || (ig ? ig.ignores(gitignorePath) : false)
+
+          // Skip ignored files unless includeIgnored is true
+          if (isIgnored && !includeIgnored) {
+            if (entry.isDirectory()) continue
+            continue
+          }
+
+          if (entry.isDirectory()) {
+            // Recurse into subdirectory
+            await searchDir(fullPath, isIgnored)
+          } else {
+            // Skip binary files
+            const ext = path.extname(entry.name).toLowerCase()
+            if (BINARY_EXTENSIONS.has(ext)) continue
+
+            try {
+              // Check file size
+              const stats = await fs.promises.stat(fullPath)
+              if (stats.size > MAX_CONTENT_SEARCH_SIZE) continue
+
+              // Read file content
+              const content = await fs.promises.readFile(fullPath, 'utf-8')
+              const lines = content.split('\n')
+
+              const fileMatches: Array<{
+                line: number
+                column: number
+                preview: string
+                contextBefore?: string
+                contextAfter?: string
+              }> = []
+
+              // Search each line
+              for (let i = 0; i < lines.length; i++) {
+                // Reset regex lastIndex for each line
+                searchRegex.lastIndex = 0
+                const line = lines[i]
+                let match: RegExpExecArray | null
+
+                while ((match = searchRegex.exec(line)) !== null) {
+                  fileMatches.push({
+                    line: i + 1, // 1-based line number
+                    column: match.index + 1, // 1-based column number
+                    preview: line.trim(),
+                    contextBefore: i > 0 ? lines[i - 1].trim() : undefined,
+                    contextAfter: i < lines.length - 1 ? lines[i + 1].trim() : undefined
+                  })
+
+                  // Prevent infinite loop for zero-width matches
+                  if (match.index === searchRegex.lastIndex) {
+                    searchRegex.lastIndex++
+                  }
+                }
+              }
+
+              if (fileMatches.length > 0) {
+                results.push({
+                  filePath: fullPath,
+                  fileName: entry.name,
+                  relativePath,
+                  matches: fileMatches
+                })
+              }
+            } catch {
+              // Skip files we can't read (binary, permission issues, etc.)
+            }
+          }
+        }
+      } catch (error) {
+        // Skip directories we can't read
+        console.warn(`Cannot read directory: ${dirPath}`, error)
+      }
+    }
+
+    await searchDir(validPath, false)
+    return results
+  }
 }
 
 // Singleton instance

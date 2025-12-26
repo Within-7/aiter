@@ -87,7 +87,21 @@ contextBridge.exposeInMainWorld('api', {
     delete: (path: string) =>
       ipcRenderer.invoke('fs:delete', { path }),
     copyFiles: (sourcePaths: string[], destDir: string) =>
-      ipcRenderer.invoke('fs:copyFiles', { sourcePaths, destDir })
+      ipcRenderer.invoke('fs:copyFiles', { sourcePaths, destDir }),
+    searchFiles: (projectPath: string, pattern: string, options?: {
+      caseSensitive?: boolean
+      useRegex?: boolean
+      includeIgnored?: boolean
+      maxResults?: number
+    }) =>
+      ipcRenderer.invoke('fs:searchFiles', { projectPath, pattern, options }),
+    searchContent: (projectPath: string, pattern: string, options?: {
+      caseSensitive?: boolean
+      useRegex?: boolean
+      includeIgnored?: boolean
+      maxResults?: number
+    }) =>
+      ipcRenderer.invoke('fs:searchContent', { projectPath, pattern, options })
   },
 
   // File Server APIs
@@ -478,6 +492,45 @@ export interface API {
       sourcePaths: string[],
       destDir: string
     ): Promise<{ success: boolean; copied?: string[]; errors?: string[]; error?: string }>
+    searchFiles(
+      projectPath: string,
+      pattern: string,
+      options?: {
+        caseSensitive?: boolean
+        useRegex?: boolean
+        includeIgnored?: boolean
+        maxResults?: number
+      }
+    ): Promise<{
+      success: boolean
+      results?: Array<{ filePath: string; fileName: string; relativePath: string }>
+      error?: string
+    }>
+    searchContent(
+      projectPath: string,
+      pattern: string,
+      options?: {
+        caseSensitive?: boolean
+        useRegex?: boolean
+        includeIgnored?: boolean
+        maxResults?: number
+      }
+    ): Promise<{
+      success: boolean
+      results?: Array<{
+        filePath: string
+        fileName: string
+        relativePath: string
+        matches: Array<{
+          line: number
+          column: number
+          preview: string
+          contextBefore?: string
+          contextAfter?: string
+        }>
+      }>
+      error?: string
+    }>
   }
   fileServer: {
     getUrl(

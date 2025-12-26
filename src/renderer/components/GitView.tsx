@@ -117,6 +117,7 @@ export function GitView() {
           <VscSourceControl className="header-icon" />
           <h2>Source Control</h2>
         </div>
+        <div className="btn-placeholder" />
       </div>
 
       <div className="git-view-content">

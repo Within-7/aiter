@@ -6,7 +6,12 @@
 }
 
 .git-view-header {
-  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  min-height: 49px;
+  box-sizing: border-box;
   border-bottom: 1px solid #1e1e1e;
   background-color: #2d2d30;
 }
@@ -19,7 +24,7 @@
 
 .git-view-header .header-icon {
   font-size: 12px;
-  color: #569cd6;
+  color: #cccccc;
 }
 
 .git-view-header h2 {
@@ -29,6 +34,11 @@
   letter-spacing: 0.5px;
   color: #888888;
   margin: 0;
+}
+
+.git-view-header .btn-placeholder {
+  width: 24px;
+  height: 22px;
 }
 
 .git-view-content {

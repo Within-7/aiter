@@ -409,6 +409,27 @@ export function setupIPC(
     }
   })
 
+  // File search operations
+  ipcMain.handle('fs:searchFiles', async (_, { projectPath, pattern, options }) => {
+    try {
+      const results = await fileSystemManager.searchFiles(projectPath, pattern, options)
+      return { success: true, results }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
+  ipcMain.handle('fs:searchContent', async (_, { projectPath, pattern, options }) => {
+    try {
+      const results = await fileSystemManager.searchContent(projectPath, pattern, options)
+      return { success: true, results }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
   // File server operations
   ipcMain.handle('fileServer:getUrl', async (_, { projectId, projectPath, filePath }) => {
     try {
