@@ -126,13 +126,13 @@ export class PluginManager {
         {
           id: 'jetr',
           name: 'Jetr CLI',
-          description: 'AI-powered development assistant for rapid prototyping and code generation',
+          description: 'CLI tool for deploying static websites instantly',
           icon: '🚀',
           version: '1.0.0',
           author: 'Within-7',
           homepage: 'https://github.com/Within-7/jetr',
           platforms: ['darwin', 'linux', 'win32'],
-          tags: ['ai', 'cli', 'development', 'code-generation'],
+          tags: ['cli', 'deploy', 'static-site', 'hosting'],
           isBuiltIn: true
         } as any,
         new JetrInstaller(this.store as any, nodeEnv, npmPath)
