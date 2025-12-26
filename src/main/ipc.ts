@@ -667,10 +667,10 @@ export function setupIPC(
       const pluginManager = PluginManager.getInstance()
       await pluginManager.refreshAllPluginsStatus()
 
-      // Notify renderer that plugin status may have changed
-      if (window && !window.isDestroyed()) {
-        window.webContents.send('plugins:status-changed')
-      }
+      // Note: We intentionally do NOT send 'plugins:status-changed' here
+      // because this is a request-response pattern - the caller (PluginPanel)
+      // will call plugins:list immediately after this returns.
+      // Sending status-changed would cause an infinite loop.
 
       return { success: true }
     } catch (error) {
