@@ -5,13 +5,16 @@
   "description": "This application is designed for AI CLI tool collaboration",
   "version": {
     "title": "Version Info",
-    "current": "Current Version:",
-    "latest": "Latest Version:",
+    "current": "Current Version",
+    "latest": "Latest Version",
     "updateAvailable": "Update Available",
-    "upToDate": "Up to Date",
-    "lastCheck": "Last Check:",
-    "checkUpdate": "Check Update",
-    "checking": "Checking..."
+    "upToDate": "You're up to date",
+    "newVersionAvailable": "New version available",
+    "lastCheck": "Last checked:",
+    "checkUpdate": "Check for Updates",
+    "checking": "Checking...",
+    "clickToCheck": "Click to check for updates",
+    "downloadUpdate": "Download Update"
   },
   "features": {
     "title": "Main Features",

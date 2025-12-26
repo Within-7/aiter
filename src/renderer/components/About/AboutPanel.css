@@ -118,81 +118,199 @@
   border-radius: 2px;
 }
 
-/* Version Section */
-.version-display {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.version-item {
+/* Version Section - Card Style */
+.version-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 20px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  padding: 8px 0;
+  gap: 16px;
 }
 
-.version-item:not(:last-child) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+.version-current {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 
-.version-label {
-  font-size: 14px;
+.version-number {
+  font-size: 32px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 1px;
+}
+
+.version-label-inline {
+  font-size: 12px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Version Status Area */
+.version-status {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Checking State */
+.status-checking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: #999;
 }
 
-.version-value {
-  font-size: 16px;
-  font-weight: 600;
+.checking-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(102, 126, 234, 0.3);
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.checking-text {
+  font-size: 14px;
+}
+
+/* Error State */
+.status-error {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(244, 67, 54, 0.1);
+  border-radius: 8px;
+  color: #f44336;
+}
+
+.status-error .status-icon {
+  font-size: 16px;
+}
+
+.status-error .status-text {
+  font-size: 13px;
+}
+
+/* Update Available State */
+.status-update-available {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
 }
 
-.version-value.current {
-  color: #667eea;
+.status-update-available .update-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(69, 160, 73, 0.15) 100%);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 20px;
 }
 
-.version-value.latest-new {
+.status-update-available .status-icon {
+  font-size: 18px;
+}
+
+.status-update-available .status-text {
+  font-size: 14px;
   color: #4caf50;
 }
 
-.version-value.latest-same {
-  color: #999;
+.status-update-available .status-text strong {
+  color: #66bb6a;
 }
 
-.update-badge {
-  font-size: 12px;
-  padding: 2px 8px;
-  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-  border-radius: 12px;
-  color: #fff;
-  font-weight: 500;
-}
-
-.version-check-time {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 12px;
-  color: #666;
-  text-align: right;
-}
-
-.version-error {
-  margin-top: 12px;
-  padding: 8px 12px;
-  background: rgba(244, 67, 54, 0.1);
-  border-left: 3px solid #f44336;
-  border-radius: 4px;
-  color: #f44336;
-  font-size: 13px;
-}
-
-.version-actions {
+/* Up to Date State */
+.status-up-to-date {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 20px;
+}
+
+.status-up-to-date .status-icon {
+  font-size: 14px;
+  color: #667eea;
+  font-weight: bold;
+}
+
+.status-up-to-date .status-text {
+  font-size: 13px;
+  color: #9fa8da;
+}
+
+/* Initial State */
+.status-initial {
+  padding: 8px 16px;
+}
+
+.status-initial .status-text {
+  font-size: 13px;
+  color: #666;
+}
+
+/* Check Update Button */
+.version-check-button {
+  width: 100%;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.version-check-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.version-check-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.version-check-button.has-update {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: #fff;
+  border: none;
+}
+
+.version-check-button.has-update:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+/* Last Check Time */
+.version-last-check {
+  font-size: 11px;
+  color: #555;
+  text-align: center;
 }
 
 /* Buttons */

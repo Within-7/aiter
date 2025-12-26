@@ -150,40 +150,70 @@ export const AboutPanel: React.FC = () => {
           {/* Version Section */}
           <section className="about-section">
             <h3>{t('version.title')}</h3>
-            <div className="version-display">
-              <div className="version-item">
-                <span className="version-label">{t('version.current')}</span>
-                <span className="version-value current">{versionInfo.current}</span>
+            <div className="version-card">
+              {/* Current Version - Always visible */}
+              <div className="version-current">
+                <span className="version-number">v{versionInfo.current}</span>
+                <span className="version-label-inline">{t('version.current')}</span>
               </div>
-              {versionInfo.latest && (
-                <div className="version-item">
-                  <span className="version-label">{t('version.latest')}</span>
-                  <span className={`version-value ${versionInfo.updateAvailable ? 'latest-new' : 'latest-same'}`}>
-                    {versionInfo.latest}
-                    {versionInfo.updateAvailable && (
-                      <span className="update-badge">{t('version.updateAvailable')}</span>
-                    )}
-                  </span>
-                </div>
-              )}
-              {versionInfo.lastCheckTime && (
-                <div className="version-check-time">
-                  {t('version.lastCheck')} {versionInfo.lastCheckTime.toLocaleString()}
-                </div>
-              )}
-              {versionInfo.error && (
-                <div className="version-error">{versionInfo.error}</div>
-              )}
-            </div>
 
-            <div className="version-actions">
+              {/* Update Status Area */}
+              <div className="version-status">
+                {versionInfo.isChecking ? (
+                  // Checking state
+                  <div className="status-checking">
+                    <span className="checking-spinner"></span>
+                    <span className="checking-text">{t('version.checking')}</span>
+                  </div>
+                ) : versionInfo.error ? (
+                  // Error state
+                  <div className="status-error">
+                    <span className="status-icon">⚠</span>
+                    <span className="status-text">{versionInfo.error}</span>
+                  </div>
+                ) : versionInfo.updateAvailable && versionInfo.latest ? (
+                  // Update available state
+                  <div className="status-update-available">
+                    <div className="update-info">
+                      <span className="status-icon">🎉</span>
+                      <span className="status-text">
+                        {t('version.newVersionAvailable', 'New version available')}: <strong>v{versionInfo.latest}</strong>
+                      </span>
+                    </div>
+                  </div>
+                ) : versionInfo.lastCheckTime ? (
+                  // Up to date state
+                  <div className="status-up-to-date">
+                    <span className="status-icon">✓</span>
+                    <span className="status-text">{t('version.upToDate', 'You are up to date')}</span>
+                  </div>
+                ) : (
+                  // Initial state - not checked yet
+                  <div className="status-initial">
+                    <span className="status-text">{t('version.clickToCheck', 'Click to check for updates')}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Check Update Button */}
               <button
-                className="about-button primary"
+                className={`version-check-button ${versionInfo.updateAvailable ? 'has-update' : ''}`}
                 onClick={handleCheckUpdate}
                 disabled={versionInfo.isChecking}
               >
-                {versionInfo.isChecking ? t('version.checking') : t('version.checkUpdate')}
+                {versionInfo.isChecking
+                  ? t('version.checking')
+                  : versionInfo.updateAvailable
+                    ? t('version.downloadUpdate', 'Download Update')
+                    : t('version.checkUpdate')}
               </button>
+
+              {/* Last Check Time - subtle footer */}
+              {versionInfo.lastCheckTime && !versionInfo.isChecking && (
+                <div className="version-last-check">
+                  {t('version.lastCheck')} {versionInfo.lastCheckTime.toLocaleTimeString()}
+                </div>
+              )}
             </div>
           </section>
 
