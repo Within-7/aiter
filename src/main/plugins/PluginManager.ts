@@ -96,12 +96,15 @@ export class PluginManager {
     this.initializePromise = (async () => {
       console.log('[PluginManager] Initializing...');
 
-      // Register Minto CLI plugin
+      // Register built-in plugins
       const { MintoInstaller } = await import('./installers/MintoInstaller');
+      const { JetrInstaller } = await import('./installers/JetrInstaller');
       const nodeEnv = this.nodeManager.getTerminalEnv();
       const npmPath = this.nodeManager.getNpmExecutable();
       console.log('[PluginManager] NodeManager env PATH:', nodeEnv.PATH?.substring(0, 200));
       console.log('[PluginManager] NodeManager npm path:', npmPath);
+
+      // Register Minto CLI plugin
       await this.registerPlugin(
         {
           id: 'minto',
@@ -118,8 +121,28 @@ export class PluginManager {
         new MintoInstaller(this.store as any, nodeEnv, npmPath)
       );
 
+      // Register Jetr CLI plugin
+      await this.registerPlugin(
+        {
+          id: 'jetr',
+          name: 'Jetr CLI',
+          description: 'AI-powered development assistant for rapid prototyping and code generation',
+          icon: '🚀',
+          version: '1.0.0',
+          author: 'Within-7',
+          homepage: 'https://github.com/Within-7/jetr',
+          platforms: ['darwin', 'linux', 'win32'],
+          tags: ['ai', 'cli', 'development', 'code-generation'],
+          isBuiltIn: true
+        } as any,
+        new JetrInstaller(this.store as any, nodeEnv, npmPath)
+      );
+
       // Load custom plugins from store
       await this.loadCustomPlugins();
+
+      // Auto-install built-in plugins if not installed
+      await this.autoInstallBuiltInPlugins();
 
       console.log('[PluginManager] Initialization complete');
 
@@ -134,6 +157,50 @@ export class PluginManager {
     })();
 
     return this.initializePromise;
+  }
+
+  /**
+   * Auto-install built-in plugins if they are not installed
+   * This runs silently in the background on first launch
+   */
+  private async autoInstallBuiltInPlugins(): Promise<void> {
+    console.log('[PluginManager] Checking built-in plugins for auto-installation...');
+
+    const builtInPlugins: string[] = [];
+
+    // Find all built-in plugins that are not installed
+    for (const [pluginId, plugin] of this.plugins) {
+      if (plugin.definition.isBuiltIn && plugin.status === 'not-installed') {
+        builtInPlugins.push(pluginId);
+      }
+    }
+
+    if (builtInPlugins.length === 0) {
+      console.log('[PluginManager] All built-in plugins are already installed');
+      return;
+    }
+
+    console.log(`[PluginManager] Auto-installing ${builtInPlugins.length} built-in plugins:`, builtInPlugins);
+
+    // Install each built-in plugin
+    for (const pluginId of builtInPlugins) {
+      try {
+        console.log(`[PluginManager] Auto-installing built-in plugin: ${pluginId}`);
+        const result = await this.installPlugin(pluginId, (progress) => {
+          console.log(`[PluginManager] ${pluginId} install progress: ${progress.percentage}% - ${progress.message}`);
+        });
+
+        if (result.success) {
+          console.log(`[PluginManager] Successfully auto-installed ${pluginId} (v${result.version})`);
+        } else {
+          console.error(`[PluginManager] Failed to auto-install ${pluginId}: ${result.error}`);
+        }
+      } catch (error) {
+        console.error(`[PluginManager] Error auto-installing ${pluginId}:`, error);
+      }
+    }
+
+    console.log('[PluginManager] Auto-installation of built-in plugins complete');
   }
 
   /**

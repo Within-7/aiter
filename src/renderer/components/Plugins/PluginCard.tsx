@@ -85,9 +85,9 @@ export const PluginCard: React.FC<PluginCardProps> = ({
   }
 
   const isInstalled = plugin.status === 'installed' || plugin.status === 'update-available'
-  const canInstall = plugin.status === 'not-installed' && !isProcessing
+  const canInstall = plugin.status === 'not-installed' && !isProcessing && !plugin.isBuiltIn  // Built-in plugins auto-install
   const canUpdate = plugin.hasUpdate && !isProcessing
-  const canUninstall = isInstalled && !isProcessing  // Both built-in and custom can be uninstalled
+  const canUninstall = isInstalled && !isProcessing && !plugin.isBuiltIn  // Built-in plugins cannot be uninstalled
   const canDelete = !plugin.isBuiltIn && !isProcessing  // Only custom plugins can be deleted
   const canConfigure = isInstalled && !isProcessing
 
@@ -134,6 +134,13 @@ export const PluginCard: React.FC<PluginCardProps> = ({
       </div>
 
       <div className="plugin-card-actions">
+        {/* Built-in plugins show auto-installing message when not installed */}
+        {plugin.isBuiltIn && plugin.status === 'not-installed' && (
+          <span className="plugin-auto-install-note">
+            Auto-installing...
+          </span>
+        )}
+
         {canInstall && (
           <button
             className="plugin-btn plugin-btn-primary"
