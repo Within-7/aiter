@@ -138,6 +138,19 @@ export const WorkArea: React.FC = () => {
       : 1
 
     if (selectedCount > 1) {
+      // First, group scattered selected tabs together at the first selected tab's position
+      const selectedTabIds = Array.from(state.selectedTabIds)
+      // Find the first selected tab in the current tab order
+      const firstSelectedIndex = state.tabOrder.findIndex(id => selectedTabIds.includes(id))
+
+      if (firstSelectedIndex !== -1) {
+        // Group all selected tabs at the first selected tab's position
+        dispatch({
+          type: 'REORDER_TABS_BATCH',
+          payload: { tabIds: selectedTabIds, targetIndex: firstSelectedIndex }
+        })
+      }
+
       // Create a custom drag image for multiple tabs
       const dragEl = document.createElement('div')
       dragEl.className = 'multi-tab-drag-image'
@@ -162,7 +175,7 @@ export const WorkArea: React.FC = () => {
       img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
       e.dataTransfer.setDragImage(img, 0, 0)
     }
-  }, [state.selectedTabIds, dispatch])
+  }, [state.selectedTabIds, state.tabOrder, dispatch])
 
   const handleDragOver = useCallback((e: React.DragEvent, tabId: string) => {
     e.preventDefault()
