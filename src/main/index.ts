@@ -13,6 +13,22 @@ import { NodeManager } from './nodejs/manager'
 import { WorkspaceManager } from './workspace'
 
 // ============================================================================
+// Clear Proxy Environment Variables on Startup
+// ============================================================================
+// Prevent proxy settings from being inherited from the launching terminal
+// This avoids issues with HTTP libraries (like axios) that don't handle
+// environment-based proxies correctly, causing MCP services to fail
+const proxyVarsToClear = [
+  'http_proxy', 'https_proxy', 'ftp_proxy', 'all_proxy',
+  'HTTP_PROXY', 'HTTPS_PROXY', 'FTP_PROXY', 'ALL_PROXY',
+  'no_proxy', 'NO_PROXY'
+]
+for (const varName of proxyVarsToClear) {
+  delete process.env[varName]
+}
+console.log('[Startup] Cleared proxy environment variables')
+
+// ============================================================================
 // Development/Production Environment Isolation
 // ============================================================================
 // This ensures dev and production versions can run simultaneously without conflicts
