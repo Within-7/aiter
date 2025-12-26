@@ -121,10 +121,20 @@ function App() {
           // The session will be re-saved with new IDs after restoration completes
           await window.api.session.clear()
 
-          // Restore editor tabs and terminals in parallel for faster startup
-          const editorTabPromises = session.editorTabs
-            .filter(tabInfo => !tabInfo.isDiff) // Skip diff tabs
-            .map(async (tabInfo) => {
+          // Create maps for quick lookup
+          const editorTabMap = new Map(session.editorTabs.map(t => [`editor-${t.id}`, t]))
+          const terminalMap = new Map(session.terminals.map(t => [`terminal-${t.id}`, t]))
+
+          // Limit restored terminals to prevent runaway accumulation
+          const MAX_RESTORED_TERMINALS = 10
+          let terminalCount = 0
+
+          // Restore tabs in the order specified by tabOrder
+          for (const tabId of session.tabOrder) {
+            if (tabId.startsWith('editor-')) {
+              const tabInfo = editorTabMap.get(tabId)
+              if (!tabInfo || tabInfo.isDiff) continue // Skip diff tabs
+
               try {
                 const fileResult = await window.api.fs.readFile(tabInfo.filePath)
                 if (fileResult.success && fileResult.content !== undefined) {
@@ -145,46 +155,41 @@ function App() {
               } catch (error) {
                 console.warn(`[Session] Failed to restore editor tab: ${tabInfo.filePath}`, error)
               }
-            })
-
-          // Limit restored terminals to prevent runaway accumulation
-          const MAX_RESTORED_TERMINALS = 10
-          const terminalsToRestore = session.terminals.slice(0, MAX_RESTORED_TERMINALS)
-          if (session.terminals.length > MAX_RESTORED_TERMINALS) {
-            console.warn(`[Session] Limiting terminal restoration from ${session.terminals.length} to ${MAX_RESTORED_TERMINALS}`)
-          }
-
-          const terminalPromises = terminalsToRestore.map(async (termInfo) => {
-            try {
-              // Find project for this terminal
-              const project = projectsResult.projects?.find(p => p.id === termInfo.projectId)
-              if (!project) {
-                console.warn(`[Session] Project not found for terminal: ${termInfo.projectId}`)
-                return
+            } else if (tabId.startsWith('terminal-')) {
+              if (terminalCount >= MAX_RESTORED_TERMINALS) {
+                console.warn(`[Session] Terminal limit reached, skipping: ${tabId}`)
+                continue
               }
 
-              const terminalResult = await window.api.terminal.create(
-                termInfo.cwd,
-                termInfo.projectId,
-                project.name
-              )
+              const termInfo = terminalMap.get(tabId)
+              if (!termInfo) continue
 
-              if (terminalResult.success && terminalResult.terminal) {
-                dispatch({
-                  type: 'ADD_TERMINAL',
-                  payload: terminalResult.terminal
-                })
+              try {
+                // Find project for this terminal
+                const project = projectsResult.projects?.find(p => p.id === termInfo.projectId)
+                if (!project) {
+                  console.warn(`[Session] Project not found for terminal: ${termInfo.projectId}`)
+                  continue
+                }
+
+                const terminalResult = await window.api.terminal.create(
+                  termInfo.cwd,
+                  termInfo.projectId,
+                  project.name
+                )
+
+                if (terminalResult.success && terminalResult.terminal) {
+                  dispatch({
+                    type: 'ADD_TERMINAL',
+                    payload: terminalResult.terminal
+                  })
+                  terminalCount++
+                }
+              } catch (error) {
+                console.warn(`[Session] Failed to restore terminal: ${termInfo.id}`, error)
               }
-            } catch (error) {
-              console.warn(`[Session] Failed to restore terminal: ${termInfo.id}`, error)
             }
-          })
-
-          // Wait for all restorations to complete in parallel
-          await Promise.all([...editorTabPromises, ...terminalPromises])
-
-          // Note: We don't restore tab order since IDs have changed
-          // The new tabs are added in order, so the order is preserved
+          }
 
           // Restore active project
           if (session.activeProjectId) {
