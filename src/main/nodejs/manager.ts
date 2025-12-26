@@ -362,6 +362,18 @@ export class NodeManager {
     const nodeSource = settings?.nodeSource ?? 'builtin';
     const preserveVersionManagers = settings?.preserveVersionManagers ?? false;
 
+    // 清理代理环境变量，避免主进程的代理设置干扰终端程序
+    // 这些变量会导致某些 HTTP 库（如 axios）出现连接问题
+    // 终端程序应该从 shell 配置文件中获取代理设置，而不是继承主进程的设置
+    const proxyVarsToClean = [
+      'http_proxy', 'https_proxy', 'ftp_proxy', 'all_proxy',
+      'HTTP_PROXY', 'HTTPS_PROXY', 'FTP_PROXY', 'ALL_PROXY',
+      'no_proxy', 'NO_PROXY'
+    ];
+    for (const varName of proxyVarsToClean) {
+      delete env[varName];
+    }
+
     // 处理版本管理器环境变量
     if (!preserveVersionManagers) {
       // 删除版本管理器相关的环境变量，防止冲突
