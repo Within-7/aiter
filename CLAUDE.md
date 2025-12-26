@@ -39,33 +39,69 @@ Both processes hot-reload automatically. Watch for console output from both.
 
 ## Git Workflow Requirements
 
-**CRITICAL:** Only commit and push when explicitly requested by the user.
+### Commit Policy: Auto-Commit, Manual Push
 
-### Wait for User Request
+**每次完成新增、删除、修改等操作后，必须立即 commit。但只在用户明确要求时才 push 到远端。**
 
-**DO NOT** automatically commit or push after every change. Wait for the user to explicitly ask:
-- "帮我提交" / "commit"
-- "推送到 GitHub" / "push"
-- "发布新版本" / "release"
+#### 自动 Commit 规则
 
-This allows the user to:
-- Review changes before committing
-- Batch multiple related changes into one commit
-- Decide when to push and release
+✅ **每次操作完成后立即 commit：**
+- 新增文件或功能
+- 删除文件或代码
+- 修改现有代码
+- 重构或优化
+- 修复 bug
+- 更新配置或文档
+
+#### 手动 Push 规则
+
+⏸️ **只在用户明确要求时才 push：**
+- "推送" / "push" / "同步远端"
+- "发布" / "release"
+
+这样做的好处：
+- 每个操作都有独立的 commit 记录，便于追踪和回滚
+- 用户可以在 push 前审查本地的所有 commits
+- 支持批量 push 多个相关的 commits
 
 ### Commit Message Format
 
-```bash
-git commit -m "Brief description of changes
+使用 Conventional Commits 格式，根据操作类型选择合适的前缀：
 
-Detailed explanation if needed:
-- What was changed
-- Why it was changed
-- Any important notes
+| 操作类型 | 前缀 | 示例 |
+|---------|------|------|
+| 新增功能 | `feat:` | `feat: Add user authentication` |
+| 修复 bug | `fix:` | `fix: Resolve login timeout issue` |
+| 删除代码/文件 | `remove:` | `remove: Delete deprecated API endpoints` |
+| 重构 | `refactor:` | `refactor: Simplify error handling logic` |
+| 文档更新 | `docs:` | `docs: Update API documentation` |
+| 样式调整 | `style:` | `style: Fix button alignment` |
+| 性能优化 | `perf:` | `perf: Optimize database queries` |
+| 配置变更 | `chore:` | `chore: Update dependencies` |
+
+```bash
+git commit -m "<type>: <简洁描述>
+
+<可选的详细说明>
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+**示例：**
+```bash
+# 新增功能
+git commit -m "feat: Add dark mode toggle in settings"
+
+# 修复 bug
+git commit -m "fix: Resolve terminal resize issue on Windows"
+
+# 删除文件
+git commit -m "remove: Delete unused utility functions"
+
+# 重构代码
+git commit -m "refactor: Extract file server logic into separate module"
 ```
 
 ### What NOT to Commit
