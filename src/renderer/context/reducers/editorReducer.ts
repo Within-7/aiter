@@ -59,10 +59,39 @@ export function editorReducer(state: AppState, action: AppAction): AppState {
         }
       }
 
+      // Insert new tab after the current active tab
+      const newTabId = `editor-${action.payload.id}`
+      let newTabOrder: string[]
+
+      // Find current active tab position
+      const activeTabId = state.activeEditorTabId
+        ? `editor-${state.activeEditorTabId}`
+        : state.activeTerminalId
+        ? `terminal-${state.activeTerminalId}`
+        : null
+
+      if (activeTabId) {
+        const activeIndex = state.tabOrder.indexOf(activeTabId)
+        if (activeIndex !== -1) {
+          // Insert after the active tab
+          newTabOrder = [
+            ...state.tabOrder.slice(0, activeIndex + 1),
+            newTabId,
+            ...state.tabOrder.slice(activeIndex + 1)
+          ]
+        } else {
+          // Fallback: append to end
+          newTabOrder = [...state.tabOrder, newTabId]
+        }
+      } else {
+        // No active tab, append to end
+        newTabOrder = [...state.tabOrder, newTabId]
+      }
+
       return {
         ...state,
         editorTabs: [...state.editorTabs, action.payload],
-        tabOrder: [...state.tabOrder, `editor-${action.payload.id}`],
+        tabOrder: newTabOrder,
         activeEditorTabId: action.payload.id,
         activeTerminalId: undefined  // Clear terminal selection when switching to editor
       }

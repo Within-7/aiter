@@ -6,14 +6,44 @@ import { removeTabAndActivateNext } from '../utils/tabManagement'
  */
 export function terminalReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'ADD_TERMINAL':
+    case 'ADD_TERMINAL': {
+      // Insert new terminal tab after the current active tab
+      const newTabId = `terminal-${action.payload.id}`
+      let newTabOrder: string[]
+
+      // Find current active tab position
+      const activeTabId = state.activeEditorTabId
+        ? `editor-${state.activeEditorTabId}`
+        : state.activeTerminalId
+        ? `terminal-${state.activeTerminalId}`
+        : null
+
+      if (activeTabId) {
+        const activeIndex = state.tabOrder.indexOf(activeTabId)
+        if (activeIndex !== -1) {
+          // Insert after the active tab
+          newTabOrder = [
+            ...state.tabOrder.slice(0, activeIndex + 1),
+            newTabId,
+            ...state.tabOrder.slice(activeIndex + 1)
+          ]
+        } else {
+          // Fallback: append to end
+          newTabOrder = [...state.tabOrder, newTabId]
+        }
+      } else {
+        // No active tab, append to end
+        newTabOrder = [...state.tabOrder, newTabId]
+      }
+
       return {
         ...state,
         terminals: [...state.terminals, action.payload],
-        tabOrder: [...state.tabOrder, `terminal-${action.payload.id}`],
+        tabOrder: newTabOrder,
         activeTerminalId: action.payload.id,
         activeEditorTabId: undefined  // Clear editor selection when opening terminal
       }
+    }
 
     case 'REMOVE_TERMINAL': {
       const newTerminals = state.terminals.filter((t) => t.id !== action.payload)

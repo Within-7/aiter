@@ -104,6 +104,26 @@
   background: rgba(0, 122, 204, 0.3);
 }
 
+/* Drop zone at the end for dropping tabs at the last position */
+.tab-drop-end-zone {
+  min-width: 20px;
+  flex-shrink: 0;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  -webkit-app-region: no-drag;
+}
+
+.tab-drop-end-zone.visible {
+  opacity: 1;
+  min-width: 40px;
+}
+
+.tab-drop-end-zone.drag-over {
+  background: rgba(0, 122, 204, 0.3);
+  border-left: 2px solid #007acc;
+}
+
 /* Preview tab styling (VSCode-like) */
 .work-area-tab.preview .tab-title {
   font-style: italic;

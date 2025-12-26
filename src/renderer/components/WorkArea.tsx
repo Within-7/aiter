@@ -30,6 +30,7 @@ export const WorkArea: React.FC = () => {
   // Track dragging state
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null)
   const [dragOverTabId, setDragOverTabId] = useState<string | null>(null)
+  const [dragOverEnd, setDragOverEnd] = useState<boolean>(false) // For dropping at the end
 
   // Detect platform for Windows-specific styling
   const isWindows = navigator.platform.toLowerCase().includes('win')
@@ -167,11 +168,20 @@ export const WorkArea: React.FC = () => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     setDragOverTabId(tabId)
+    setDragOverEnd(false)
+  }, [])
+
+  const handleDragOverEnd = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverTabId(null)
+    setDragOverEnd(true)
   }, [])
 
   const handleDragEnd = useCallback(() => {
     setDraggedTabId(null)
     setDragOverTabId(null)
+    setDragOverEnd(false)
   }, [])
 
   const handleDrop = (e: React.DragEvent, targetTabId: string) => {
@@ -222,6 +232,45 @@ export const WorkArea: React.FC = () => {
 
     setDraggedTabId(null)
     setDragOverTabId(null)
+    setDragOverEnd(false)
+  }
+
+  const handleDropAtEnd = (e: React.DragEvent) => {
+    e.preventDefault()
+
+    if (!draggedTabId) {
+      setDraggedTabId(null)
+      setDragOverEnd(false)
+      return
+    }
+
+    // Get all selected tabs to move (or just the dragged one if not in selection)
+    const tabsToMove = state.selectedTabIds.has(draggedTabId)
+      ? Array.from(state.selectedTabIds)
+      : [draggedTabId]
+
+    // Insert at the end of tabOrder
+    const targetIndex = state.tabOrder.length
+
+    if (tabsToMove.length > 1) {
+      dispatch({
+        type: 'REORDER_TABS_BATCH',
+        payload: { tabIds: tabsToMove, targetIndex }
+      })
+    } else {
+      // Single tab reorder to the end
+      const draggedIndex = state.tabOrder.findIndex(id => id === draggedTabId)
+      if (draggedIndex !== -1 && draggedIndex < state.tabOrder.length - 1) {
+        const newTabOrder = [...state.tabOrder]
+        const [removed] = newTabOrder.splice(draggedIndex, 1)
+        newTabOrder.push(removed)
+        dispatch({ type: 'REORDER_TABS', payload: newTabOrder })
+      }
+    }
+
+    setDraggedTabId(null)
+    setDragOverTabId(null)
+    setDragOverEnd(false)
   }
 
   const handleContentChange = (content: string) => {
@@ -342,6 +391,13 @@ export const WorkArea: React.FC = () => {
               </div>
             )
           })}
+          {/* Drop zone for dropping tabs at the end */}
+          <div
+            className={`tab-drop-end-zone ${dragOverEnd ? 'drag-over' : ''} ${draggedTabId ? 'visible' : ''}`}
+            onDragOver={handleDragOverEnd}
+            onDrop={handleDropAtEnd}
+            onDragLeave={() => setDragOverEnd(false)}
+          />
         </div>
         <button
           className={`mode-toggle-button ${!supportsPreview ? 'disabled' : ''} ${isWindows ? 'windows-platform' : ''}`}
