@@ -24,10 +24,13 @@
   overflow-x: auto;
   overflow-y: hidden;
   flex: 1;
+  /* Hide scrollbar but keep scroll functionality */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
-.work-area-tabs::-webkit-scrollbar {
-  height: 3px;
+.work-area-tabs-left::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
 }
 
 .work-area-tab {
