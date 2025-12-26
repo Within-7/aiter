@@ -117,11 +117,19 @@ export abstract class NpmPluginInstaller implements PluginInstaller {
 
       // Read package.json directly
       const fs = await import('fs-extra');
-      if (await fs.pathExists(packageJsonPath)) {
-        const packageJson = await fs.readJson(packageJsonPath);
-        const version = packageJson.version?.trim() || null;
-        console.log(`[NpmPluginInstaller] Found version for ${this.packageName}: "${version}"`);
-        return version;
+      const exists = await fs.pathExists(packageJsonPath);
+      console.log(`[NpmPluginInstaller] package.json exists at ${packageJsonPath}: ${exists}`);
+
+      if (exists) {
+        try {
+          const packageJson = await fs.readJson(packageJsonPath);
+          const version = packageJson.version?.trim() || null;
+          console.log(`[NpmPluginInstaller] Found version for ${this.packageName}: "${version}"`);
+          return version;
+        } catch (readError) {
+          console.error(`[NpmPluginInstaller] Error reading package.json for ${this.packageName}:`, readError);
+          return null;
+        }
       }
 
       console.log(`[NpmPluginInstaller] package.json not found for ${this.packageName}`);

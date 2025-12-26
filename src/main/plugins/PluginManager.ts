@@ -201,6 +201,16 @@ export class PluginManager {
     }
 
     console.log('[PluginManager] Auto-installation of built-in plugins complete');
+
+    // Notify renderer that plugin status has changed
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      try {
+        this.mainWindow.webContents.send('plugins:status-changed');
+        console.log('[PluginManager] Sent plugins:status-changed event after auto-install');
+      } catch (error) {
+        console.warn('[PluginManager] Failed to send status-changed event:', error);
+      }
+    }
   }
 
   /**

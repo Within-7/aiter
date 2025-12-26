@@ -115,6 +115,17 @@ export const PluginPanel: React.FC = () => {
     return cleanup
   }, [])
 
+  // Listen for plugin status changes (e.g., after auto-install completes)
+  useEffect(() => {
+    const cleanup = window.api.plugins.onStatusChanged(() => {
+      console.log('[PluginPanel] Plugin status changed, reloading...')
+      if (isOpen) {
+        loadPlugins()
+      }
+    })
+    return cleanup
+  }, [isOpen, loadPlugins])
+
   const handleInstall = async (pluginId: string) => {
     const plugin = plugins.find(p => p.id === pluginId)
     const pluginName = plugin?.name || pluginId
