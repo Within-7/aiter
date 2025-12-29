@@ -13,6 +13,16 @@ import { NodeManager } from './nodejs/manager'
 import { WorkspaceManager } from './workspace'
 
 // ============================================================================
+// Disable System Proxy for Electron
+// ============================================================================
+// Prevent Electron from using system proxy (PAC, WPAD, etc.)
+// This is critical for MCP services like @brightdata/mcp which fail when
+// requests are routed through proxies like ShadowsocksX-NG
+// IMPORTANT: This must be called before app.ready
+app.commandLine.appendSwitch('no-proxy-server')
+console.log('[Startup] Disabled system proxy for Electron')
+
+// ============================================================================
 // Clear Proxy Environment Variables on Startup
 // ============================================================================
 // Prevent proxy settings from being inherited from the launching terminal
