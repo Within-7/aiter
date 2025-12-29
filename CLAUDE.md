@@ -406,8 +406,9 @@ AiTer implements defense-in-depth security measures:
    - **Timing-safe token comparison** using `crypto.timingSafeEqual()`
    - Session-based authentication after initial token validation
    - **Referer validation for sub-resources only** (HTML pages always require token/session)
-   - **Security headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, CSP
+   - **Security headers**: X-Content-Type-Options, X-XSS-Protection
    - dotfiles denied (prevents .env, .git exposure)
+   - Note: X-Frame-Options not set (required for iframe preview functionality)
 
 4. **Shell/PTY Security** (`src/main/pty.ts`)
    - **Shell whitelist**: Only known safe shells allowed

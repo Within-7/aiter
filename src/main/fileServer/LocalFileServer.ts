@@ -69,11 +69,12 @@ export class LocalFileServer {
 
       // Security headers
       res.setHeader('X-Content-Type-Options', 'nosniff')
-      res.setHeader('X-Frame-Options', 'SAMEORIGIN')
       res.setHeader('X-XSS-Protection', '1; mode=block')
-
-      // Content Security Policy - restrictive but allows same-origin resources
-      res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss: http: https:;")
+      // Note: We intentionally don't set X-Frame-Options because:
+      // 1. AiTer's HTML preview uses iframes to display content
+      // 2. The iframe loads from localhost:{port} into Electron's renderer
+      // 3. SAMEORIGIN would block this cross-origin iframe embedding
+      // Security is maintained through token authentication instead
 
       next()
     })
