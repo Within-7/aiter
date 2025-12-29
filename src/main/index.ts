@@ -13,30 +13,22 @@ import { NodeManager } from './nodejs/manager'
 import { WorkspaceManager } from './workspace'
 
 // ============================================================================
-// Disable System Proxy for Electron
+// Proxy Configuration Strategy
 // ============================================================================
-// Prevent Electron from using system proxy (PAC, WPAD, etc.)
-// This is critical for MCP services like @brightdata/mcp which fail when
-// requests are routed through proxies like ShadowsocksX-NG
-// IMPORTANT: This must be called before app.ready
-app.commandLine.appendSwitch('no-proxy-server')
-console.log('[Startup] Disabled system proxy for Electron')
-
-// ============================================================================
-// Clear Proxy Environment Variables on Startup
-// ============================================================================
-// Prevent proxy settings from being inherited from the launching terminal
-// This avoids issues with HTTP libraries (like axios) that don't handle
-// environment-based proxies correctly, causing MCP services to fail
-const proxyVarsToClear = [
-  'http_proxy', 'https_proxy', 'ftp_proxy', 'all_proxy',
-  'HTTP_PROXY', 'HTTPS_PROXY', 'FTP_PROXY', 'ALL_PROXY',
-  'no_proxy', 'NO_PROXY'
-]
-for (const varName of proxyVarsToClear) {
-  delete process.env[varName]
-}
-console.log('[Startup] Cleared proxy environment variables')
+// Problem: MCP services (like @brightdata/mcp) fail when using proxy due to
+// axios "stream has been aborted" errors.
+//
+// Solution: Layered proxy handling
+// 1. Electron main process: Uses system proxy (for auto-updates, web requests)
+// 2. PTY terminal processes: Proxy env vars cleared by NodeManager.getTerminalEnv()
+//    - MCP processes inherit clean env from terminal, so they work correctly
+//    - Users can manually enable proxy in terminal via shell commands (e.g., 'proxy')
+//
+// This allows:
+// - AiTer UI and auto-updates to use system proxy (ShadowsocksX-NG, etc.)
+// - MCP services to connect without proxy interference
+// - Users to manually enable proxy in terminal when needed
+console.log('[Startup] Electron uses system proxy, terminals have clean proxy env')
 
 // ============================================================================
 // Development/Production Environment Isolation

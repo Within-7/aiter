@@ -362,19 +362,12 @@ export class NodeManager {
     const nodeSource = settings?.nodeSource ?? 'builtin';
     const preserveVersionManagers = settings?.preserveVersionManagers ?? false;
 
-    // 不继承主进程的代理环境变量
-    // 原因：axios 等 HTTP 库在处理通过环境变量设置的代理时可能出现问题（如 "stream has been aborted" 错误）
-    // 这会导致 MCP 服务（如 @brightdata/mcp）无法正常连接
-    // 用户可以在终端中通过 shell 命令（如 ~/.zshrc 中定义的 proxy/unproxy）手动启用代理
-    // 这与在原生 Terminal 中的使用方式一致
-    const proxyVarsToClean = [
-      'http_proxy', 'https_proxy', 'ftp_proxy', 'all_proxy',
-      'HTTP_PROXY', 'HTTPS_PROXY', 'FTP_PROXY', 'ALL_PROXY',
-      'no_proxy', 'NO_PROXY'
-    ];
-    for (const varName of proxyVarsToClean) {
-      delete env[varName];
-    }
+    // Terminal inherits proxy environment variables from the system
+    // This allows users to use proxy in terminal (e.g., git clone, npm install)
+    //
+    // Note: If MCP services like @brightdata/mcp fail with proxy, add to MCP config:
+    //   "env": { "no_proxy": "*", "NO_PROXY": "*" }
+    // This disables proxy only for that specific MCP, not the whole terminal
 
     // 处理版本管理器环境变量
     if (!preserveVersionManagers) {
