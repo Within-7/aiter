@@ -3,13 +3,12 @@
  * 使用 electron-updater 实现自动检查、下载和安装更新
  */
 
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, net } from 'electron'
 import { autoUpdater, UpdateInfo, ProgressInfo, UpdateDownloadedEvent } from 'electron-updater'
 import log from 'electron-log'
 import * as fs from 'fs'
 import * as path from 'path'
 import { spawn, execFileSync } from 'child_process'
-import * as https from 'https'
 
 // 配置日志
 autoUpdater.logger = log
@@ -482,49 +481,53 @@ export class AutoUpdateManager {
 
   /**
    * 从 GitHub API 获取最新 Release 信息
+   * 使用 Electron 的 net 模块，可以正确处理系统代理设置
    */
   async fetchLatestRelease(): Promise<GitHubRelease | null> {
     const apiUrl = 'https://api.github.com/repos/Within-7/AiTer/releases/latest'
 
     return new Promise((resolve) => {
-      const request = https.get(apiUrl, {
-        headers: {
-          'User-Agent': 'AiTer-Updater',
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      }, (response) => {
-        // Handle redirects
+      const request = net.request({
+        url: apiUrl,
+        method: 'GET'
+      })
+
+      request.setHeader('User-Agent', 'AiTer-Updater')
+      request.setHeader('Accept', 'application/vnd.github.v3+json')
+
+      let data = ''
+
+      request.on('response', (response) => {
+        // Handle redirects (net module follows redirects automatically, but just in case)
         if (response.statusCode === 301 || response.statusCode === 302) {
           const redirectUrl = response.headers.location
-          if (redirectUrl) {
-            https.get(redirectUrl, {
-              headers: {
-                'User-Agent': 'AiTer-Updater',
-                'Accept': 'application/vnd.github.v3+json'
-              }
-            }, (redirectResponse) => {
-              let data = ''
-              redirectResponse.on('data', chunk => data += chunk)
-              redirectResponse.on('end', () => {
-                try {
-                  resolve(JSON.parse(data))
-                } catch {
-                  resolve(null)
-                }
-              })
-            }).on('error', () => resolve(null))
-            return
+          if (redirectUrl && typeof redirectUrl === 'string') {
+            log.info('[AutoUpdater] Following redirect to:', redirectUrl)
+            // net module handles redirects automatically
           }
         }
 
-        let data = ''
-        response.on('data', chunk => data += chunk)
+        response.on('data', (chunk) => {
+          data += chunk.toString()
+        })
+
         response.on('end', () => {
           try {
-            resolve(JSON.parse(data))
-          } catch {
+            if (response.statusCode === 200) {
+              resolve(JSON.parse(data))
+            } else {
+              log.error('[AutoUpdater] GitHub API returned status:', response.statusCode, data.substring(0, 200))
+              resolve(null)
+            }
+          } catch (error) {
+            log.error('[AutoUpdater] Failed to parse release info:', error)
             resolve(null)
           }
+        })
+
+        response.on('error', (error) => {
+          log.error('[AutoUpdater] Response error:', error)
+          resolve(null)
         })
       })
 
