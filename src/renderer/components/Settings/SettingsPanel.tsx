@@ -337,25 +337,27 @@ export const SettingsPanel: React.FC = () => {
       <section className="settings-section">
         <h3>{t('general.proxy.title')}</h3>
 
-        <div className="setting-item">
-          <label htmlFor="proxy-mode">{t('general.proxy.mode')}</label>
-          <select
-            id="proxy-mode"
-            value={settings.proxyMode ?? 'off'}
-            onChange={(e) => handleSettingChange('proxyMode', e.target.value as 'off' | 'manual' | 'system')}
-          >
-            <option value="off">{t('general.proxy.modes.off')}</option>
-            <option value="manual">{t('general.proxy.modes.manual')}</option>
-            <option value="system">{t('general.proxy.modes.system')}</option>
-          </select>
+        <div className="setting-item setting-item-with-hint">
+          <div className="setting-row">
+            <label htmlFor="proxy-mode">{t('general.proxy.mode')}</label>
+            <select
+              id="proxy-mode"
+              value={settings.proxyMode ?? 'off'}
+              onChange={(e) => handleSettingChange('proxyMode', e.target.value as 'off' | 'manual' | 'system')}
+            >
+              <option value="off">{t('general.proxy.modes.off')}</option>
+              <option value="manual">{t('general.proxy.modes.manual')}</option>
+              <option value="system">{t('general.proxy.modes.system')}</option>
+            </select>
+          </div>
           <span className="setting-hint">
             {t('general.proxy.modeHint')}
           </span>
         </div>
 
         {settings.proxyMode === 'manual' && (
-          <>
-            <div className="setting-item">
+          <div className="proxy-config-grid">
+            <div className="proxy-config-item">
               <label htmlFor="proxy-protocol">{t('general.proxy.protocol')}</label>
               <select
                 id="proxy-protocol"
@@ -367,18 +369,7 @@ export const SettingsPanel: React.FC = () => {
               </select>
             </div>
 
-            <div className="setting-item">
-              <label htmlFor="proxy-host">{t('general.proxy.host')}</label>
-              <input
-                id="proxy-host"
-                type="text"
-                value={settings.proxyHost ?? '127.0.0.1'}
-                onChange={(e) => handleSettingChange('proxyHost', e.target.value)}
-                placeholder="127.0.0.1"
-              />
-            </div>
-
-            <div className="setting-item">
+            <div className="proxy-config-item">
               <label htmlFor="proxy-port">{t('general.proxy.port')}</label>
               <input
                 id="proxy-port"
@@ -390,7 +381,18 @@ export const SettingsPanel: React.FC = () => {
                 placeholder="1087"
               />
             </div>
-          </>
+
+            <div className="proxy-config-item full-width">
+              <label htmlFor="proxy-host">{t('general.proxy.host')}</label>
+              <input
+                id="proxy-host"
+                type="text"
+                value={settings.proxyHost ?? '127.0.0.1'}
+                onChange={(e) => handleSettingChange('proxyHost', e.target.value)}
+                placeholder="127.0.0.1"
+              />
+            </div>
+          </div>
         )}
 
         {systemProxyStatus && systemProxyStatus.active && (
