@@ -270,6 +270,17 @@ export function registerAppHandlers(
     }
   })
 
+  // Proxy management
+  ipcMain.handle('proxy:getStatus', async () => {
+    try {
+      const status = nodeManager.getProxyStatus()
+      return { success: true, ...status }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
   // Shell detection
   const shellDetector = new ShellDetector()
   const versionManagerDetector = new VersionManagerDetector()

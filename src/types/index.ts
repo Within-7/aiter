@@ -126,6 +126,12 @@ export interface AppSettings {
 
   // File handling preferences
   openExternally?: ExternalOpenConfig[]  // File types to open with external apps
+
+  // Proxy configuration
+  proxyMode: 'off' | 'manual' | 'system'  // Proxy mode: off=no proxy, manual=use custom proxy, system=inherit system proxy
+  proxyHost?: string                      // Proxy host (e.g., 127.0.0.1)
+  proxyPort?: number                      // Proxy port (e.g., 1087)
+  proxyProtocol?: 'http' | 'socks5'       // Proxy protocol
 }
 
 // Configuration for opening files with external applications

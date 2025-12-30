@@ -376,12 +376,11 @@ export class NodeManager {
     const nodeSource = settings?.nodeSource ?? 'builtin';
     const preserveVersionManagers = settings?.preserveVersionManagers ?? false;
 
-    // Terminal inherits proxy environment variables from the system
-    // This allows users to use proxy in terminal (e.g., git clone, npm install)
-    //
-    // Note: If MCP services like @brightdata/mcp fail with proxy, add to MCP config:
-    //   "env": { "no_proxy": "*", "NO_PROXY": "*" }
-    // This disables proxy only for that specific MCP, not the whole terminal
+    // Proxy configuration based on settings
+    // - off: Clear all proxy environment variables (best for MCP compatibility)
+    // - manual: Use custom proxy settings
+    // - system: Inherit system proxy (may cause MCP connection issues)
+    this.applyProxySettings(env, settings);
 
     // 处理版本管理器环境变量
     if (!preserveVersionManagers) {
@@ -438,6 +437,77 @@ export class NodeManager {
     result.AITER_TERMINAL = '1';
 
     return result;
+  }
+
+  /**
+   * Apply proxy settings to environment variables based on user configuration
+   * @param env - Environment variables object to modify
+   * @param settings - App settings containing proxy configuration
+   */
+  private applyProxySettings(env: NodeJS.ProcessEnv, settings?: AppSettings): void {
+    const proxyMode = settings?.proxyMode ?? 'off';
+
+    // Proxy-related environment variable names
+    const proxyVars = [
+      'http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY',
+      'no_proxy', 'NO_PROXY', 'all_proxy', 'ALL_PROXY'
+    ];
+
+    switch (proxyMode) {
+      case 'off':
+        // Clear all proxy variables - best for MCP compatibility
+        for (const varName of proxyVars) {
+          delete env[varName];
+        }
+        console.log('[NodeManager] Proxy mode: off - cleared all proxy env vars');
+        break;
+
+      case 'manual': {
+        // Use custom proxy settings
+        const host = settings?.proxyHost || '127.0.0.1';
+        const port = settings?.proxyPort || 1087;
+        const protocol = settings?.proxyProtocol || 'http';
+        const proxyUrl = `${protocol}://${host}:${port}`;
+
+        env.http_proxy = proxyUrl;
+        env.https_proxy = proxyUrl;
+        env.HTTP_PROXY = proxyUrl;
+        env.HTTPS_PROXY = proxyUrl;
+        // Set no_proxy for local addresses
+        env.no_proxy = 'localhost,127.0.0.1,::1';
+        env.NO_PROXY = 'localhost,127.0.0.1,::1';
+
+        console.log(`[NodeManager] Proxy mode: manual - using ${proxyUrl}`);
+        break;
+      }
+
+      case 'system':
+        // Inherit system proxy - may cause MCP issues
+        // Don't modify env, let it inherit from process.env
+        console.log('[NodeManager] Proxy mode: system - inheriting system proxy');
+        break;
+    }
+  }
+
+  /**
+   * Get current proxy status for display in UI
+   */
+  getProxyStatus(): { mode: string; url?: string; active: boolean } {
+    const httpProxy = process.env.http_proxy || process.env.HTTP_PROXY;
+    const httpsProxy = process.env.https_proxy || process.env.HTTPS_PROXY;
+
+    if (httpProxy || httpsProxy) {
+      return {
+        mode: 'system',
+        url: httpProxy || httpsProxy,
+        active: true
+      };
+    }
+
+    return {
+      mode: 'off',
+      active: false
+    };
   }
 
   /**

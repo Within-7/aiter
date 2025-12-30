@@ -292,6 +292,11 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
 
+  // Proxy management APIs
+  proxy: {
+    getStatus: () => ipcRenderer.invoke('proxy:getStatus')
+  },
+
   // Node.js management APIs
   nodejs: {
     checkBuiltin: () => ipcRenderer.invoke('nodejs:checkBuiltin'),
@@ -615,6 +620,15 @@ export interface API {
       };
       error?: string;
     }) => void): () => void
+  }
+  proxy: {
+    getStatus(): Promise<{
+      success: boolean;
+      mode?: string;
+      url?: string;
+      active?: boolean;
+      error?: string;
+    }>
   }
   update: {
     check(): Promise<{ success: boolean; error?: string }>

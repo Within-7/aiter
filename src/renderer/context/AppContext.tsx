@@ -106,7 +106,12 @@ export const initialState: AppState = {
     shortcuts: defaultShortcuts,
     // Terminal startup command
     enableStartupCommand: true,
-    startupCommand: 'minto'
+    startupCommand: 'minto',
+    // Proxy configuration
+    proxyMode: 'off',
+    proxyHost: '127.0.0.1',
+    proxyPort: 1087,
+    proxyProtocol: 'http'
   },
   terminalDataBuffer: new Map(),
   showPluginPanel: false,

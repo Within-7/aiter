@@ -63,7 +63,12 @@ export const initialUIState: UIState = {
     shortcuts: defaultShortcuts,
     // Terminal startup command
     enableStartupCommand: true,
-    startupCommand: 'minto'
+    startupCommand: 'minto',
+    // Proxy configuration
+    proxyMode: 'off',
+    proxyHost: '127.0.0.1',
+    proxyPort: 1087,
+    proxyProtocol: 'http'
   },
   showPluginPanel: false,
   showAboutPanel: false,

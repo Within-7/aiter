@@ -46,6 +46,21 @@
       "title": "Windows",
       "utf8Encoding": "UTF-8 Encoding",
       "utf8EncodingHint": "Enable UTF-8 encoding for terminal"
+    },
+    "proxy": {
+      "title": "Proxy Settings",
+      "mode": "Proxy Mode",
+      "modes": {
+        "off": "Off (Recommended for MCP)",
+        "manual": "Manual Configuration",
+        "system": "Inherit System Proxy"
+      },
+      "modeHint": "Choose how terminal handles proxy. 'Off' clears proxy for MCP compatibility.",
+      "protocol": "Protocol",
+      "host": "Host",
+      "port": "Port",
+      "systemDetected": "System proxy detected:",
+      "mcpNote": "Proxy is disabled. MCP services (like BrightData) will work without issues."
     }
   },
   "appearance": {

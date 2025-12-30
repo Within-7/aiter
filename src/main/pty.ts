@@ -194,7 +194,11 @@ export class PTYManager {
       preserveVersionManagers: false,
       windowsUseUtf8: true,
       enableStartupCommand: true,
-      startupCommand: 'minto'
+      startupCommand: 'minto',
+      proxyMode: 'off',
+      proxyHost: '127.0.0.1',
+      proxyPort: 1087,
+      proxyProtocol: 'http'
     }
 
     try {

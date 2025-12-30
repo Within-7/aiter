@@ -40,7 +40,10 @@ export const SettingsPanel: React.FC = () => {
   const [isWindows] = useState(() => navigator.platform.toLowerCase().includes('win'))
   const [isMac] = useState(() => navigator.platform.toLowerCase().includes('mac'))
 
-  // Fetch available shells and version managers on mount
+  // Proxy status state
+  const [systemProxyStatus, setSystemProxyStatus] = useState<{ mode: string; url?: string; active: boolean } | null>(null)
+
+  // Fetch available shells, version managers, and proxy status on mount
   useEffect(() => {
     if (isOpen) {
       // Detect available shells
@@ -63,6 +66,21 @@ export const SettingsPanel: React.FC = () => {
         })
         .catch(error => {
           console.error('Failed to detect version managers:', error)
+        })
+
+      // Get proxy status
+      window.api.proxy.getStatus()
+        .then(result => {
+          if (result.success) {
+            setSystemProxyStatus({
+              mode: result.mode || 'off',
+              url: result.url,
+              active: result.active || false
+            })
+          }
+        })
+        .catch(error => {
+          console.error('Failed to get proxy status:', error)
         })
     }
   }, [isOpen])
@@ -311,6 +329,80 @@ export const SettingsPanel: React.FC = () => {
             <span className="detected-items">
               {detectedVersionManagers.map(vm => vm.name).join(', ')}
             </span>
+          </div>
+        )}
+      </section>
+
+      {/* Proxy Configuration Section */}
+      <section className="settings-section">
+        <h3>{t('general.proxy.title')}</h3>
+
+        <div className="setting-item">
+          <label htmlFor="proxy-mode">{t('general.proxy.mode')}</label>
+          <select
+            id="proxy-mode"
+            value={settings.proxyMode ?? 'off'}
+            onChange={(e) => handleSettingChange('proxyMode', e.target.value as 'off' | 'manual' | 'system')}
+          >
+            <option value="off">{t('general.proxy.modes.off')}</option>
+            <option value="manual">{t('general.proxy.modes.manual')}</option>
+            <option value="system">{t('general.proxy.modes.system')}</option>
+          </select>
+          <span className="setting-hint">
+            {t('general.proxy.modeHint')}
+          </span>
+        </div>
+
+        {settings.proxyMode === 'manual' && (
+          <>
+            <div className="setting-item">
+              <label htmlFor="proxy-protocol">{t('general.proxy.protocol')}</label>
+              <select
+                id="proxy-protocol"
+                value={settings.proxyProtocol ?? 'http'}
+                onChange={(e) => handleSettingChange('proxyProtocol', e.target.value as 'http' | 'socks5')}
+              >
+                <option value="http">HTTP</option>
+                <option value="socks5">SOCKS5</option>
+              </select>
+            </div>
+
+            <div className="setting-item">
+              <label htmlFor="proxy-host">{t('general.proxy.host')}</label>
+              <input
+                id="proxy-host"
+                type="text"
+                value={settings.proxyHost ?? '127.0.0.1'}
+                onChange={(e) => handleSettingChange('proxyHost', e.target.value)}
+                placeholder="127.0.0.1"
+              />
+            </div>
+
+            <div className="setting-item">
+              <label htmlFor="proxy-port">{t('general.proxy.port')}</label>
+              <input
+                id="proxy-port"
+                type="number"
+                min="1"
+                max="65535"
+                value={settings.proxyPort ?? 1087}
+                onChange={(e) => handleSettingChange('proxyPort', parseInt(e.target.value, 10))}
+                placeholder="1087"
+              />
+            </div>
+          </>
+        )}
+
+        {systemProxyStatus && systemProxyStatus.active && (
+          <div className="setting-info setting-info-warning">
+            <span className="setting-info-label">{t('general.proxy.systemDetected')}</span>
+            <span className="detected-items">{systemProxyStatus.url}</span>
+          </div>
+        )}
+
+        {settings.proxyMode === 'off' && (
+          <div className="setting-info">
+            <span className="setting-info-label">{t('general.proxy.mcpNote')}</span>
           </div>
         )}
       </section>

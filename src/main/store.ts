@@ -52,7 +52,13 @@ const defaultSettings: AppSettings = {
   // Terminal startup command
   enableStartupCommand: true,        // Enable running a command when opening a new terminal
   startupCommand: 'minto',           // Default command to run on terminal startup
-  mintoInstalled: false              // Track Minto CLI installation status (legacy)
+  mintoInstalled: false,             // Track Minto CLI installation status (legacy)
+
+  // Proxy configuration
+  proxyMode: 'off',                  // Default to 'off' for MCP compatibility
+  proxyHost: '127.0.0.1',            // Default proxy host
+  proxyPort: 1087,                   // Default proxy port (ShadowsocksX-NG default)
+  proxyProtocol: 'http'              // Default proxy protocol
 }
 
 export class StoreManager {
