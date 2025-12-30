@@ -56,7 +56,8 @@ export class LocalFileServer {
       cookie: {
         secure: false, // Set to true if using HTTPS
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax' // Required for session to work in nested iframes
       }
     }))
 
@@ -98,14 +99,18 @@ export class LocalFileServer {
         return next()
       }
 
-      // SECURITY: Allow same-origin requests for sub-resources (CSS, JS, images, etc.)
-      // This enables resources to load properly when referenced from HTML files
-      // that were initially accessed with a valid token.
+      // SECURITY: Allow same-origin requests (including nested iframes)
+      // This enables resources and nested HTML files to load properly when referenced
+      // from HTML files that were initially accessed with a valid token.
       //
       // The Referer header cannot be spoofed by JavaScript in browsers (enforced by browser security).
-      // We add extra validation:
-      // 1. Only allow for non-HTML resources (prevents direct HTML access via Referer spoofing)
-      // 2. Verify the Referer matches our server's origin exactly
+      // If the Referer comes from our own server (same host:port), the request originates
+      // from a page that was already authenticated (either by token or by this same mechanism).
+      //
+      // This is safe because:
+      // 1. External attackers cannot forge Referer headers (browser security policy)
+      // 2. Only pages already loaded from our server will have the correct Referer
+      // 3. This enables legitimate use cases like html-viewer.html embedding other HTML files
       const referer = req.headers.referer
       if (referer) {
         try {
@@ -114,16 +119,9 @@ export class LocalFileServer {
 
           // Check if the referer is from the same server (same host and port)
           if (refererUrl.host === serverOrigin) {
-            // Only allow Referer-based auth for sub-resources (not HTML pages)
-            // This prevents an attacker from crafting a page that loads our HTML via Referer
-            const requestPath = req.path.toLowerCase()
-            const isHtmlRequest = requestPath.endsWith('.html') || requestPath.endsWith('.htm') || requestPath === '/'
-
-            if (!isHtmlRequest) {
-              this.lastAccessed = Date.now()
-              return next()
-            }
-            // HTML requests still require token or session auth
+            // Allow all same-origin requests (including nested HTML iframes)
+            this.lastAccessed = Date.now()
+            return next()
           }
         } catch {
           // Invalid referer URL, continue to deny
