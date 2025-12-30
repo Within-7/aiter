@@ -36,6 +36,7 @@
   padding: 16px 20px;
   border-bottom: 1px solid #3c3c3c;
   background-color: #2d2d30;
+  flex-shrink: 0;
 }
 
 .plugin-panel-header h2 {
@@ -56,6 +57,8 @@
   overflow-y: hidden;
   scrollbar-width: thin;
   scrollbar-color: #555555 transparent;
+  flex-shrink: 0;
+  min-height: 44px;
 }
 
 .plugin-panel-filters::-webkit-scrollbar {
@@ -76,7 +79,7 @@
 }
 
 .plugin-filter-btn {
-  padding: 4px 8px;
+  padding: 6px 10px;
   background-color: #3c3c3c;
   border: 1px solid #555555;
   border-radius: 4px;
@@ -86,6 +89,11 @@
   transition: all 0.2s;
   white-space: nowrap;
   flex-shrink: 0;
+  min-height: 24px;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .plugin-filter-btn:hover {
@@ -113,6 +121,7 @@
   color: #cccccc;
   font-size: 13px;
   animation: slideDown 0.3s ease-out;
+  flex-shrink: 0;
 }
 
 @keyframes slideDown {
