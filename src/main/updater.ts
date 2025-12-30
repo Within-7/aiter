@@ -296,12 +296,22 @@ export class AutoUpdateManager {
 
   /**
    * 检查更新
-   * 开发模式下使用 GitHub API 检查，生产模式下使用 electron-updater
+   * - 开发模式：使用 GitHub API 检查
+   * - 未签名应用：使用 GitHub API 检查（install-script 模式）
+   * - 已签名应用：使用 electron-updater
    */
   async checkForUpdates(): Promise<void> {
     // 开发环境下使用脚本模式检查（通过 GitHub API）
     if (!app.isPackaged) {
       log.info('[AutoUpdater] Development mode: using GitHub API to check updates')
+      await this.checkForUpdatesScript()
+      return
+    }
+
+    // 未签名应用使用脚本模式检查（通过 GitHub API）
+    // 避免 electron-updater 在访问 GitHub Release 时的 404 错误
+    if (this._updateMode === 'install-script') {
+      log.info('[AutoUpdater] Unsigned app: using GitHub API to check updates')
       await this.checkForUpdatesScript()
       return
     }
