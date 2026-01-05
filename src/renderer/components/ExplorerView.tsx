@@ -354,7 +354,7 @@ export function ExplorerView() {
 
                 {/* File operation buttons - only show when expanded */}
                 {expandedProjects.has(project.id) && (
-                  <>
+                  <div className="file-op-buttons">
                     <button
                       className="btn-icon btn-file-op"
                       onClick={(e) => {
@@ -385,7 +385,7 @@ export function ExplorerView() {
                     >
                       <VscCloudUpload />
                     </button>
-                  </>
+                  </div>
                 )}
 
                 <button

@@ -191,26 +191,34 @@
   font-weight: bold;
 }
 
+/* File operation buttons container */
+.file-op-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow: hidden;
+  max-width: 0;
+  opacity: 0;
+  transition: max-width 0.15s ease, opacity 0.15s ease;
+}
+
+.project-header:hover .file-op-buttons {
+  max-width: 100px;
+  opacity: 1;
+}
+
 .btn-file-op {
   font-size: 12px;
-  opacity: 0;
-  width: 0;
-  padding: 0;
-  overflow: hidden;
-  transition: opacity 0.15s, width 0.15s, padding 0.15s;
+  opacity: 0.6;
+  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.project-header:hover .btn-file-op {
-  opacity: 0.6;
-  width: auto;
-  padding: 4px;
+  flex-shrink: 0;
 }
 
 .btn-file-op:hover {
-  opacity: 1 !important;
+  opacity: 1;
 }
 
 .btn-terminal {
