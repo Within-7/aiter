@@ -12,6 +12,7 @@
       "homepage": "https://github.com/Within-7/minto",
       "platforms": ["darwin", "linux", "win32"],
       "tags": ["ai", "cli", "strategic-thinking", "research"],
+      "autoInstall": true,
       "installer": {
         "type": "npm",
         "packageName": "@within-7/minto",
@@ -27,6 +28,7 @@
       "homepage": "https://github.com/Within-7/jetr",
       "platforms": ["darwin", "linux", "win32"],
       "tags": ["cli", "deploy", "static-site", "hosting"],
+      "autoInstall": true,
       "installer": {
         "type": "npm",
         "packageName": "@within-7/jetr",

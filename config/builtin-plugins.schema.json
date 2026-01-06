@@ -59,6 +59,11 @@
             },
             "description": "Plugin tags for categorization"
           },
+          "autoInstall": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to auto-install this plugin on first launch (default: true)"
+          },
           "installer": {
             "type": "object",
             "required": ["type", "packageName", "commandName"],

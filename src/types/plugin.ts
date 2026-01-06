@@ -159,6 +159,9 @@ export interface PluginDefinition {
 
   /** Whether this is a built-in system plugin */
   isBuiltIn?: boolean;
+
+  /** Whether to auto-install this plugin on first launch (default: true for built-in) */
+  autoInstall?: boolean;
 }
 
 /**

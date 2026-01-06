@@ -176,6 +176,9 @@ export class PluginManager {
       throw new Error(`Unknown installer type: ${pluginConfig.installer.type}`);
     }
 
+    // Determine autoInstall value (default: true for built-in plugins)
+    const autoInstall = pluginConfig.autoInstall !== false;
+
     // Register the plugin
     await this.registerPlugin(
       {
@@ -189,26 +192,34 @@ export class PluginManager {
         platforms: pluginConfig.platforms,
         tags: pluginConfig.tags,
         isBuiltIn: true,
+        autoInstall,
       },
       installer
     );
 
-    console.log(`[PluginManager] Built-in plugin registered: ${pluginConfig.id}`);
+    console.log(`[PluginManager] Built-in plugin registered: ${pluginConfig.id} (autoInstall: ${autoInstall})`);
   }
 
   /**
    * Auto-install built-in plugins if they are not installed
    * This runs silently in the background on first launch
+   * Only installs plugins with autoInstall: true (default for built-in)
    */
   private async autoInstallBuiltInPlugins(): Promise<void> {
     console.log('[PluginManager] Checking built-in plugins for auto-installation...');
 
     const builtInPlugins: string[] = [];
 
-    // Find all built-in plugins that are not installed
+    // Find all built-in plugins that are not installed and have autoInstall enabled
     for (const [pluginId, plugin] of this.plugins) {
       if (plugin.definition.isBuiltIn && plugin.status === 'not-installed') {
-        builtInPlugins.push(pluginId);
+        // Check autoInstall flag (default: true for built-in plugins)
+        const shouldAutoInstall = plugin.definition.autoInstall !== false;
+        if (shouldAutoInstall) {
+          builtInPlugins.push(pluginId);
+        } else {
+          console.log(`[PluginManager] Skipping auto-install for ${pluginId} (autoInstall: false)`);
+        }
       }
     }
 

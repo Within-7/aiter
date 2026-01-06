@@ -31,6 +31,8 @@ export interface BuiltinPluginConfig {
   platforms: Array<'darwin' | 'linux' | 'win32'>;
   tags?: string[];
   installer: BuiltinPluginInstallerConfig;
+  /** Whether to auto-install this plugin on first launch (default: true) */
+  autoInstall?: boolean;
 }
 
 /**
