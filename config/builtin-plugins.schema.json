@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AiTer Built-in Plugins Configuration",
+  "description": "Configuration schema for AiTer built-in plugins",
+  "type": "object",
+  "required": ["version", "plugins"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Configuration schema version"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of this configuration variant"
+    },
+    "plugins": {
+      "type": "array",
+      "description": "List of built-in plugins",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "description", "platforms", "installer"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique plugin identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Short description"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Icon emoji or path"
+          },
+          "author": {
+            "type": "string",
+            "description": "Plugin author"
+          },
+          "homepage": {
+            "type": "string",
+            "description": "Homepage URL"
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["darwin", "linux", "win32"]
+            },
+            "description": "Supported platforms"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Plugin tags for categorization"
+          },
+          "installer": {
+            "type": "object",
+            "required": ["type", "packageName", "commandName"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["npm"],
+                "description": "Installer type"
+              },
+              "packageName": {
+                "type": "string",
+                "description": "npm package name"
+              },
+              "commandName": {
+                "type": "string",
+                "description": "CLI command name"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

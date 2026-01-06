@@ -21,6 +21,7 @@ import {
 import Store from 'electron-store';
 import { BrowserWindow } from 'electron';
 import { NodeManager } from '../nodejs/manager';
+import { loadBuiltinPluginsConfig, BuiltinPluginConfig } from './BuiltinPluginsLoader';
 
 interface CustomPluginEntry {
   packageName: string;
@@ -97,47 +98,13 @@ export class PluginManager {
     this.initializePromise = (async () => {
       console.log('[PluginManager] Initializing...');
 
-      // Register built-in plugins
-      const { MintoInstaller } = await import('./installers/MintoInstaller');
-      const { JetrInstaller } = await import('./installers/JetrInstaller');
       const nodeEnv = this.nodeManager.getTerminalEnv();
       const npmPath = this.nodeManager.getNpmExecutable();
       console.log('[PluginManager] NodeManager env PATH:', nodeEnv.PATH?.substring(0, 200));
       console.log('[PluginManager] NodeManager npm path:', npmPath);
 
-      // Register Minto CLI plugin
-      await this.registerPlugin(
-        {
-          id: 'minto',
-          name: 'Minto CLI',
-          description: 'A powerful AI assistant for strategic thinking and research planning',
-          icon: '🤖',
-          version: '1.0.0',
-          author: 'Within-7',
-          homepage: 'https://github.com/Within-7/minto',
-          platforms: ['darwin', 'linux', 'win32'],
-          tags: ['ai', 'cli', 'strategic-thinking', 'research'],
-          isBuiltIn: true
-        },
-        new MintoInstaller(this.store, nodeEnv, npmPath)
-      );
-
-      // Register Jetr CLI plugin
-      await this.registerPlugin(
-        {
-          id: 'jetr',
-          name: 'Jetr CLI',
-          description: 'CLI tool for deploying static websites instantly',
-          icon: '🚀',
-          version: '1.0.0',
-          author: 'Within-7',
-          homepage: 'https://github.com/Within-7/jetr',
-          platforms: ['darwin', 'linux', 'win32'],
-          tags: ['cli', 'deploy', 'static-site', 'hosting'],
-          isBuiltIn: true
-        },
-        new JetrInstaller(this.store, nodeEnv, npmPath)
-      );
+      // Load built-in plugins from configuration file
+      await this.loadBuiltinPluginsFromConfig(nodeEnv, npmPath);
 
       // Load custom plugins from store
       await this.loadCustomPlugins();
@@ -158,6 +125,75 @@ export class PluginManager {
     })();
 
     return this.initializePromise;
+  }
+
+  /**
+   * Load built-in plugins from configuration file
+   */
+  private async loadBuiltinPluginsFromConfig(
+    nodeEnv: NodeJS.ProcessEnv,
+    npmPath: string
+  ): Promise<void> {
+    const config = loadBuiltinPluginsConfig();
+    console.log(`[PluginManager] Loading ${config.plugins.length} built-in plugins from config...`);
+
+    const { NpmPluginInstaller } = await import('./installers/NpmPluginInstaller');
+
+    for (const pluginConfig of config.plugins) {
+      try {
+        await this.registerBuiltinPlugin(pluginConfig, nodeEnv, npmPath, NpmPluginInstaller);
+      } catch (error) {
+        console.error(`[PluginManager] Failed to register built-in plugin ${pluginConfig.id}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Register a single built-in plugin from configuration
+   */
+  private async registerBuiltinPlugin(
+    pluginConfig: BuiltinPluginConfig,
+    nodeEnv: NodeJS.ProcessEnv,
+    npmPath: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    NpmPluginInstaller: any
+  ): Promise<void> {
+    console.log(`[PluginManager] Registering built-in plugin: ${pluginConfig.id}`);
+
+    // Create installer based on type
+    let installer: PluginInstaller;
+
+    if (pluginConfig.installer.type === 'npm') {
+      installer = new NpmPluginInstaller({
+        store: this.store,
+        packageName: pluginConfig.installer.packageName,
+        commandName: pluginConfig.installer.commandName,
+        configStoreKey: `plugins.${pluginConfig.id}.configuration`,
+        env: nodeEnv,
+        npmPath,
+      });
+    } else {
+      throw new Error(`Unknown installer type: ${pluginConfig.installer.type}`);
+    }
+
+    // Register the plugin
+    await this.registerPlugin(
+      {
+        id: pluginConfig.id,
+        name: pluginConfig.name,
+        description: pluginConfig.description,
+        icon: pluginConfig.icon,
+        version: '1.0.0',
+        author: pluginConfig.author || 'Unknown',
+        homepage: pluginConfig.homepage,
+        platforms: pluginConfig.platforms,
+        tags: pluginConfig.tags,
+        isBuiltIn: true,
+      },
+      installer
+    );
+
+    console.log(`[PluginManager] Built-in plugin registered: ${pluginConfig.id}`);
   }
 
   /**

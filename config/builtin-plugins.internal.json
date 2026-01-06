@@ -1,0 +1,37 @@
+{
+  "$schema": "./builtin-plugins.schema.json",
+  "version": "1.0.0",
+  "description": "Internal version built-in plugins (more plugins for team use)",
+  "plugins": [
+    {
+      "id": "minto",
+      "name": "Minto CLI",
+      "description": "A powerful AI assistant for strategic thinking and research planning",
+      "icon": "🤖",
+      "author": "Within-7",
+      "homepage": "https://github.com/Within-7/minto",
+      "platforms": ["darwin", "linux", "win32"],
+      "tags": ["ai", "cli", "strategic-thinking", "research"],
+      "installer": {
+        "type": "npm",
+        "packageName": "@within-7/minto",
+        "commandName": "minto"
+      }
+    },
+    {
+      "id": "jetr",
+      "name": "Jetr CLI",
+      "description": "CLI tool for deploying static websites instantly",
+      "icon": "🚀",
+      "author": "Within-7",
+      "homepage": "https://github.com/Within-7/jetr",
+      "platforms": ["darwin", "linux", "win32"],
+      "tags": ["cli", "deploy", "static-site", "hosting"],
+      "installer": {
+        "type": "npm",
+        "packageName": "@within-7/jetr",
+        "commandName": "jetr"
+      }
+    }
+  ]
+}

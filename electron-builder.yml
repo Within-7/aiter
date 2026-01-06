@@ -9,6 +9,7 @@ directories:
 files:
   - dist-electron
   - dist-renderer
+  - config/builtin-plugins.json
 
 asar: true
 asarUnpack:

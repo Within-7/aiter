@@ -1,0 +1,22 @@
+{
+  "$schema": "./builtin-plugins.schema.json",
+  "version": "1.0.0",
+  "description": "Public version built-in plugins (minimal set for public release)",
+  "plugins": [
+    {
+      "id": "minto",
+      "name": "Minto CLI",
+      "description": "A powerful AI assistant for strategic thinking and research planning",
+      "icon": "🤖",
+      "author": "Within-7",
+      "homepage": "https://github.com/Within-7/minto",
+      "platforms": ["darwin", "linux", "win32"],
+      "tags": ["ai", "cli", "strategic-thinking", "research"],
+      "installer": {
+        "type": "npm",
+        "packageName": "@within-7/minto",
+        "commandName": "minto"
+      }
+    }
+  ]
+}
