@@ -58,7 +58,10 @@ const defaultSettings: AppSettings = {
   proxyMode: 'off',                  // Default to 'off' for MCP compatibility
   proxyHost: '127.0.0.1',            // Default proxy host
   proxyPort: 1087,                   // Default proxy port (ShadowsocksX-NG default)
-  proxyProtocol: 'http'              // Default proxy protocol
+  proxyProtocol: 'http',             // Default proxy protocol
+
+  // Terminal behavior
+  confirmTerminalClose: true         // Show confirmation dialog when closing terminal tabs
 }
 
 export class StoreManager {

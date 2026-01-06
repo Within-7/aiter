@@ -132,6 +132,9 @@ export interface AppSettings {
   proxyHost?: string                      // Proxy host (e.g., 127.0.0.1)
   proxyPort?: number                      // Proxy port (e.g., 1087)
   proxyProtocol?: 'http' | 'socks5'       // Proxy protocol
+
+  // Terminal behavior
+  confirmTerminalClose: boolean           // Show confirmation dialog when closing terminal tabs
 }
 
 // Configuration for opening files with external applications

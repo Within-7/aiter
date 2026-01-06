@@ -68,7 +68,9 @@ export const initialUIState: UIState = {
     proxyMode: 'off',
     proxyHost: '127.0.0.1',
     proxyPort: 1087,
-    proxyProtocol: 'http'
+    proxyProtocol: 'http',
+    // Terminal behavior
+    confirmTerminalClose: true
   },
   showPluginPanel: false,
   showAboutPanel: false,

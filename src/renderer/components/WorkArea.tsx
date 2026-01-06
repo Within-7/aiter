@@ -131,17 +131,23 @@ export const WorkArea: React.FC = () => {
       dispatch({ type: 'REMOVE_EDITOR_TAB', payload: id })
     } else if (tabId.startsWith('terminal-')) {
       const id = tabId.substring('terminal-'.length)
-      // Find terminal name for confirmation dialog
-      const terminal = state.terminals.find(t => t.id === id)
-      const terminalName = terminal?.name || 'Terminal'
-      // Show confirmation dialog for terminal close
-      setCloseTerminalDialog({
-        show: true,
-        terminalId: id,
-        terminalName
-      })
+      // Check if confirmation is enabled in settings
+      if (state.settings.confirmTerminalClose ?? true) {
+        // Find terminal name for confirmation dialog
+        const terminal = state.terminals.find(t => t.id === id)
+        const terminalName = terminal?.name || 'Terminal'
+        // Show confirmation dialog for terminal close
+        setCloseTerminalDialog({
+          show: true,
+          terminalId: id,
+          terminalName
+        })
+      } else {
+        // Close immediately without confirmation
+        dispatch({ type: 'REMOVE_TERMINAL', payload: id })
+      }
     }
-  }, [dispatch, state.terminals])
+  }, [dispatch, state.terminals, state.settings.confirmTerminalClose])
 
   // Handle terminal close confirmation
   const handleConfirmCloseTerminal = useCallback(() => {

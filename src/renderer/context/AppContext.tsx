@@ -111,7 +111,9 @@ export const initialState: AppState = {
     proxyMode: 'off',
     proxyHost: '127.0.0.1',
     proxyPort: 1087,
-    proxyProtocol: 'http'
+    proxyProtocol: 'http',
+    // Terminal behavior
+    confirmTerminalClose: true
   },
   terminalDataBuffer: new Map(),
   showPluginPanel: false,

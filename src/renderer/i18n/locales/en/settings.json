@@ -61,6 +61,11 @@
       "port": "Port",
       "systemDetected": "System proxy detected:",
       "mcpNote": "Proxy is disabled. MCP services (like BrightData) will work without issues."
+    },
+    "terminal": {
+      "title": "Terminal Behavior",
+      "confirmClose": "Confirm Terminal Close",
+      "confirmCloseHint": "Show confirmation dialog when closing terminal tabs to prevent accidental loss of running processes"
     }
   },
   "appearance": {

@@ -409,6 +409,24 @@ export const SettingsPanel: React.FC = () => {
         )}
       </section>
 
+      {/* Terminal Behavior Section */}
+      <section className="settings-section">
+        <h3>{t('general.terminal.title')}</h3>
+
+        <div className="setting-item setting-item-checkbox">
+          <label htmlFor="confirm-terminal-close">{t('general.terminal.confirmClose')}</label>
+          <input
+            id="confirm-terminal-close"
+            type="checkbox"
+            checked={settings.confirmTerminalClose ?? true}
+            onChange={(e) => handleSettingChange('confirmTerminalClose', e.target.checked)}
+          />
+          <span className="setting-hint">
+            {t('general.terminal.confirmCloseHint')}
+          </span>
+        </div>
+      </section>
+
       {/* macOS-specific section */}
       {isMac && (
         <section className="settings-section">
