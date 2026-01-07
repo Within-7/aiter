@@ -51,6 +51,36 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     onSaveRef.current = onSave
   }, [onSave])
 
+  // Listen for voice input text insertion events
+  useEffect(() => {
+    const handleVoiceInsert = (event: CustomEvent<{ text: string }>) => {
+      const editor = editorRef.current
+      if (!editor) return
+
+      const selection = editor.getSelection()
+      if (!selection) return
+
+      // Insert text at cursor position
+      editor.executeEdits('voice-input', [{
+        range: selection,
+        text: event.detail.text,
+        forceMoveMarkers: true
+      }])
+
+      // Update the content through onChange
+      const newContent = editor.getValue()
+      onChange(newContent)
+
+      // Focus the editor after insertion
+      editor.focus()
+    }
+
+    window.addEventListener('voice-input-insert', handleVoiceInsert as EventListener)
+    return () => {
+      window.removeEventListener('voice-input-insert', handleVoiceInsert as EventListener)
+    }
+  }, [onChange])
+
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
 

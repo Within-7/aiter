@@ -58,6 +58,15 @@ export const WorkArea: React.FC = () => {
 
   // Voice input handler - write text to active terminal or editor
   const handleVoiceTextInsert = useCallback((text: string) => {
+    // Check if editor is active (takes priority)
+    if (state.activeEditorTabId && !state.activeTerminalId) {
+      // Dispatch custom event for Monaco Editor to handle
+      window.dispatchEvent(new CustomEvent('voice-input-insert', {
+        detail: { text }
+      }))
+      return
+    }
+
     // Check if terminal is active
     if (state.activeTerminalId) {
       // Write to active terminal
@@ -66,9 +75,16 @@ export const WorkArea: React.FC = () => {
       if (voiceSettings.autoExecuteInTerminal) {
         window.api.terminal.write(state.activeTerminalId, '\r')
       }
+      return
     }
-    // TODO: Editor integration will be added later
-  }, [state.activeTerminalId, voiceSettings.autoExecuteInTerminal])
+
+    // Fallback: if there's an active editor tab, send to editor
+    if (state.activeEditorTabId) {
+      window.dispatchEvent(new CustomEvent('voice-input-insert', {
+        detail: { text }
+      }))
+    }
+  }, [state.activeTerminalId, state.activeEditorTabId, voiceSettings.autoExecuteInTerminal])
 
   // Voice input hook
   const voiceInput = useVoiceInput({
