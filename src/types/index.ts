@@ -1,4 +1,5 @@
 // Core data models
+import type { VoiceInputSettings } from './voiceInput'
 
 export interface Project {
   id: string
@@ -135,6 +136,9 @@ export interface AppSettings {
 
   // Terminal behavior
   confirmTerminalClose: boolean           // Show confirmation dialog when closing terminal tabs
+
+  // Voice input settings
+  voiceInput?: VoiceInputSettings         // Voice input configuration
 }
 
 // Configuration for opening files with external applications
@@ -358,3 +362,6 @@ export interface SessionState {
   // Timestamp for session age tracking
   savedAt: number
 }
+
+// Export voice input types
+export * from './voiceInput'
