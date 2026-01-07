@@ -1,5 +1,6 @@
 import Store from 'electron-store'
 import { Project, AppSettings, ShortcutConfig, SessionState } from '../types'
+import { defaultVoiceInputSettings } from '../types/voiceInput'
 
 // Default keyboard shortcuts (labels are translated via i18n in renderer)
 const defaultShortcuts: ShortcutConfig[] = [
@@ -61,7 +62,10 @@ const defaultSettings: AppSettings = {
   proxyProtocol: 'http',             // Default proxy protocol
 
   // Terminal behavior
-  confirmTerminalClose: true         // Show confirmation dialog when closing terminal tabs
+  confirmTerminalClose: true,        // Show confirmation dialog when closing terminal tabs
+
+  // Voice input
+  voiceInput: defaultVoiceInputSettings
 }
 
 export class StoreManager {

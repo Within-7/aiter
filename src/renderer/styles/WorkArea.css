@@ -33,6 +33,19 @@
   display: none; /* Chrome/Safari/Opera */
 }
 
+.work-area-tabs-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  /* Disable window dragging on tabs area buttons */
+  -webkit-app-region: no-drag;
+}
+
+/* Add right margin on Windows to avoid window controls */
+.work-area-tabs-right.windows-platform {
+  margin-right: 140px;
+}
+
 .work-area-tab {
   display: flex;
   align-items: center;
@@ -247,11 +260,6 @@
   justify-content: center;
   /* Disable window dragging on button so it can be clicked */
   -webkit-app-region: no-drag;
-}
-
-/* Add right margin on Windows to avoid window controls */
-.mode-toggle-button.windows-platform {
-  margin-right: 140px;
 }
 
 .mode-toggle-button:hover:not(.disabled) {

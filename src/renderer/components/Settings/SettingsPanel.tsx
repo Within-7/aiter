@@ -4,7 +4,9 @@ import { AppContext } from '../../context/AppContext'
 import { getTerminalThemeNames } from '../../themes/terminalThemes'
 import { TerminalThemeName, DetectedShell, VersionManagerInfo, ShellType, ShortcutConfig, KeyboardShortcut } from '../../../types'
 import { ShortcutInput } from './ShortcutInput'
+import { VoiceInputSettings } from '../VoiceInput/VoiceInputSettings'
 import { availableLanguages, changeLanguage, type LanguageCode } from '../../i18n'
+import { defaultVoiceInputSettings, VoiceInputSettings as VoiceInputSettingsType } from '../../../types/voiceInput'
 import './SettingsPanel.css'
 
 // Default shortcuts for reset (labels will be translated via i18n)
@@ -22,7 +24,7 @@ const defaultShortcuts: ShortcutConfig[] = [
 ]
 
 // Tab definitions
-type SettingsTab = 'general' | 'appearance' | 'shortcuts'
+type SettingsTab = 'general' | 'appearance' | 'shortcuts' | 'voice'
 
 export const SettingsPanel: React.FC = () => {
   const { t } = useTranslation('settings')
@@ -170,6 +172,11 @@ export const SettingsPanel: React.FC = () => {
   // Reset all shortcuts to default
   const handleResetShortcuts = useCallback(() => {
     handleSettingChange('shortcuts', defaultShortcuts)
+  }, [handleSettingChange])
+
+  // Handle voice input settings change
+  const handleVoiceSettingsChange = useCallback((voiceSettings: VoiceInputSettingsType) => {
+    handleSettingChange('voiceInput', voiceSettings)
   }, [handleSettingChange])
 
   // Format path for display (shorten home directory)
@@ -594,6 +601,16 @@ export const SettingsPanel: React.FC = () => {
     </section>
   )
 
+  // Render Voice tab content
+  const renderVoiceTab = () => (
+    <section className="settings-section">
+      <VoiceInputSettings
+        settings={settings.voiceInput || defaultVoiceInputSettings}
+        onSettingsChange={handleVoiceSettingsChange}
+      />
+    </section>
+  )
+
   return (
     <div className="settings-panel-overlay" onClick={handleOverlayClick}>
       <div className="settings-panel">
@@ -620,6 +637,12 @@ export const SettingsPanel: React.FC = () => {
             >
               {t('tabs.shortcuts')}
             </button>
+            <button
+              className={`settings-tab ${activeTab === 'voice' ? 'active' : ''}`}
+              onClick={() => setActiveTab('voice')}
+            >
+              {t('tabs.voice', '语音输入')}
+            </button>
           </div>
         </div>
 
@@ -627,6 +650,7 @@ export const SettingsPanel: React.FC = () => {
           {activeTab === 'general' && renderGeneralTab()}
           {activeTab === 'appearance' && renderAppearanceTab()}
           {activeTab === 'shortcuts' && renderShortcutsTab()}
+          {activeTab === 'voice' && renderVoiceTab()}
         </div>
       </div>
     </div>

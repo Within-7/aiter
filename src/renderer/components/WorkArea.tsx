@@ -9,6 +9,9 @@ import { PDFViewer } from './Editor/PDFViewer'
 import { OfficeViewer } from './Editor/OfficeViewer'
 import { TerminalContainer } from './TerminalContainer'
 import { ConfirmDialog } from './FileTree/ConfirmDialog'
+import { VoiceInputButton, VoiceInputOverlay } from './VoiceInput'
+import { useVoiceInput } from '../hooks/useVoiceInput'
+import { defaultVoiceInputSettings } from '../../types/voiceInput'
 import { getProjectColor } from '../utils/projectColors'
 import '../styles/WorkArea.css'
 
@@ -49,6 +52,29 @@ export const WorkArea: React.FC = () => {
 
   // Detect platform for Windows-specific styling
   const isWindows = navigator.platform.toLowerCase().includes('win')
+
+  // Get voice input settings
+  const voiceSettings = state.settings.voiceInput || defaultVoiceInputSettings
+
+  // Voice input handler - write text to active terminal or editor
+  const handleVoiceTextInsert = useCallback((text: string) => {
+    // Check if terminal is active
+    if (state.activeTerminalId) {
+      // Write to active terminal
+      window.api.terminal.write(state.activeTerminalId, text)
+      // Auto-execute if enabled
+      if (voiceSettings.autoExecuteInTerminal) {
+        window.api.terminal.write(state.activeTerminalId, '\r')
+      }
+    }
+    // TODO: Editor integration will be added later
+  }, [state.activeTerminalId, voiceSettings.autoExecuteInTerminal])
+
+  // Voice input hook
+  const voiceInput = useVoiceInput({
+    settings: voiceSettings,
+    onTextInsert: handleVoiceTextInsert
+  })
 
   // Derive active tab ID from global state
   const activeTabId = state.activeEditorTabId
@@ -454,20 +480,28 @@ export const WorkArea: React.FC = () => {
             onDragLeave={() => setDragOverEnd(false)}
           />
         </div>
-        <button
-          className={`mode-toggle-button ${!supportsPreview ? 'disabled' : ''} ${isWindows ? 'windows-platform' : ''}`}
-          onClick={toggleMode}
-          disabled={!supportsPreview}
-          title={
-            !supportsPreview
-              ? 'Preview not available'
-              : currentMode === 'preview'
-              ? 'Switch to Edit Mode'
-              : 'Switch to Preview Mode'
-          }
-        >
-          {currentMode === 'preview' ? '📝' : '📖'}
-        </button>
+        <div className={`work-area-tabs-right ${isWindows ? 'windows-platform' : ''}`}>
+          {/* Voice Input Button */}
+          <VoiceInputButton
+            isEnabled={voiceSettings.enabled}
+            state={voiceInput.state}
+            onClick={voiceInput.toggleRecording}
+          />
+          <button
+            className={`mode-toggle-button ${!supportsPreview ? 'disabled' : ''}`}
+            onClick={toggleMode}
+            disabled={!supportsPreview}
+            title={
+              !supportsPreview
+                ? 'Preview not available'
+                : currentMode === 'preview'
+                ? 'Switch to Edit Mode'
+                : 'Switch to Preview Mode'
+            }
+          >
+            {currentMode === 'preview' ? '📝' : '📖'}
+          </button>
+        </div>
       </div>
 
       <div className="work-area-content">
@@ -546,6 +580,16 @@ export const WorkArea: React.FC = () => {
           onCancel={handleCancelCloseTerminal}
         />
       )}
+
+      {/* Voice Input Overlay */}
+      <VoiceInputOverlay
+        isVisible={voiceInput.isRecording && voiceSettings.enabled}
+        state={voiceInput.state}
+        interimText={voiceInput.interimText}
+        provider={voiceSettings.provider}
+        error={voiceInput.error}
+        onClose={voiceInput.stopRecording}
+      />
     </div>
   )
 }
