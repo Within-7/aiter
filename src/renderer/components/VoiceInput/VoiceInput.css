@@ -1,0 +1,223 @@
+/* Voice Input Button */
+.voice-input-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.voice-input-btn:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #fff);
+}
+
+.voice-input-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.voice-input-btn .voice-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Recording state */
+.voice-btn-recording {
+  color: #ef4444;
+  animation: pulse 1.5s infinite;
+}
+
+.voice-btn-recording:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.recording-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.3);
+  animation: pulse-ring 1.5s infinite;
+  pointer-events: none;
+}
+
+/* Processing state */
+.voice-btn-processing {
+  color: #f59e0b;
+}
+
+.voice-btn-processing .spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* Error state */
+.voice-btn-error {
+  color: #ef4444;
+}
+
+/* Idle state */
+.voice-btn-idle {
+  color: var(--text-secondary, #888);
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Voice Input Overlay */
+.voice-input-overlay {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: var(--bg-secondary, #1e1e1e);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 12px;
+  padding: 16px 24px;
+  min-width: 300px;
+  max-width: 500px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.voice-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.voice-overlay-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary, #888);
+}
+
+.voice-overlay-status .recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: pulse 1s infinite;
+}
+
+.voice-overlay-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #888);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.voice-overlay-close:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #fff);
+}
+
+.voice-overlay-text {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary, #fff);
+  min-height: 48px;
+  padding: 12px;
+  background: var(--bg-primary, #121212);
+  border-radius: 8px;
+  word-break: break-word;
+}
+
+.voice-overlay-text.placeholder {
+  color: var(--text-secondary, #666);
+  font-style: italic;
+}
+
+.voice-overlay-hint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-tertiary, #666);
+  text-align: center;
+}
+
+.voice-overlay-engine {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--bg-tertiary, #2a2a2a);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-secondary, #888);
+}
+
+/* Waveform */
+.voice-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 24px;
+  margin: 8px 0;
+}
+
+.voice-waveform-bar {
+  width: 4px;
+  height: 100%;
+  background: var(--accent-color, #3b82f6);
+  border-radius: 2px;
+  animation: waveform 0.5s ease-in-out infinite alternate;
+}
+
+.voice-waveform-bar:nth-child(1) { animation-delay: 0s; }
+.voice-waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+.voice-waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+.voice-waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+.voice-waveform-bar:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes waveform {
+  from {
+    transform: scaleY(0.3);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
