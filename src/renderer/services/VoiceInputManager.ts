@@ -31,32 +31,36 @@ export class VoiceInputManager {
     // 清理旧服务
     this.service = null
 
+    // 确定实际使用的 provider
+    let actualProvider = settings.provider
+
     if (settings.provider === 'qwen-asr') {
       if (!settings.qwenApiKey) {
-        console.warn('[VoiceInputManager] Qwen-ASR requires API key')
+        console.warn('[VoiceInputManager] Qwen-ASR requires API key, falling back to system')
+        actualProvider = 'system'
+      } else {
+        this.service = new QwenASRService({
+          apiKey: settings.qwenApiKey,
+          region: settings.qwenRegion || 'cn',
+          language: settings.language,
+          onInterimResult: (text) => {
+            this.options.onInterimResult(text)
+          },
+          onFinalResult: (text) => {
+            this.setState('idle')
+            this.options.onFinalResult(text)
+          },
+          onError: (error) => {
+            this.setState('error')
+            this.options.onError(error)
+          }
+        })
         return
       }
+    }
 
-      this.service = new QwenASRService({
-        apiKey: settings.qwenApiKey,
-        region: settings.qwenRegion || 'cn',
-        language: settings.language,
-        onInterimResult: (text) => {
-          this.options.onInterimResult(text)
-        },
-        onFinalResult: (text) => {
-          this.setState('idle')
-          this.options.onFinalResult(text)
-        },
-        onError: (error) => {
-          this.setState('error')
-          this.options.onError(error)
-        }
-      })
-    } else if (settings.provider === 'system') {
-      // TODO: 实现系统原生语音识别
-      // 暂时使用 Web Speech API 作为后备
-      console.warn('[VoiceInputManager] System provider not yet implemented, using Web Speech API')
+    if (actualProvider === 'system') {
+      // 使用 Web Speech API 作为系统原生方案
       this.initWebSpeechAPI()
     }
   }
@@ -67,6 +71,7 @@ export class VoiceInputManager {
 
     if (!SpeechRecognition) {
       console.error('[VoiceInputManager] Web Speech API not supported')
+      this.options.onError('浏览器不支持语音识别，请配置 Qwen-ASR API Key')
       return
     }
 
@@ -108,7 +113,15 @@ export class VoiceInputManager {
 
     recognition.onerror = (event: any) => {
       this.setState('error')
-      this.options.onError(event.error)
+      // 提供更友好的错误提示
+      const errorMessages: Record<string, string> = {
+        'network': '网络错误，请检查网络连接或配置 Qwen-ASR API Key',
+        'not-allowed': '麦克风权限被拒绝，请在系统设置中允许访问麦克风',
+        'no-speech': '未检测到语音',
+        'audio-capture': '无法访问麦克风',
+        'aborted': '识别被中断'
+      }
+      this.options.onError(errorMessages[event.error] || `语音识别错误: ${event.error}`)
     }
 
     recognition.onend = () => {

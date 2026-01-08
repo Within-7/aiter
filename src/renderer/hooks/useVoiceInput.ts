@@ -89,12 +89,19 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
   }, [isRecording])
 
   const stopRecording = useCallback(() => {
+    // Also clear error state when stopping
+    if (state === 'error') {
+      setState('idle')
+      setError(null)
+      return
+    }
+
     if (!isRecording) {
       return
     }
 
     managerRef.current?.stop()
-  }, [isRecording])
+  }, [isRecording, state])
 
   const toggleRecording = useCallback(() => {
     if (isRecording) {

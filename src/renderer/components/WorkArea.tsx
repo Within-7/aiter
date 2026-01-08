@@ -599,7 +599,7 @@ export const WorkArea: React.FC = () => {
 
       {/* Voice Input Overlay */}
       <VoiceInputOverlay
-        isVisible={voiceInput.isRecording && voiceSettings.enabled}
+        isVisible={(voiceInput.isRecording || voiceInput.state === 'error') && voiceSettings.enabled}
         state={voiceInput.state}
         interimText={voiceInput.interimText}
         provider={voiceSettings.provider}

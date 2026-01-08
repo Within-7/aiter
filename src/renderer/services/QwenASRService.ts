@@ -56,8 +56,8 @@ export class QwenASRService implements VoiceRecognitionService {
         }
       })
 
-      // 2. 建立 WebSocket 连接
-      const url = `${this.getBaseUrl()}?model=${this.model}`
+      // 2. 建立 WebSocket 连接（API Key 通过 URL 参数传递，因为 WebSocket 不支持自定义 header）
+      const url = `${this.getBaseUrl()}?model=${this.model}&Authorization=Bearer%20${encodeURIComponent(this.options.apiKey)}`
       this.ws = new WebSocket(url)
 
       this.ws.onopen = () => {
