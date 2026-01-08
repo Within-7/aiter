@@ -171,11 +171,130 @@
   font-style: italic;
 }
 
-.voice-overlay-hint {
+/* Editable textarea */
+.voice-overlay-textarea {
+  width: 100%;
+  min-height: 80px;
+  max-height: 200px;
+  padding: 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  font-family: inherit;
+  color: var(--text-primary, #fff);
+  background: var(--bg-primary, #121212);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.voice-overlay-textarea:focus {
+  border-color: var(--accent-color, #3b82f6);
+}
+
+.voice-overlay-textarea::placeholder {
+  color: var(--text-tertiary, #666);
+  font-style: italic;
+}
+
+.voice-overlay-textarea:read-only {
+  cursor: default;
+  background: var(--bg-tertiary, #1a1a1a);
+}
+
+/* Pending indicator */
+.voice-overlay-pending-indicator {
+  font-size: 12px;
+  color: var(--accent-color, #3b82f6);
+  margin-top: 4px;
+  animation: pulse 1s infinite;
+}
+
+/* Actions area */
+.voice-overlay-actions {
   margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.voice-overlay-hint {
   font-size: 12px;
   color: var(--text-tertiary, #666);
   text-align: center;
+}
+
+.voice-overlay-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.voice-overlay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.voice-overlay-btn-record {
+  background: var(--bg-tertiary, #2a2a2a);
+  color: var(--text-primary, #fff);
+}
+
+.voice-overlay-btn-record:hover {
+  background: var(--hover-bg, #333);
+}
+
+.voice-overlay-btn-record svg {
+  color: #ef4444;
+}
+
+.voice-overlay-btn-stop {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.voice-overlay-btn-stop:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.voice-overlay-btn-cancel {
+  background: transparent;
+  color: var(--text-secondary, #888);
+  border: 1px solid var(--border-color, #333);
+}
+
+.voice-overlay-btn-cancel:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #fff);
+}
+
+.voice-overlay-btn-confirm {
+  background: var(--accent-color, #3b82f6);
+  color: #fff;
+}
+
+.voice-overlay-btn-confirm:hover {
+  background: var(--accent-color-hover, #2563eb);
+}
+
+.voice-overlay-btn-confirm:disabled {
+  background: var(--bg-tertiary, #2a2a2a);
+  color: var(--text-tertiary, #666);
+  cursor: not-allowed;
+}
+
+/* Editable overlay variant */
+.voice-overlay-editable {
+  min-width: 400px;
+  max-width: 600px;
 }
 
 .voice-overlay-engine {

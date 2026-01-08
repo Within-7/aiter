@@ -58,8 +58,12 @@ export const WorkArea: React.FC = () => {
 
   // Voice input handler - write text to active terminal or editor
   const handleVoiceTextInsert = useCallback((text: string) => {
+    console.log('[WorkArea] handleVoiceTextInsert called with:', text)
+    console.log('[WorkArea] activeTerminalId:', state.activeTerminalId, 'activeEditorTabId:', state.activeEditorTabId)
+
     // Check if editor is active (takes priority)
     if (state.activeEditorTabId && !state.activeTerminalId) {
+      console.log('[WorkArea] Dispatching to editor')
       // Dispatch custom event for Monaco Editor to handle
       window.dispatchEvent(new CustomEvent('voice-input-insert', {
         detail: { text }
@@ -69,6 +73,7 @@ export const WorkArea: React.FC = () => {
 
     // Check if terminal is active
     if (state.activeTerminalId) {
+      console.log('[WorkArea] Writing to terminal:', state.activeTerminalId)
       // Write to active terminal
       window.api.terminal.write(state.activeTerminalId, text)
       // Auto-execute if enabled
@@ -80,10 +85,14 @@ export const WorkArea: React.FC = () => {
 
     // Fallback: if there's an active editor tab, send to editor
     if (state.activeEditorTabId) {
+      console.log('[WorkArea] Fallback: dispatching to editor')
       window.dispatchEvent(new CustomEvent('voice-input-insert', {
         detail: { text }
       }))
+      return
     }
+
+    console.log('[WorkArea] No active target for voice input, text not inserted:', text)
   }, [state.activeTerminalId, state.activeEditorTabId, voiceSettings.autoExecuteInTerminal])
 
   // Voice input hook
@@ -599,12 +608,16 @@ export const WorkArea: React.FC = () => {
 
       {/* Voice Input Overlay */}
       <VoiceInputOverlay
-        isVisible={(voiceInput.isRecording || voiceInput.state === 'error') && voiceSettings.enabled}
+        isVisible={voiceInput.isOverlayVisible && voiceSettings.enabled}
         state={voiceInput.state}
         interimText={voiceInput.interimText}
         provider={voiceSettings.provider}
         error={voiceInput.error}
-        onClose={voiceInput.stopRecording}
+        isRecording={voiceInput.isRecording}
+        onClose={voiceInput.closeOverlay}
+        onConfirm={voiceInput.confirmText}
+        onStartRecording={voiceInput.startRecording}
+        onStopRecording={voiceInput.stopRecording}
       />
     </div>
   )

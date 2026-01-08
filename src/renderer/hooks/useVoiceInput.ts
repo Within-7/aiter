@@ -6,17 +6,24 @@ import type { VoiceInputSettings, VoiceInputState } from '../../types/voiceInput
 interface UseVoiceInputOptions {
   settings: VoiceInputSettings
   onTextInsert?: (text: string) => void
+  /** If true, don't auto-insert on final result - let user confirm in overlay */
+  useEditableOverlay?: boolean
 }
 
 export function useVoiceInput(options: UseVoiceInputOptions) {
-  const { settings, onTextInsert } = options
+  const { settings, onTextInsert, useEditableOverlay = true } = options
 
   const [isRecording, setIsRecording] = useState(false)
   const [interimText, setInterimText] = useState('')
   const [state, setState] = useState<VoiceInputState>('idle')
   const [error, setError] = useState<string | null>(null)
+  // Track if overlay should be visible (for editable mode)
+  const [isOverlayVisible, setIsOverlayVisible] = useState(false)
 
   const managerRef = useRef<VoiceInputManager | null>(null)
+  // Use ref to always have the latest onTextInsert callback
+  const onTextInsertRef = useRef(onTextInsert)
+  onTextInsertRef.current = onTextInsert
 
   // 初始化管理器
   useEffect(() => {
@@ -33,10 +40,24 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
         setError(null)
       },
       onFinalResult: (text) => {
-        setInterimText('')
+        console.log('[useVoiceInput] Final result received:', text)
+        // Don't clear interimText immediately in editable mode - keep it for display
         setIsRecording(false)
-        if (text.trim()) {
-          onTextInsert?.(text)
+
+        if (useEditableOverlay) {
+          // In editable mode, don't auto-insert, keep overlay open
+          // The overlay will handle the text via interimText state
+          console.log('[useVoiceInput] Editable mode: keeping overlay open for user confirmation')
+          // Keep overlay visible, state becomes idle but overlay stays
+          setState('idle')
+        } else {
+          // Original behavior: auto-insert text
+          setInterimText('')
+          setState('idle')
+          if (text.trim()) {
+            console.log('[useVoiceInput] Calling onTextInsert with:', text)
+            onTextInsertRef.current?.(text)
+          }
         }
       },
       onError: (err) => {
@@ -45,6 +66,7 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
         console.error('[useVoiceInput] Error:', err)
       },
       onStateChange: (newState) => {
+        console.log('[useVoiceInput] State change:', newState)
         setState(newState)
         if (newState === 'idle' || newState === 'error') {
           setIsRecording(false)
@@ -61,15 +83,9 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
     settings.provider,
     settings.qwenApiKey,
     settings.qwenRegion,
-    settings.language
+    settings.language,
+    useEditableOverlay
   ])
-
-  // 更新 onTextInsert 回调
-  useEffect(() => {
-    if (managerRef.current) {
-      // 回调会在 onFinalResult 中使用最新的 onTextInsert
-    }
-  }, [onTextInsert])
 
   const startRecording = useCallback(async () => {
     if (!managerRef.current) {
@@ -82,26 +98,58 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
     }
 
     setIsRecording(true)
+    setIsOverlayVisible(true) // Show overlay when starting
     setInterimText('')
     setError(null)
 
     await managerRef.current.start()
   }, [isRecording])
 
+  // Force close - reset all state regardless of current status
+  const forceClose = useCallback(() => {
+    console.log('[useVoiceInput] Force close called')
+    managerRef.current?.stop()
+    setState('idle')
+    setIsRecording(false)
+    setInterimText('')
+    setError(null)
+    setIsOverlayVisible(false) // Hide overlay
+  }, [])
+
+  // Confirm text from overlay and insert
+  const confirmText = useCallback((text: string) => {
+    console.log('[useVoiceInput] Confirm text:', text)
+    if (text.trim()) {
+      onTextInsertRef.current?.(text)
+    }
+    forceClose()
+  }, [forceClose])
+
+  // Close overlay without inserting (cancel)
+  const closeOverlay = useCallback(() => {
+    console.log('[useVoiceInput] Close overlay')
+    forceClose()
+  }, [forceClose])
+
   const stopRecording = useCallback(() => {
-    // Also clear error state when stopping
-    if (state === 'error') {
-      setState('idle')
-      setError(null)
+    console.log('[useVoiceInput] stopRecording called, state:', state, 'isRecording:', isRecording)
+
+    // If in error or processing state, force close
+    if (state === 'error' || state === 'processing') {
+      forceClose()
       return
     }
 
     if (!isRecording) {
+      // If not recording but still visible, force close
+      if (state !== 'idle') {
+        forceClose()
+      }
       return
     }
 
     managerRef.current?.stop()
-  }, [isRecording, state])
+  }, [isRecording, state, forceClose])
 
   const toggleRecording = useCallback(() => {
     if (isRecording) {
@@ -126,11 +174,14 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
     interimText,
     state,
     error,
+    isOverlayVisible,
 
     // 方法
     startRecording,
     stopRecording,
     toggleRecording,
+    confirmText,
+    closeOverlay,
 
     // 辅助
     isAvailable: managerRef.current?.isAvailable() ?? false,

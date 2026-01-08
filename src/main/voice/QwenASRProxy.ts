@@ -187,8 +187,45 @@ export class QwenASRProxy {
     })
   }
 
+  /**
+   * Map browser/UI language codes to Qwen-ASR compatible codes
+   * Qwen-ASR uses simple language codes like 'zh', 'en', 'ja', etc.
+   */
+  private normalizeLanguageCode(language: string): string {
+    // Map common locale codes to simple language codes
+    const languageMap: Record<string, string> = {
+      'zh-CN': 'zh',
+      'zh-TW': 'zh',
+      'zh-HK': 'zh',
+      'en-US': 'en',
+      'en-GB': 'en',
+      'ja-JP': 'ja',
+      'ko-KR': 'ko',
+      'es-ES': 'es',
+      'fr-FR': 'fr',
+      'de-DE': 'de',
+      'pt-BR': 'pt',
+      'ru-RU': 'ru',
+    }
+
+    // Check if we have a mapping, otherwise extract base language
+    if (languageMap[language]) {
+      return languageMap[language]
+    }
+
+    // If it contains a hyphen, take the first part (e.g., 'zh-CN' -> 'zh')
+    if (language.includes('-')) {
+      return language.split('-')[0].toLowerCase()
+    }
+
+    return language.toLowerCase()
+  }
+
   private sendSessionUpdate(language: string): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
+
+    const normalizedLang = this.normalizeLanguageCode(language)
+    console.log('[QwenASRProxy] Setting language:', language, '->', normalizedLang)
 
     try {
       const sessionConfig = {
@@ -199,7 +236,7 @@ export class QwenASRProxy {
           input_audio_format: 'pcm',
           sample_rate: 16000,
           input_audio_transcription: {
-            language: language
+            language: normalizedLang
           },
           turn_detection: {
             type: 'server_vad',
@@ -263,6 +300,11 @@ export class QwenASRProxy {
   }
 
   private handleMessage(data: any): void {
+    // Log all message types for debugging
+    if (data.type !== 'session.created' && data.type !== 'session.updated') {
+      console.log('[QwenASRProxy] Message received:', data.type, JSON.stringify(data).substring(0, 200))
+    }
+
     switch (data.type) {
       case 'session.created':
       case 'session.updated':
@@ -270,13 +312,16 @@ export class QwenASRProxy {
         this.sendToRenderer('voice:qwen-asr:ready', {})
         break
 
-      case 'conversation.item.input_audio_transcription.delta':
-        if (data.delta) {
-          this.sendToRenderer('voice:qwen-asr:interim', { text: data.delta })
+      case 'conversation.item.input_audio_transcription.text':
+        // Real-time interim results are in the 'stash' field
+        if (data.stash) {
+          console.log('[QwenASRProxy] Interim result:', data.stash)
+          this.sendToRenderer('voice:qwen-asr:interim', { text: data.stash })
         }
         break
 
       case 'conversation.item.input_audio_transcription.completed':
+        console.log('[QwenASRProxy] Final result:', data.transcript)
         if (data.transcript) {
           this.sendToRenderer('voice:qwen-asr:final', { text: data.transcript })
         }

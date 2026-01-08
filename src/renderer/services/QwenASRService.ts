@@ -18,7 +18,8 @@ interface QwenASROptions {
 export class QwenASRService implements VoiceRecognitionService {
   private audioContext: AudioContext | null = null
   private mediaStream: MediaStream | null = null
-  private processor: ScriptProcessorNode | null = null
+  private sourceNode: MediaStreamAudioSourceNode | null = null
+  private workletNode: AudioWorkletNode | null = null
   private isRunning = false
   private accumulatedText = ''
   private hasFinalResult = false // Track if we've already sent final result
@@ -98,7 +99,7 @@ export class QwenASRService implements VoiceRecognitionService {
 
       // 4. Start audio capture immediately after start() returns
       // (start() now waits for session to be ready)
-      this.startAudioCapture()
+      await this.startAudioCapture()
     } catch (error) {
       console.error('[QwenASR] Start error:', error)
       this.errorCallback?.(error instanceof Error ? error.message : '启动失败')
@@ -117,8 +118,10 @@ export class QwenASRService implements VoiceRecognitionService {
     this.cleanupFunctions.push(cleanupReady)
 
     // Listen for interim results
+    // Note: Qwen-ASR sends complete interim text in 'stash' field, not incremental deltas
     const cleanupInterim = window.api.voice.qwenAsr.onInterim((data) => {
-      this.accumulatedText += data.text
+      // stash contains the complete interim text, no need to accumulate
+      this.accumulatedText = data.text
       this.interimCallback?.(this.accumulatedText)
     })
     this.cleanupFunctions.push(cleanupInterim)
@@ -198,25 +201,148 @@ export class QwenASRService implements VoiceRecognitionService {
     this.errorCallback = callback
   }
 
-  private startAudioCapture(): void {
+  private async startAudioCapture(): Promise<void> {
     if (!this.mediaStream) return
 
     try {
-      this.audioContext = new AudioContext({ sampleRate: 16000 })
-      const source = this.audioContext.createMediaStreamSource(this.mediaStream)
+      // Create AudioContext with explicit sample rate
+      // Use a standard sample rate that's well-supported
+      this.audioContext = new AudioContext({ sampleRate: 48000 })
+      console.log('[QwenASR] AudioContext created, sampleRate:', this.audioContext.sampleRate)
 
-      // Use ScriptProcessor to get PCM data
-      this.processor = this.audioContext.createScriptProcessor(4096, 1, 1)
+      // Wait for AudioContext to be ready
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume()
+      }
 
-      this.processor.onaudioprocess = (event) => {
+      // Check if still running
+      if (!this.isRunning) {
+        console.log('[QwenASR] Stopped before audio capture started')
+        return
+      }
+
+      // Create audio worklet processor inline as a Blob
+      const workletCode = `
+        class AudioProcessor extends AudioWorkletProcessor {
+          constructor() {
+            super();
+            this.bufferSize = 4096;
+            this.buffer = new Float32Array(this.bufferSize);
+            this.bufferIndex = 0;
+          }
+
+          process(inputs, outputs, parameters) {
+            const input = inputs[0];
+            if (!input || !input[0]) return true;
+
+            const inputChannel = input[0];
+
+            for (let i = 0; i < inputChannel.length; i++) {
+              this.buffer[this.bufferIndex++] = inputChannel[i];
+
+              if (this.bufferIndex >= this.bufferSize) {
+                // Buffer is full, send to main thread
+                this.port.postMessage({
+                  type: 'audio',
+                  data: this.buffer.slice()
+                });
+                this.bufferIndex = 0;
+              }
+            }
+
+            return true;
+          }
+        }
+
+        registerProcessor('audio-processor', AudioProcessor);
+      `
+
+      const blob = new Blob([workletCode], { type: 'application/javascript' })
+      const workletUrl = URL.createObjectURL(blob)
+
+      console.log('[QwenASR] Loading audio worklet...')
+      await this.audioContext.audioWorklet.addModule(workletUrl)
+      URL.revokeObjectURL(workletUrl)
+
+      // Check if still running after async operation
+      if (!this.isRunning) {
+        console.log('[QwenASR] Stopped while loading worklet')
+        return
+      }
+
+      console.log('[QwenASR] Audio worklet loaded')
+
+      this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream)
+      this.workletNode = new AudioWorkletNode(this.audioContext, 'audio-processor')
+
+      let audioChunkCount = 0
+      this.workletNode.port.onmessage = (event) => {
         if (!this.isRunning) return
 
         try {
+          if (event.data.type === 'audio') {
+            audioChunkCount++
+            // Log every 50th chunk to reduce logging
+            if (audioChunkCount % 50 === 1) {
+              console.log('[QwenASR] Processing audio chunk:', audioChunkCount)
+            }
+
+            const inputData = event.data.data as Float32Array
+
+            // Resample from 48kHz to 16kHz
+            const audioData = this.resample(inputData, 48000, 16000)
+            const pcm16 = this.floatTo16BitPCM(audioData)
+            const base64Audio = this.arrayBufferToBase64(pcm16.buffer)
+
+            // Send audio data via IPC (fire and forget, don't await)
+            window.api.voice.qwenAsr.sendAudio(base64Audio).catch((err) => {
+              console.error('[QwenASR] Failed to send audio:', err)
+            })
+          }
+        } catch (err) {
+          console.error('[QwenASR] Audio processing error:', err)
+        }
+      }
+
+      // Connect nodes
+      console.log('[QwenASR] Connecting audio nodes...')
+      this.sourceNode.connect(this.workletNode)
+      // Don't connect to destination - we don't need audio output
+
+      console.log('[QwenASR] Audio capture started with AudioWorklet')
+    } catch (error) {
+      console.error('[QwenASR] Audio capture error:', error)
+
+      // Fallback to ScriptProcessor if AudioWorklet fails
+      console.log('[QwenASR] Falling back to ScriptProcessor...')
+      this.startAudioCaptureWithScriptProcessor()
+    }
+  }
+
+  private startAudioCaptureWithScriptProcessor(): void {
+    if (!this.mediaStream || !this.audioContext) return
+
+    try {
+      const source = this.audioContext.createMediaStreamSource(this.mediaStream)
+
+      // Use ScriptProcessor as fallback
+      const processor = this.audioContext.createScriptProcessor(4096, 1, 1)
+
+      let audioChunkCount = 0
+      processor.onaudioprocess = (event) => {
+        if (!this.isRunning) return
+
+        try {
+          audioChunkCount++
+          if (audioChunkCount % 50 === 1) {
+            console.log('[QwenASR] Processing audio chunk (ScriptProcessor):', audioChunkCount)
+          }
+
           const inputData = event.inputBuffer.getChannelData(0)
-          const pcm16 = this.floatTo16BitPCM(inputData)
+          const audioData = this.resample(inputData, this.audioContext!.sampleRate, 16000)
+          const pcm16 = this.floatTo16BitPCM(audioData)
           const base64Audio = this.arrayBufferToBase64(pcm16.buffer)
 
-          // Send audio data via IPC (fire and forget, don't await)
           window.api.voice.qwenAsr.sendAudio(base64Audio).catch((err) => {
             console.error('[QwenASR] Failed to send audio:', err)
           })
@@ -225,14 +351,27 @@ export class QwenASRService implements VoiceRecognitionService {
         }
       }
 
-      source.connect(this.processor)
-      this.processor.connect(this.audioContext.destination)
+      source.connect(processor)
+      processor.connect(this.audioContext.destination)
 
-      console.log('[QwenASR] Audio capture started')
+      console.log('[QwenASR] Audio capture started with ScriptProcessor (fallback)')
     } catch (error) {
-      console.error('[QwenASR] Audio capture error:', error)
+      console.error('[QwenASR] ScriptProcessor fallback error:', error)
       this.errorCallback?.('音频采集失败')
     }
+  }
+
+  private resample(inputData: Float32Array, fromRate: number, toRate: number): Float32Array {
+    if (fromRate === toRate) return inputData
+
+    const ratio = fromRate / toRate
+    const newLength = Math.round(inputData.length / ratio)
+    const result = new Float32Array(newLength)
+    for (let i = 0; i < newLength; i++) {
+      const srcIndex = Math.floor(i * ratio)
+      result[i] = inputData[srcIndex]
+    }
+    return result
   }
 
   private floatTo16BitPCM(float32Array: Float32Array): Int16Array {
@@ -246,12 +385,12 @@ export class QwenASRService implements VoiceRecognitionService {
 
   private arrayBufferToBase64(buffer: ArrayBufferLike): string {
     const bytes = new Uint8Array(buffer)
-    // Use chunked approach to avoid call stack issues with large arrays
-    const CHUNK_SIZE = 8192
+    // Build binary string byte by byte to avoid stack overflow
+    // This is slower but safe for any buffer size
     let binary = ''
-    for (let i = 0; i < bytes.byteLength; i += CHUNK_SIZE) {
-      const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, bytes.byteLength))
-      binary += String.fromCharCode.apply(null, chunk as unknown as number[])
+    const len = bytes.byteLength
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i])
     }
     return btoa(binary)
   }
@@ -262,9 +401,14 @@ export class QwenASRService implements VoiceRecognitionService {
     // Clean up IPC listeners
     this.cleanupIPCListeners()
 
-    if (this.processor) {
-      this.processor.disconnect()
-      this.processor = null
+    if (this.workletNode) {
+      this.workletNode.disconnect()
+      this.workletNode = null
+    }
+
+    if (this.sourceNode) {
+      this.sourceNode.disconnect()
+      this.sourceNode = null
     }
 
     if (this.mediaStream) {
