@@ -41,12 +41,14 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
       },
       onFinalResult: (text) => {
         console.log('[useVoiceInput] Final result received:', text)
-        // Don't clear interimText immediately in editable mode - keep it for display
         setIsRecording(false)
 
         if (useEditableOverlay) {
-          // In editable mode, don't auto-insert, keep overlay open
-          // The overlay will handle the text via interimText state
+          // In editable mode, update interimText with final result for overlay to display
+          // This ensures the overlay gets the final text even if no interim results were sent
+          if (text.trim()) {
+            setInterimText(text)
+          }
           console.log('[useVoiceInput] Editable mode: keeping overlay open for user confirmation')
           // Keep overlay visible, state becomes idle but overlay stays
           setState('idle')

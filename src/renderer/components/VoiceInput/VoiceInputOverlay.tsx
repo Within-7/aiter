@@ -29,38 +29,56 @@ export const VoiceInputOverlay: React.FC<VoiceInputOverlayProps> = ({
 }) => {
   // Local editable text state - accumulates transcriptions
   const [editableText, setEditableText] = useState('')
-  // Track the last interim text to detect new transcriptions
-  const lastInterimRef = useRef('')
-  // Track if we have pending transcription being added
+  // Current pending text from this recording session (real-time display)
   const [pendingText, setPendingText] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // When overlay becomes visible, reset state
+  // When overlay becomes visible, reset all state
   useEffect(() => {
     if (isVisible) {
       setEditableText('')
       setPendingText('')
-      lastInterimRef.current = ''
     }
   }, [isVisible])
 
-  // Handle interim text updates - show as pending
+  // Track recording state changes
+  const prevIsRecordingRef = useRef(isRecording)
+
+  // Handle recording start/stop transitions
   useEffect(() => {
-    if (interimText && interimText !== lastInterimRef.current) {
+    const wasRecording = prevIsRecordingRef.current
+    prevIsRecordingRef.current = isRecording
+
+    if (isRecording && !wasRecording) {
+      // Just started a new recording session - reset pending text
+      console.log('[VoiceInputOverlay] Recording started, resetting pending text')
+      setPendingText('')
+    }
+  }, [isRecording])
+
+  // Handle interim text updates - update pending text during recording
+  useEffect(() => {
+    if (interimText) {
+      // interimText contains the complete text for the current session
+      // Update pending text for display
+      console.log('[VoiceInputOverlay] Interim text updated:', interimText)
       setPendingText(interimText)
-      lastInterimRef.current = interimText
     }
   }, [interimText])
 
   // When recording stops and we have pending text, append it to editable text
   useEffect(() => {
     if (!isRecording && pendingText) {
-      setEditableText(prev => {
-        const separator = prev ? '\n' : ''
-        return prev + separator + pendingText
-      })
-      setPendingText('')
-      lastInterimRef.current = ''
+      // Use a small delay to ensure we have the final text
+      const timer = setTimeout(() => {
+        console.log('[VoiceInputOverlay] Recording stopped, appending pending text:', pendingText)
+        setEditableText(prev => {
+          const separator = prev ? '\n' : ''
+          return prev + separator + pendingText
+        })
+        setPendingText('')
+      }, 100)
+      return () => clearTimeout(timer)
     }
   }, [isRecording, pendingText])
 
