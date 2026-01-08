@@ -37,6 +37,8 @@ export class QwenASRService implements VoiceRecognitionService {
   }
 
   async start(options?: RecognitionOptions): Promise<void> {
+    console.log('[QwenASR] start() called')
+
     if (this.isRunning) {
       console.warn('QwenASR is already running')
       return
@@ -47,9 +49,11 @@ export class QwenASRService implements VoiceRecognitionService {
 
     try {
       // 1. Setup IPC event listeners first
+      console.log('[QwenASR] Setting up IPC listeners...')
       this.setupIPCListeners()
 
       // 2. Get microphone permission
+      console.log('[QwenASR] Requesting microphone permission...')
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
@@ -58,9 +62,11 @@ export class QwenASRService implements VoiceRecognitionService {
           noiseSuppression: true
         }
       })
+      console.log('[QwenASR] Microphone permission granted')
 
       // 3. Start WebSocket connection via main process
       // This will wait until session is ready before returning
+      console.log('[QwenASR] Starting WebSocket via IPC...')
       const result = await window.api.voice.qwenAsr.start({
         apiKey: this.options.apiKey,
         region: this.options.region,

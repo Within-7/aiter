@@ -35,7 +35,13 @@ export class QwenASRProxy {
   private readonly model = 'qwen3-asr-flash-realtime'
 
   constructor() {
-    this.setupIPC()
+    console.log('[QwenASRProxy] Initializing...')
+    try {
+      this.setupIPC()
+      console.log('[QwenASRProxy] IPC handlers registered')
+    } catch (error) {
+      console.error('[QwenASRProxy] Failed to initialize:', error)
+    }
   }
 
   setMainWindow(window: BrowserWindow) {
@@ -50,12 +56,16 @@ export class QwenASRProxy {
   }
 
   private setupIPC() {
+    console.log('[QwenASRProxy] Setting up IPC handlers...')
+
     // Start ASR session
     ipcMain.handle('voice:qwen-asr:start', async (_, options: QwenASRProxyOptions) => {
+      console.log('[QwenASRProxy] IPC: start called')
       try {
         await this.start(options)
         return { success: true }
       } catch (error) {
+        console.error('[QwenASRProxy] IPC: start failed:', error)
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
       }
     })
@@ -92,6 +102,8 @@ export class QwenASRProxy {
   }
 
   private async start(options: QwenASRProxyOptions): Promise<void> {
+    console.log('[QwenASRProxy] start() called with region:', options.region)
+
     if (this.isRunning) {
       console.warn('[QwenASRProxy] Already running')
       // If already running, just send ready event again
@@ -109,12 +121,21 @@ export class QwenASRProxy {
     return new Promise((resolve, reject) => {
       let sessionReady = false
 
-      this.ws = new WebSocket(url, {
-        headers: {
-          'Authorization': `Bearer ${options.apiKey}`,
-          'OpenAI-Beta': 'realtime=v1'
-        }
-      })
+      console.log('[QwenASRProxy] Creating WebSocket...')
+      try {
+        this.ws = new WebSocket(url, {
+          headers: {
+            'Authorization': `Bearer ${options.apiKey}`,
+            'OpenAI-Beta': 'realtime=v1'
+          }
+        })
+        console.log('[QwenASRProxy] WebSocket object created')
+      } catch (wsError) {
+        console.error('[QwenASRProxy] WebSocket creation failed:', wsError)
+        this.isRunning = false
+        reject(wsError)
+        return
+      }
 
       this.ws.on('open', () => {
         console.log('[QwenASRProxy] WebSocket connected')
