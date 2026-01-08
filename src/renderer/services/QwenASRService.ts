@@ -21,6 +21,7 @@ export class QwenASRService implements VoiceRecognitionService {
   private processor: ScriptProcessorNode | null = null
   private isRunning = false
   private accumulatedText = ''
+  private hasFinalResult = false // Track if we've already sent final result
   private options: QwenASROptions
   private interimCallback: ((text: string) => void) | null = null
   private finalCallback: ((text: string) => void) | null = null
@@ -46,6 +47,7 @@ export class QwenASRService implements VoiceRecognitionService {
 
     this.isRunning = true
     this.accumulatedText = ''
+    this.hasFinalResult = false
 
     try {
       // 1. Setup IPC event listeners first
@@ -64,6 +66,13 @@ export class QwenASRService implements VoiceRecognitionService {
       })
       console.log('[QwenASR] Microphone permission granted')
 
+      // Check if stopped while waiting for permission
+      if (!this.isRunning) {
+        console.log('[QwenASR] Stopped while waiting for permission, aborting')
+        this.cleanup()
+        return
+      }
+
       // 3. Start WebSocket connection via main process
       // This will wait until session is ready before returning
       console.log('[QwenASR] Starting WebSocket via IPC...')
@@ -72,6 +81,14 @@ export class QwenASRService implements VoiceRecognitionService {
         region: this.options.region,
         language: options?.language || this.options.language || 'zh'
       })
+
+      // Check if stopped while waiting for WebSocket connection
+      if (!this.isRunning) {
+        console.log('[QwenASR] Stopped while waiting for WebSocket, aborting')
+        window.api.voice.qwenAsr.stop().catch(console.error)
+        this.cleanup()
+        return
+      }
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to start ASR')
@@ -108,7 +125,11 @@ export class QwenASRService implements VoiceRecognitionService {
 
     // Listen for final results
     const cleanupFinal = window.api.voice.qwenAsr.onFinal((data) => {
-      this.finalCallback?.(data.text || this.accumulatedText)
+      if (!this.hasFinalResult) {
+        this.hasFinalResult = true
+        console.log('[QwenASR] Server final result:', data.text)
+        this.finalCallback?.(data.text || this.accumulatedText)
+      }
     })
     this.cleanupFunctions.push(cleanupFinal)
 
@@ -134,19 +155,35 @@ export class QwenASRService implements VoiceRecognitionService {
   }
 
   stop(): void {
-    if (!this.isRunning) return
+    if (!this.isRunning) {
+      console.log('[QwenASR] stop() called but not running')
+      // Even if not running, trigger final callback to end "processing" state
+      if (!this.hasFinalResult) {
+        this.hasFinalResult = true
+        this.finalCallback?.('')
+      }
+      return
+    }
 
     console.log('[QwenASR] Stopping...')
     this.isRunning = false
 
-    // Send commit signal via IPC
+    // Send commit signal via IPC to get final transcription
     window.api.voice.qwenAsr.commit().catch(console.error)
 
     // Give server time to process final audio
+    // After timeout, trigger final result (if server hasn't already) and cleanup
     setTimeout(() => {
+      // Only trigger if server hasn't sent final result
+      if (!this.hasFinalResult) {
+        this.hasFinalResult = true
+        console.log('[QwenASR] Timeout final result:', this.accumulatedText || '(empty)')
+        this.finalCallback?.(this.accumulatedText)
+      }
+
       window.api.voice.qwenAsr.stop().catch(console.error)
       this.cleanup()
-    }, 500)
+    }, 800) // Wait for server to send final result
   }
 
   onInterimResult(callback: (text: string) => void): void {
