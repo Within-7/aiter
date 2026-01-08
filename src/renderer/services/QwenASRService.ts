@@ -60,6 +60,7 @@ export class QwenASRService implements VoiceRecognitionService {
       })
 
       // 3. Start WebSocket connection via main process
+      // This will wait until session is ready before returning
       const result = await window.api.voice.qwenAsr.start({
         apiKey: this.options.apiKey,
         region: this.options.region,
@@ -70,7 +71,11 @@ export class QwenASRService implements VoiceRecognitionService {
         throw new Error(result.error || 'Failed to start ASR')
       }
 
-      console.log('[QwenASR] Started via IPC proxy')
+      console.log('[QwenASR] Started via IPC proxy, starting audio capture')
+
+      // 4. Start audio capture immediately after start() returns
+      // (start() now waits for session to be ready)
+      this.startAudioCapture()
     } catch (error) {
       console.error('[QwenASR] Start error:', error)
       this.errorCallback?.(error instanceof Error ? error.message : '启动失败')
@@ -82,10 +87,9 @@ export class QwenASRService implements VoiceRecognitionService {
     // Clean up any existing listeners
     this.cleanupIPCListeners()
 
-    // Listen for ready event to start audio capture
+    // Listen for ready event (for logging, audio capture is started after start() returns)
     const cleanupReady = window.api.voice.qwenAsr.onReady(() => {
-      console.log('[QwenASR] Session ready, starting audio capture')
-      this.startAudioCapture()
+      console.log('[QwenASR] Session ready event received')
     })
     this.cleanupFunctions.push(cleanupReady)
 

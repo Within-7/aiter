@@ -94,6 +94,8 @@ export class QwenASRProxy {
   private async start(options: QwenASRProxyOptions): Promise<void> {
     if (this.isRunning) {
       console.warn('[QwenASRProxy] Already running')
+      // If already running, just send ready event again
+      this.sendToRenderer('voice:qwen-asr:ready', {})
       return
     }
 
@@ -105,6 +107,8 @@ export class QwenASRProxy {
     console.log('[QwenASRProxy] Connecting to:', url)
 
     return new Promise((resolve, reject) => {
+      let sessionReady = false
+
       this.ws = new WebSocket(url, {
         headers: {
           'Authorization': `Bearer ${options.apiKey}`,
@@ -116,12 +120,20 @@ export class QwenASRProxy {
         console.log('[QwenASRProxy] WebSocket connected')
         this.sendSessionUpdate(options.language || 'zh')
         this.sendToRenderer('voice:qwen-asr:connected', {})
-        resolve()
       })
 
       this.ws.on('message', (data) => {
         try {
           const message = JSON.parse(data.toString())
+
+          // Check for session ready before handling
+          if ((message.type === 'session.created' || message.type === 'session.updated') && !sessionReady) {
+            sessionReady = true
+            console.log('[QwenASRProxy] Session ready, resolving start()')
+            this.sendToRenderer('voice:qwen-asr:ready', {})
+            resolve()
+          }
+
           this.handleMessage(message)
         } catch (e) {
           console.error('[QwenASRProxy] Failed to parse message:', e)
@@ -132,20 +144,21 @@ export class QwenASRProxy {
         console.error('[QwenASRProxy] WebSocket error:', err.message)
         this.sendToRenderer('voice:qwen-asr:error', { error: err.message || 'WebSocket 连接错误' })
         this.cleanup()
-        if (!this.isRunning) {
-          reject(new Error(err.message || 'WebSocket connection failed'))
-        }
+        reject(new Error(err.message || 'WebSocket connection failed'))
       })
 
       this.ws.on('close', (code, reason) => {
         console.log('[QwenASRProxy] WebSocket closed:', code, reason.toString())
         this.sendToRenderer('voice:qwen-asr:closed', { code, reason: reason.toString() })
         this.cleanup()
+        if (!sessionReady) {
+          reject(new Error(`WebSocket closed: ${code} ${reason.toString()}`))
+        }
       })
 
       // Timeout for connection
       setTimeout(() => {
-        if (this.ws?.readyState !== WebSocket.OPEN) {
+        if (!sessionReady) {
           reject(new Error('Connection timeout'))
           this.cleanup()
         }
