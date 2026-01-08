@@ -414,6 +414,50 @@ contextBridge.exposeInMainWorld('api', {
     get: (templateId: string) => ipcRenderer.invoke('templates:get', { templateId }),
     apply: (templateId: string, projectPath: string, projectName: string) =>
       ipcRenderer.invoke('templates:apply', { templateId, projectPath, projectName })
+  },
+
+  // Voice Input APIs (Qwen-ASR via main process WebSocket proxy)
+  voice: {
+    qwenAsr: {
+      start: (options: { apiKey: string; region: 'cn' | 'intl'; language?: string }) =>
+        ipcRenderer.invoke('voice:qwen-asr:start', options),
+      sendAudio: (base64Audio: string) =>
+        ipcRenderer.invoke('voice:qwen-asr:audio', base64Audio),
+      commit: () =>
+        ipcRenderer.invoke('voice:qwen-asr:commit'),
+      stop: () =>
+        ipcRenderer.invoke('voice:qwen-asr:stop'),
+      onConnected: (callback: () => void) => {
+        const listener = () => callback()
+        ipcRenderer.on('voice:qwen-asr:connected', listener)
+        return () => ipcRenderer.removeListener('voice:qwen-asr:connected', listener)
+      },
+      onReady: (callback: () => void) => {
+        const listener = () => callback()
+        ipcRenderer.on('voice:qwen-asr:ready', listener)
+        return () => ipcRenderer.removeListener('voice:qwen-asr:ready', listener)
+      },
+      onInterim: (callback: (data: { text: string }) => void) => {
+        const listener = (_: unknown, data: { text: string }) => callback(data)
+        ipcRenderer.on('voice:qwen-asr:interim', listener)
+        return () => ipcRenderer.removeListener('voice:qwen-asr:interim', listener)
+      },
+      onFinal: (callback: (data: { text: string }) => void) => {
+        const listener = (_: unknown, data: { text: string }) => callback(data)
+        ipcRenderer.on('voice:qwen-asr:final', listener)
+        return () => ipcRenderer.removeListener('voice:qwen-asr:final', listener)
+      },
+      onError: (callback: (data: { error: string }) => void) => {
+        const listener = (_: unknown, data: { error: string }) => callback(data)
+        ipcRenderer.on('voice:qwen-asr:error', listener)
+        return () => ipcRenderer.removeListener('voice:qwen-asr:error', listener)
+      },
+      onClosed: (callback: (data: { code: number; reason: string }) => void) => {
+        const listener = (_: unknown, data: { code: number; reason: string }) => callback(data)
+        ipcRenderer.on('voice:qwen-asr:closed', listener)
+        return () => ipcRenderer.removeListener('voice:qwen-asr:closed', listener)
+      }
+    }
   }
 })
 
@@ -883,6 +927,20 @@ export interface API {
       filesCreated?: string[];
       error?: string;
     }>
+  }
+  voice: {
+    qwenAsr: {
+      start(options: { apiKey: string; region: 'cn' | 'intl'; language?: string }): Promise<{ success: boolean; error?: string }>
+      sendAudio(base64Audio: string): Promise<{ success: boolean; error?: string }>
+      commit(): Promise<{ success: boolean; error?: string }>
+      stop(): Promise<{ success: boolean; error?: string }>
+      onConnected(callback: () => void): () => void
+      onReady(callback: () => void): () => void
+      onInterim(callback: (data: { text: string }) => void): () => void
+      onFinal(callback: (data: { text: string }) => void): () => void
+      onError(callback: (data: { error: string }) => void): () => void
+      onClosed(callback: (data: { code: number; reason: string }) => void): () => void
+    }
   }
 }
 

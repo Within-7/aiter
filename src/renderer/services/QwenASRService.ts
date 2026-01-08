@@ -9,8 +9,13 @@ interface QwenASROptions {
   onError: (error: string) => void
 }
 
+/**
+ * QwenASRService - Client-side interface for Qwen-ASR via Electron IPC
+ *
+ * This service communicates with the main process WebSocket proxy to handle
+ * Qwen-ASR authentication (which requires HTTP headers that browsers cannot set).
+ */
 export class QwenASRService implements VoiceRecognitionService {
-  private ws: WebSocket | null = null
   private audioContext: AudioContext | null = null
   private mediaStream: MediaStream | null = null
   private processor: ScriptProcessorNode | null = null
@@ -21,19 +26,14 @@ export class QwenASRService implements VoiceRecognitionService {
   private finalCallback: ((text: string) => void) | null = null
   private errorCallback: ((error: string) => void) | null = null
 
-  private readonly model = 'qwen2-audio-asr-realtime'
+  // IPC event cleanup functions
+  private cleanupFunctions: Array<() => void> = []
 
   constructor(options: QwenASROptions) {
     this.options = options
     this.interimCallback = options.onInterimResult
     this.finalCallback = options.onFinalResult
     this.errorCallback = options.onError
-  }
-
-  private getBaseUrl(): string {
-    return this.options.region === 'intl'
-      ? 'wss://dashscope-intl.aliyuncs.com/api-ws/v1/realtime'
-      : 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime'
   }
 
   async start(options?: RecognitionOptions): Promise<void> {
@@ -46,7 +46,10 @@ export class QwenASRService implements VoiceRecognitionService {
     this.accumulatedText = ''
 
     try {
-      // 1. 先获取麦克风权限
+      // 1. Setup IPC event listeners first
+      this.setupIPCListeners()
+
+      // 2. Get microphone permission
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
@@ -56,40 +59,68 @@ export class QwenASRService implements VoiceRecognitionService {
         }
       })
 
-      // 2. 建立 WebSocket 连接（API Key 通过 URL 参数传递，因为 WebSocket 不支持自定义 header）
-      const url = `${this.getBaseUrl()}?model=${this.model}&Authorization=Bearer%20${encodeURIComponent(this.options.apiKey)}`
-      this.ws = new WebSocket(url)
+      // 3. Start WebSocket connection via main process
+      const result = await window.api.voice.qwenAsr.start({
+        apiKey: this.options.apiKey,
+        region: this.options.region,
+        language: options?.language || this.options.language || 'zh'
+      })
 
-      this.ws.onopen = () => {
-        console.log('[QwenASR] WebSocket connected')
-        this.sendSessionUpdate(options?.language || this.options.language || 'zh')
-        this.startAudioCapture()
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to start ASR')
       }
 
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          this.handleMessage(data)
-        } catch (e) {
-          console.error('[QwenASR] Failed to parse message:', e)
-        }
-      }
-
-      this.ws.onerror = (err) => {
-        console.error('[QwenASR] WebSocket error:', err)
-        this.errorCallback?.('WebSocket 连接错误')
-        this.cleanup()
-      }
-
-      this.ws.onclose = (event) => {
-        console.log('[QwenASR] WebSocket closed:', event.code, event.reason)
-        this.cleanup()
-      }
+      console.log('[QwenASR] Started via IPC proxy')
     } catch (error) {
       console.error('[QwenASR] Start error:', error)
       this.errorCallback?.(error instanceof Error ? error.message : '启动失败')
       this.cleanup()
     }
+  }
+
+  private setupIPCListeners(): void {
+    // Clean up any existing listeners
+    this.cleanupIPCListeners()
+
+    // Listen for ready event to start audio capture
+    const cleanupReady = window.api.voice.qwenAsr.onReady(() => {
+      console.log('[QwenASR] Session ready, starting audio capture')
+      this.startAudioCapture()
+    })
+    this.cleanupFunctions.push(cleanupReady)
+
+    // Listen for interim results
+    const cleanupInterim = window.api.voice.qwenAsr.onInterim((data) => {
+      this.accumulatedText += data.text
+      this.interimCallback?.(this.accumulatedText)
+    })
+    this.cleanupFunctions.push(cleanupInterim)
+
+    // Listen for final results
+    const cleanupFinal = window.api.voice.qwenAsr.onFinal((data) => {
+      this.finalCallback?.(data.text || this.accumulatedText)
+    })
+    this.cleanupFunctions.push(cleanupFinal)
+
+    // Listen for errors
+    const cleanupError = window.api.voice.qwenAsr.onError((data) => {
+      console.error('[QwenASR] Error from proxy:', data.error)
+      this.errorCallback?.(data.error)
+      this.cleanup()
+    })
+    this.cleanupFunctions.push(cleanupError)
+
+    // Listen for connection closed
+    const cleanupClosed = window.api.voice.qwenAsr.onClosed((data) => {
+      console.log('[QwenASR] Connection closed:', data.code, data.reason)
+      this.cleanup()
+    })
+    this.cleanupFunctions.push(cleanupClosed)
+  }
+
+  private cleanupIPCListeners(): void {
+    this.cleanupFunctions.forEach(cleanup => cleanup())
+    this.cleanupFunctions = []
   }
 
   stop(): void {
@@ -98,21 +129,14 @@ export class QwenASRService implements VoiceRecognitionService {
     console.log('[QwenASR] Stopping...')
     this.isRunning = false
 
-    // 发送结束信号
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      const commitEvent = {
-        event_id: `event_commit_${Date.now()}`,
-        type: 'input_audio_buffer.commit'
-      }
-      this.ws.send(JSON.stringify(commitEvent))
+    // Send commit signal via IPC
+    window.api.voice.qwenAsr.commit().catch(console.error)
 
-      // 给服务器一点时间处理最后的音频
-      setTimeout(() => {
-        this.cleanup()
-      }, 500)
-    } else {
+    // Give server time to process final audio
+    setTimeout(() => {
+      window.api.voice.qwenAsr.stop().catch(console.error)
       this.cleanup()
-    }
+    }, 500)
   }
 
   onInterimResult(callback: (text: string) => void): void {
@@ -127,44 +151,6 @@ export class QwenASRService implements VoiceRecognitionService {
     this.errorCallback = callback
   }
 
-  private sendSessionUpdate(language: string): void {
-    if (this.ws?.readyState !== WebSocket.OPEN) return
-
-    const sessionConfig = {
-      event_id: 'event_session',
-      type: 'session.update',
-      session: {
-        modalities: ['text'],
-        input_audio_format: 'pcm',
-        sample_rate: 16000,
-        input_audio_transcription: {
-          language: language
-        },
-        turn_detection: {
-          type: 'server_vad',
-          threshold: 0.5,
-          silence_duration_ms: 500
-        }
-      }
-    }
-
-    // 先发送鉴权
-    const authHeader = {
-      event_id: 'event_auth',
-      type: 'session.update',
-      session: {
-        ...sessionConfig.session
-      }
-    }
-
-    // Qwen ASR 使用 Authorization header，但 WebSocket 不支持自定义 header
-    // 所以通过 URL 参数或首条消息发送
-    this.ws.send(JSON.stringify({
-      ...sessionConfig,
-      authorization: `Bearer ${this.options.apiKey}`
-    }))
-  }
-
   private startAudioCapture(): void {
     if (!this.mediaStream) return
 
@@ -172,23 +158,18 @@ export class QwenASRService implements VoiceRecognitionService {
       this.audioContext = new AudioContext({ sampleRate: 16000 })
       const source = this.audioContext.createMediaStreamSource(this.mediaStream)
 
-      // 使用 ScriptProcessor 获取 PCM 数据
+      // Use ScriptProcessor to get PCM data
       this.processor = this.audioContext.createScriptProcessor(4096, 1, 1)
 
       this.processor.onaudioprocess = (event) => {
-        if (!this.isRunning || this.ws?.readyState !== WebSocket.OPEN) return
+        if (!this.isRunning) return
 
         const inputData = event.inputBuffer.getChannelData(0)
         const pcm16 = this.floatTo16BitPCM(inputData)
         const base64Audio = this.arrayBufferToBase64(pcm16.buffer)
 
-        // 发送音频数据
-        const appendEvent = {
-          event_id: `event_audio_${Date.now()}`,
-          type: 'input_audio_buffer.append',
-          audio: base64Audio
-        }
-        this.ws?.send(JSON.stringify(appendEvent))
+        // Send audio data via IPC
+        window.api.voice.qwenAsr.sendAudio(base64Audio).catch(console.error)
       }
 
       source.connect(this.processor)
@@ -198,39 +179,6 @@ export class QwenASRService implements VoiceRecognitionService {
     } catch (error) {
       console.error('[QwenASR] Audio capture error:', error)
       this.errorCallback?.('音频采集失败')
-    }
-  }
-
-  private handleMessage(data: any): void {
-    switch (data.type) {
-      case 'session.created':
-      case 'session.updated':
-        console.log('[QwenASR] Session ready')
-        break
-
-      case 'conversation.item.input_audio_transcription.delta':
-        if (data.delta) {
-          this.accumulatedText += data.delta
-          this.interimCallback?.(this.accumulatedText)
-        }
-        break
-
-      case 'conversation.item.input_audio_transcription.completed':
-        if (data.transcript) {
-          this.finalCallback?.(data.transcript)
-        } else if (this.accumulatedText) {
-          this.finalCallback?.(this.accumulatedText)
-        }
-        break
-
-      case 'error':
-        const errorMsg = data.error?.message || '识别错误'
-        console.error('[QwenASR] Error:', errorMsg)
-        this.errorCallback?.(errorMsg)
-        break
-
-      default:
-        console.log('[QwenASR] Unhandled message type:', data.type)
     }
   }
 
@@ -255,6 +203,9 @@ export class QwenASRService implements VoiceRecognitionService {
   private cleanup(): void {
     console.log('[QwenASR] Cleaning up...')
 
+    // Clean up IPC listeners
+    this.cleanupIPCListeners()
+
     if (this.processor) {
       this.processor.disconnect()
       this.processor = null
@@ -270,18 +221,11 @@ export class QwenASRService implements VoiceRecognitionService {
       this.audioContext = null
     }
 
-    if (this.ws) {
-      if (this.ws.readyState === WebSocket.OPEN) {
-        this.ws.close(1000, 'Normal closure')
-      }
-      this.ws = null
-    }
-
     this.isRunning = false
     this.accumulatedText = ''
   }
 
-  // 检查服务是否正在运行
+  // Check if service is running
   isActive(): boolean {
     return this.isRunning
   }

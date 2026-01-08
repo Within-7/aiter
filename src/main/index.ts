@@ -11,6 +11,7 @@ import { PluginManager } from './plugins/PluginManager'
 import { initAutoUpdateManager } from './updater'
 import { NodeManager } from './nodejs/manager'
 import { WorkspaceManager } from './workspace'
+import { initQwenASRProxy } from './voice/QwenASRProxy'
 
 // ============================================================================
 // Proxy Configuration Strategy
@@ -221,6 +222,9 @@ async function initialize() {
 
     // Setup IPC handlers
     setupIPC(mainWindow, ptyManager, storeManager, serverManager, workspaceManager)
+
+    // Initialize Qwen-ASR WebSocket proxy (for voice input)
+    initQwenASRProxy(mainWindow)
 
     // Handle window closed
     mainWindow.on('closed', () => {
