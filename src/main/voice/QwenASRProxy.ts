@@ -329,8 +329,15 @@ export class QwenASRProxy {
 
       case 'error':
         const errorMsg = data.error?.message || '识别错误'
-        console.error('[QwenASRProxy] Error:', errorMsg)
-        this.sendToRenderer('voice:qwen-asr:error', { error: errorMsg })
+        // Ignore "no audio" errors - this happens when user stops without speaking
+        if (errorMsg.includes('no invalid audio') || errorMsg.includes('no audio')) {
+          console.log('[QwenASRProxy] No audio data, ignoring error:', errorMsg)
+          // Send empty final result instead of error
+          this.sendToRenderer('voice:qwen-asr:final', { text: '' })
+        } else {
+          console.error('[QwenASRProxy] Error:', errorMsg)
+          this.sendToRenderer('voice:qwen-asr:error', { error: errorMsg })
+        }
         break
 
       default:
