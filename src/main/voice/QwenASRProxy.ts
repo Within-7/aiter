@@ -32,7 +32,7 @@ export class QwenASRProxy {
   private isRunning = false
   private mainWindow: BrowserWindow | null = null
 
-  private readonly model = 'qwen2-audio-asr-realtime'
+  private readonly model = 'qwen3-asr-flash-realtime'
 
   constructor() {
     this.setupIPC()
