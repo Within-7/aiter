@@ -190,46 +190,58 @@ export class QwenASRProxy {
   private sendSessionUpdate(language: string): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
 
-    const sessionConfig = {
-      event_id: 'event_session',
-      type: 'session.update',
-      session: {
-        modalities: ['text'],
-        input_audio_format: 'pcm',
-        sample_rate: 16000,
-        input_audio_transcription: {
-          language: language
-        },
-        turn_detection: {
-          type: 'server_vad',
-          threshold: 0.5,
-          silence_duration_ms: 500
+    try {
+      const sessionConfig = {
+        event_id: 'event_session',
+        type: 'session.update',
+        session: {
+          modalities: ['text'],
+          input_audio_format: 'pcm',
+          sample_rate: 16000,
+          input_audio_transcription: {
+            language: language
+          },
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            silence_duration_ms: 500
+          }
         }
       }
-    }
 
-    this.ws.send(JSON.stringify(sessionConfig))
+      this.ws.send(JSON.stringify(sessionConfig))
+    } catch (err) {
+      console.error('[QwenASRProxy] Failed to send session update:', err)
+    }
   }
 
   private sendAudio(base64Audio: string): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
 
-    const appendEvent = {
-      event_id: `event_audio_${Date.now()}`,
-      type: 'input_audio_buffer.append',
-      audio: base64Audio
+    try {
+      const appendEvent = {
+        event_id: `event_audio_${Date.now()}`,
+        type: 'input_audio_buffer.append',
+        audio: base64Audio
+      }
+      this.ws.send(JSON.stringify(appendEvent))
+    } catch (err) {
+      console.error('[QwenASRProxy] Failed to send audio:', err)
     }
-    this.ws.send(JSON.stringify(appendEvent))
   }
 
   private commit(): void {
     if (this.ws?.readyState !== WebSocket.OPEN) return
 
-    const commitEvent = {
-      event_id: `event_commit_${Date.now()}`,
-      type: 'input_audio_buffer.commit'
+    try {
+      const commitEvent = {
+        event_id: `event_commit_${Date.now()}`,
+        type: 'input_audio_buffer.commit'
+      }
+      this.ws.send(JSON.stringify(commitEvent))
+    } catch (err) {
+      console.error('[QwenASRProxy] Failed to send commit:', err)
     }
-    this.ws.send(JSON.stringify(commitEvent))
   }
 
   private stop(): void {
@@ -283,8 +295,12 @@ export class QwenASRProxy {
   }
 
   private sendToRenderer(channel: string, data: any): void {
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.webContents.send(channel, data)
+    try {
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.send(channel, data)
+      }
+    } catch (err) {
+      console.error('[QwenASRProxy] Failed to send to renderer:', channel, err)
     }
   }
 

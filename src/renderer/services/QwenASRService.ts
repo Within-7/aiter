@@ -174,12 +174,18 @@ export class QwenASRService implements VoiceRecognitionService {
       this.processor.onaudioprocess = (event) => {
         if (!this.isRunning) return
 
-        const inputData = event.inputBuffer.getChannelData(0)
-        const pcm16 = this.floatTo16BitPCM(inputData)
-        const base64Audio = this.arrayBufferToBase64(pcm16.buffer)
+        try {
+          const inputData = event.inputBuffer.getChannelData(0)
+          const pcm16 = this.floatTo16BitPCM(inputData)
+          const base64Audio = this.arrayBufferToBase64(pcm16.buffer)
 
-        // Send audio data via IPC
-        window.api.voice.qwenAsr.sendAudio(base64Audio).catch(console.error)
+          // Send audio data via IPC (fire and forget, don't await)
+          window.api.voice.qwenAsr.sendAudio(base64Audio).catch((err) => {
+            console.error('[QwenASR] Failed to send audio:', err)
+          })
+        } catch (err) {
+          console.error('[QwenASR] Audio processing error:', err)
+        }
       }
 
       source.connect(this.processor)
@@ -203,9 +209,12 @@ export class QwenASRService implements VoiceRecognitionService {
 
   private arrayBufferToBase64(buffer: ArrayBufferLike): string {
     const bytes = new Uint8Array(buffer)
+    // Use chunked approach to avoid call stack issues with large arrays
+    const CHUNK_SIZE = 8192
     let binary = ''
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i])
+    for (let i = 0; i < bytes.byteLength; i += CHUNK_SIZE) {
+      const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, bytes.byteLength))
+      binary += String.fromCharCode.apply(null, chunk as unknown as number[])
     }
     return btoa(binary)
   }
