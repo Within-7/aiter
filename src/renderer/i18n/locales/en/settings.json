@@ -3,7 +3,8 @@
   "tabs": {
     "general": "General",
     "appearance": "Appearance",
-    "shortcuts": "Shortcuts"
+    "shortcuts": "Shortcuts",
+    "voice": "Voice Input"
   },
   "general": {
     "shell": {
@@ -128,5 +129,57 @@
       "terminal": "Terminal",
       "view": "View"
     }
+  },
+  "voice": {
+    "title": "Voice Input Settings",
+    "enable": "Enable Voice Input",
+    "enableHint": "Press and hold Option/Alt key to speak",
+    "engine": {
+      "title": "Recognition Engine",
+      "qwenAsr": "Alibaba Qwen-ASR",
+      "qwenAsrHint": "Cloud recognition, high accuracy, good for technical terms",
+      "system": "System Native",
+      "systemHint": "Offline recognition, free, privacy-first"
+    },
+    "qwenSettings": {
+      "title": "Qwen-ASR Settings",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Enter Alibaba DashScope API Key",
+      "getApiKey": "Get API Key →",
+      "region": "Service Region",
+      "regionCn": "China (cn)",
+      "regionIntl": "International (intl)"
+    },
+    "activation": {
+      "title": "Activation Method",
+      "pushToTalk": "Push-to-Talk",
+      "triggerKey": "Trigger Key",
+      "triggerKeyOption": "Option / Alt",
+      "triggerKeyMeta": "Command / Win",
+      "triggerKeyControl": "Control",
+      "minHoldDuration": "Minimum Hold Duration"
+    },
+    "recognition": {
+      "title": "Recognition Settings",
+      "language": "Recognition Language",
+      "langZhCN": "Chinese (Simplified)",
+      "langZhTW": "Chinese (Traditional)",
+      "langEnUS": "English (US)",
+      "langEnGB": "English (UK)",
+      "langJaJP": "Japanese",
+      "langKoKR": "Korean",
+      "interimResults": "Show Real-time Results",
+      "interimResultsHint": "Display transcription as you speak"
+    },
+    "behavior": {
+      "title": "Behavior Settings",
+      "autoExecute": "Auto-execute in Terminal",
+      "autoExecuteHint": "Automatically press Enter after recognition",
+      "voiceCommands": "Enable Voice Commands",
+      "voiceCommandsHint": "Recognize commands like \"execute\", \"new line\""
+    },
+    "show": "Show",
+    "hide": "Hide",
+    "recommended": "(Recommended)"
   }
 }

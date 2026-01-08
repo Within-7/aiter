@@ -641,7 +641,7 @@ export const SettingsPanel: React.FC = () => {
               className={`settings-tab ${activeTab === 'voice' ? 'active' : ''}`}
               onClick={() => setActiveTab('voice')}
             >
-              {t('tabs.voice', '语音输入')}
+              {t('tabs.voice')}
             </button>
           </div>
         </div>

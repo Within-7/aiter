@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import type { VoiceInputSettings as VoiceInputSettingsType, VoiceProvider } from '../../../types/voiceInput'
+import { useTranslation } from 'react-i18next'
+import type { VoiceInputSettings as VoiceInputSettingsType } from '../../../types/voiceInput'
 import { defaultVoiceInputSettings } from '../../../types/voiceInput'
 
 interface VoiceInputSettingsProps {
@@ -11,9 +12,10 @@ export const VoiceInputSettings: React.FC<VoiceInputSettingsProps> = ({
   settings,
   onSettingsChange
 }) => {
+  const { t } = useTranslation('settings')
   const [showApiKey, setShowApiKey] = useState(false)
 
-  // 使用默认设置填充缺失字段
+  // Use default settings to fill missing fields
   const currentSettings: VoiceInputSettingsType = {
     ...defaultVoiceInputSettings,
     ...settings
@@ -44,226 +46,205 @@ export const VoiceInputSettings: React.FC<VoiceInputSettingsProps> = ({
 
   return (
     <div className="voice-input-settings">
-      {/* 启用开关 */}
-      <div className="setting-item">
-        <div className="setting-label">
-          <span>启用语音输入</span>
-          <span className="setting-hint">按住 Option/Alt 键说话</span>
-        </div>
-        <label className="toggle-switch">
-          <input
-            type="checkbox"
-            checked={currentSettings.enabled}
-            onChange={(e) => handleChange('enabled', e.target.checked)}
-          />
-          <span className="toggle-slider" />
-        </label>
+      {/* Enable toggle */}
+      <div className="setting-item setting-item-checkbox">
+        <label htmlFor="voice-enabled">{t('voice.enable')}</label>
+        <input
+          id="voice-enabled"
+          type="checkbox"
+          checked={currentSettings.enabled}
+          onChange={(e) => handleChange('enabled', e.target.checked)}
+        />
+        <span className="setting-hint">
+          {t('voice.enableHint')}
+        </span>
       </div>
 
       {currentSettings.enabled && (
         <>
-          {/* 识别引擎 */}
-          <div className="setting-section">
-            <div className="setting-section-title">识别引擎</div>
+          {/* Recognition Engine Section */}
+          <h3>{t('voice.engine.title')}</h3>
 
-            <div className="setting-item radio-group">
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="voiceProvider"
-                  value="qwen-asr"
-                  checked={currentSettings.provider === 'qwen-asr'}
-                  onChange={() => handleChange('provider', 'qwen-asr')}
-                />
-                <div className="radio-content">
-                  <span className="radio-label">阿里云 Qwen-ASR</span>
-                  <span className="radio-hint">云端识别，高精度，适合技术术语</span>
-                </div>
-              </label>
-
-              <label className="radio-option">
-                <input
-                  type="radio"
-                  name="voiceProvider"
-                  value="system"
-                  checked={currentSettings.provider === 'system'}
-                  onChange={() => handleChange('provider', 'system')}
-                />
-                <div className="radio-content">
-                  <span className="radio-label">系统原生</span>
-                  <span className="radio-hint">离线识别，免费，隐私优先</span>
-                </div>
-              </label>
-            </div>
+          <div className="setting-item">
+            <label htmlFor="voice-provider">{t('voice.engine.title')}</label>
+            <select
+              id="voice-provider"
+              value={currentSettings.provider}
+              onChange={(e) => handleChange('provider', e.target.value as 'qwen-asr' | 'system')}
+            >
+              <option value="qwen-asr">{t('voice.engine.qwenAsr')}</option>
+              <option value="system">{t('voice.engine.system')}</option>
+            </select>
           </div>
 
-          {/* Qwen-ASR 设置 */}
+          <div className="setting-info">
+            <span className="setting-info-label">
+              {currentSettings.provider === 'qwen-asr'
+                ? t('voice.engine.qwenAsr')
+                : t('voice.engine.system')}
+            </span>
+            <span>
+              {currentSettings.provider === 'qwen-asr'
+                ? t('voice.engine.qwenAsrHint')
+                : t('voice.engine.systemHint')}
+            </span>
+          </div>
+
+          {/* Qwen-ASR Settings */}
           {currentSettings.provider === 'qwen-asr' && (
-            <div className="setting-section">
-              <div className="setting-section-title">Qwen-ASR 设置</div>
+            <>
+              <h3>{t('voice.qwenSettings.title')}</h3>
 
               <div className="setting-item">
-                <label className="setting-label">API Key</label>
-                <div className="input-with-button">
+                <label htmlFor="qwen-api-key">{t('voice.qwenSettings.apiKey')}</label>
+                <div className="setting-input-group">
                   <input
+                    id="qwen-api-key"
                     type={showApiKey ? 'text' : 'password'}
-                    className="setting-input"
                     value={currentSettings.qwenApiKey || ''}
                     onChange={(e) => handleChange('qwenApiKey', e.target.value)}
-                    placeholder="输入阿里云 DashScope API Key"
+                    placeholder={t('voice.qwenSettings.apiKeyPlaceholder')}
+                    style={{ minWidth: '140px' }}
                   />
                   <button
                     type="button"
-                    className="input-addon-btn"
+                    className="reset-shortcuts-button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    title={showApiKey ? '隐藏' : '显示'}
+                    style={{ marginTop: 0, padding: '6px 10px' }}
                   >
-                    {showApiKey ? '隐藏' : '显示'}
+                    {showApiKey ? t('voice.hide') : t('voice.show')}
                   </button>
                 </div>
+              </div>
+
+              <div className="setting-info">
                 <a
                   href="https://help.aliyun.com/zh/model-studio/get-api-key"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="setting-link"
+                  style={{ color: 'var(--accent-color, #007acc)', textDecoration: 'none' }}
                 >
-                  获取 API Key →
+                  {t('voice.qwenSettings.getApiKey')}
                 </a>
               </div>
 
               <div className="setting-item">
-                <label className="setting-label">服务区域</label>
+                <label htmlFor="qwen-region">{t('voice.qwenSettings.region')}</label>
                 <select
-                  className="setting-select"
+                  id="qwen-region"
                   value={currentSettings.qwenRegion || 'cn'}
                   onChange={(e) => handleChange('qwenRegion', e.target.value as 'cn' | 'intl')}
                 >
-                  <option value="cn">中国 (cn)</option>
-                  <option value="intl">国际 (intl)</option>
+                  <option value="cn">{t('voice.qwenSettings.regionCn')}</option>
+                  <option value="intl">{t('voice.qwenSettings.regionIntl')}</option>
                 </select>
               </div>
-            </div>
+            </>
           )}
 
-          {/* 激活方式 */}
-          <div className="setting-section">
-            <div className="setting-section-title">激活方式</div>
+          {/* Activation Method Section */}
+          <h3>{t('voice.activation.title')}</h3>
 
-            <div className="setting-item">
-              <div className="setting-label">
-                <span>按住说话 (Push-to-Talk)</span>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={currentSettings.pushToTalk.enabled}
-                  onChange={(e) => handlePushToTalkChange('enabled', e.target.checked)}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-
-            {currentSettings.pushToTalk.enabled && (
-              <>
-                <div className="setting-item">
-                  <label className="setting-label">触发键</label>
-                  <select
-                    className="setting-select"
-                    value={currentSettings.pushToTalk.triggerKey}
-                    onChange={(e) => handlePushToTalkChange('triggerKey', e.target.value)}
-                  >
-                    <option value="Alt">Option / Alt</option>
-                    <option value="Meta">Command / Win</option>
-                    <option value="Control">Control</option>
-                  </select>
-                </div>
-
-                <div className="setting-item">
-                  <label className="setting-label">最小按住时间</label>
-                  <select
-                    className="setting-select"
-                    value={currentSettings.pushToTalk.minHoldDuration}
-                    onChange={(e) => handlePushToTalkChange('minHoldDuration', Number(e.target.value))}
-                  >
-                    <option value={100}>100ms</option>
-                    <option value={200}>200ms (推荐)</option>
-                    <option value={300}>300ms</option>
-                    <option value={500}>500ms</option>
-                  </select>
-                </div>
-              </>
-            )}
+          <div className="setting-item setting-item-checkbox">
+            <label htmlFor="push-to-talk">{t('voice.activation.pushToTalk')}</label>
+            <input
+              id="push-to-talk"
+              type="checkbox"
+              checked={currentSettings.pushToTalk.enabled}
+              onChange={(e) => handlePushToTalkChange('enabled', e.target.checked)}
+            />
           </div>
 
-          {/* 识别设置 */}
-          <div className="setting-section">
-            <div className="setting-section-title">识别设置</div>
-
-            <div className="setting-item">
-              <label className="setting-label">识别语言</label>
-              <select
-                className="setting-select"
-                value={currentSettings.language}
-                onChange={(e) => handleChange('language', e.target.value)}
-              >
-                <option value="zh-CN">中文（简体）</option>
-                <option value="zh-TW">中文（繁体）</option>
-                <option value="en-US">English (US)</option>
-                <option value="en-GB">English (UK)</option>
-                <option value="ja-JP">日本語</option>
-                <option value="ko-KR">한국어</option>
-              </select>
-            </div>
-
-            <div className="setting-item">
-              <div className="setting-label">
-                <span>显示实时识别结果</span>
-                <span className="setting-hint">边说边显示识别文字</span>
+          {currentSettings.pushToTalk.enabled && (
+            <>
+              <div className="setting-item">
+                <label htmlFor="trigger-key">{t('voice.activation.triggerKey')}</label>
+                <select
+                  id="trigger-key"
+                  value={currentSettings.pushToTalk.triggerKey}
+                  onChange={(e) => handlePushToTalkChange('triggerKey', e.target.value)}
+                >
+                  <option value="Alt">{t('voice.activation.triggerKeyOption')}</option>
+                  <option value="Meta">{t('voice.activation.triggerKeyMeta')}</option>
+                  <option value="Control">{t('voice.activation.triggerKeyControl')}</option>
+                </select>
               </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={currentSettings.interimResults}
-                  onChange={(e) => handleChange('interimResults', e.target.checked)}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
+
+              <div className="setting-item">
+                <label htmlFor="min-hold">{t('voice.activation.minHoldDuration')}</label>
+                <select
+                  id="min-hold"
+                  value={currentSettings.pushToTalk.minHoldDuration}
+                  onChange={(e) => handlePushToTalkChange('minHoldDuration', Number(e.target.value))}
+                >
+                  <option value={100}>100ms</option>
+                  <option value={200}>200ms {t('voice.recommended')}</option>
+                  <option value={300}>300ms</option>
+                  <option value={500}>500ms</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Recognition Settings Section */}
+          <h3>{t('voice.recognition.title')}</h3>
+
+          <div className="setting-item">
+            <label htmlFor="voice-language">{t('voice.recognition.language')}</label>
+            <select
+              id="voice-language"
+              value={currentSettings.language}
+              onChange={(e) => handleChange('language', e.target.value)}
+            >
+              <option value="zh-CN">{t('voice.recognition.langZhCN')}</option>
+              <option value="zh-TW">{t('voice.recognition.langZhTW')}</option>
+              <option value="en-US">{t('voice.recognition.langEnUS')}</option>
+              <option value="en-GB">{t('voice.recognition.langEnGB')}</option>
+              <option value="ja-JP">{t('voice.recognition.langJaJP')}</option>
+              <option value="ko-KR">{t('voice.recognition.langKoKR')}</option>
+            </select>
           </div>
 
-          {/* 行为设置 */}
-          <div className="setting-section">
-            <div className="setting-section-title">行为设置</div>
+          <div className="setting-item setting-item-checkbox">
+            <label htmlFor="interim-results">{t('voice.recognition.interimResults')}</label>
+            <input
+              id="interim-results"
+              type="checkbox"
+              checked={currentSettings.interimResults}
+              onChange={(e) => handleChange('interimResults', e.target.checked)}
+            />
+            <span className="setting-hint">
+              {t('voice.recognition.interimResultsHint')}
+            </span>
+          </div>
 
-            <div className="setting-item">
-              <div className="setting-label">
-                <span>在终端中自动执行</span>
-                <span className="setting-hint">识别完成后自动按回车</span>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={currentSettings.autoExecuteInTerminal}
-                  onChange={(e) => handleChange('autoExecuteInTerminal', e.target.checked)}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
+          {/* Behavior Settings Section */}
+          <h3>{t('voice.behavior.title')}</h3>
 
-            <div className="setting-item">
-              <div className="setting-label">
-                <span>启用语音指令</span>
-                <span className="setting-hint">识别"执行"、"换行"等指令</span>
-              </div>
-              <label className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={currentSettings.enableVoiceCommands}
-                  onChange={(e) => handleChange('enableVoiceCommands', e.target.checked)}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
+          <div className="setting-item setting-item-checkbox">
+            <label htmlFor="auto-execute">{t('voice.behavior.autoExecute')}</label>
+            <input
+              id="auto-execute"
+              type="checkbox"
+              checked={currentSettings.autoExecuteInTerminal}
+              onChange={(e) => handleChange('autoExecuteInTerminal', e.target.checked)}
+            />
+            <span className="setting-hint">
+              {t('voice.behavior.autoExecuteHint')}
+            </span>
+          </div>
+
+          <div className="setting-item setting-item-checkbox">
+            <label htmlFor="voice-commands">{t('voice.behavior.voiceCommands')}</label>
+            <input
+              id="voice-commands"
+              type="checkbox"
+              checked={currentSettings.enableVoiceCommands}
+              onChange={(e) => handleChange('enableVoiceCommands', e.target.checked)}
+            />
+            <span className="setting-hint">
+              {t('voice.behavior.voiceCommandsHint')}
+            </span>
           </div>
         </>
       )}
