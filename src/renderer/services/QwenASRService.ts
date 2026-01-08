@@ -6,6 +6,8 @@ interface QwenASROptions {
   language?: string
   onInterimResult: (text: string) => void
   onFinalResult: (text: string) => void
+  /** Called when VAD detects end of speech segment (but recording continues) */
+  onSegmentComplete?: (text: string) => void
   onError: (error: string) => void
 }
 
@@ -22,10 +24,13 @@ export class QwenASRService implements VoiceRecognitionService {
   private workletNode: AudioWorkletNode | null = null
   private isRunning = false
   private accumulatedText = ''
+  private allSegments: string[] = [] // Accumulate all completed segments
   private hasFinalResult = false // Track if we've already sent final result
+  private userStopped = false // Track if user explicitly stopped recording
   private options: QwenASROptions
   private interimCallback: ((text: string) => void) | null = null
   private finalCallback: ((text: string) => void) | null = null
+  private segmentCallback: ((text: string) => void) | null = null
   private errorCallback: ((error: string) => void) | null = null
 
   // IPC event cleanup functions
@@ -35,6 +40,7 @@ export class QwenASRService implements VoiceRecognitionService {
     this.options = options
     this.interimCallback = options.onInterimResult
     this.finalCallback = options.onFinalResult
+    this.segmentCallback = options.onSegmentComplete || null
     this.errorCallback = options.onError
   }
 
@@ -48,7 +54,9 @@ export class QwenASRService implements VoiceRecognitionService {
 
     this.isRunning = true
     this.accumulatedText = ''
+    this.allSegments = []
     this.hasFinalResult = false
+    this.userStopped = false
 
     try {
       // 1. Setup IPC event listeners first
@@ -120,18 +128,41 @@ export class QwenASRService implements VoiceRecognitionService {
     // Listen for interim results
     // Note: Qwen-ASR sends complete interim text in 'stash' field, not incremental deltas
     const cleanupInterim = window.api.voice.qwenAsr.onInterim((data) => {
-      // stash contains the complete interim text, no need to accumulate
+      // stash contains the complete interim text for current segment
       this.accumulatedText = data.text
-      this.interimCallback?.(this.accumulatedText)
+      // Combine with previous segments for display
+      const allText = [...this.allSegments, this.accumulatedText].filter(s => s.trim()).join('\n')
+      this.interimCallback?.(allText)
     })
     this.cleanupFunctions.push(cleanupInterim)
 
-    // Listen for final results
+    // Listen for final results (VAD segment completion or user stop)
     const cleanupFinal = window.api.voice.qwenAsr.onFinal((data) => {
-      if (!this.hasFinalResult) {
-        this.hasFinalResult = true
-        console.log('[QwenASR] Server final result:', data.text)
-        this.finalCallback?.(data.text || this.accumulatedText)
+      const text = data.text || this.accumulatedText
+      console.log('[QwenASR] Server final result:', text, 'userStopped:', this.userStopped)
+
+      if (this.userStopped) {
+        // User explicitly stopped - send final result with all accumulated segments
+        if (!this.hasFinalResult) {
+          this.hasFinalResult = true
+          // Combine all segments with the current text
+          const allText = [...this.allSegments, text].filter(s => s.trim()).join('\n')
+          console.log('[QwenASR] User stopped, final combined result:', allText)
+          this.finalCallback?.(allText)
+        }
+      } else {
+        // VAD segment completion - accumulate and notify
+        if (text.trim()) {
+          this.allSegments.push(text)
+          console.log('[QwenASR] VAD segment complete, segments:', this.allSegments.length)
+          // Notify about segment completion (for UI update)
+          this.segmentCallback?.(text)
+          // Also update interim with accumulated text for display
+          const allText = this.allSegments.join('\n')
+          this.interimCallback?.(allText)
+        }
+        // Reset accumulated text for next segment
+        this.accumulatedText = ''
       }
     })
     this.cleanupFunctions.push(cleanupFinal)
@@ -163,13 +194,16 @@ export class QwenASRService implements VoiceRecognitionService {
       // Even if not running, trigger final callback to end "processing" state
       if (!this.hasFinalResult) {
         this.hasFinalResult = true
-        this.finalCallback?.('')
+        // Return all accumulated segments
+        const allText = this.allSegments.join('\n')
+        this.finalCallback?.(allText)
       }
       return
     }
 
     console.log('[QwenASR] Stopping...')
     this.isRunning = false
+    this.userStopped = true // Mark that user explicitly stopped
 
     // Send commit signal via IPC to get final transcription
     window.api.voice.qwenAsr.commit().catch(console.error)
@@ -180,8 +214,10 @@ export class QwenASRService implements VoiceRecognitionService {
       // Only trigger if server hasn't sent final result
       if (!this.hasFinalResult) {
         this.hasFinalResult = true
-        console.log('[QwenASR] Timeout final result:', this.accumulatedText || '(empty)')
-        this.finalCallback?.(this.accumulatedText)
+        // Combine all segments with current accumulated text
+        const allText = [...this.allSegments, this.accumulatedText].filter(s => s.trim()).join('\n')
+        console.log('[QwenASR] Timeout final result:', allText || '(empty)')
+        this.finalCallback?.(allText)
       }
 
       window.api.voice.qwenAsr.stop().catch(console.error)
@@ -423,6 +459,8 @@ export class QwenASRService implements VoiceRecognitionService {
 
     this.isRunning = false
     this.accumulatedText = ''
+    this.allSegments = []
+    this.userStopped = false
   }
 
   // Check if service is running

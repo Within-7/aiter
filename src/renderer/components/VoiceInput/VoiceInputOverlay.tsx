@@ -31,13 +31,23 @@ export const VoiceInputOverlay: React.FC<VoiceInputOverlayProps> = ({
   const [editableText, setEditableText] = useState('')
   // Current pending text from this recording session (real-time display)
   const [pendingText, setPendingText] = useState('')
+  // Track if we're in an active recording session (to filter stale interimText)
+  const recordingSessionRef = useRef(0)
+  const currentSessionRef = useRef(0)
+  // Track last appended text to avoid duplicates
+  const lastAppendedTextRef = useRef('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // When overlay becomes visible, reset all state
   useEffect(() => {
     if (isVisible) {
+      console.log('[VoiceInputOverlay] Overlay visible, resetting state')
       setEditableText('')
       setPendingText('')
+      lastAppendedTextRef.current = ''
+      // Start a new session
+      recordingSessionRef.current += 1
+      currentSessionRef.current = recordingSessionRef.current
     }
   }, [isVisible])
 
@@ -50,37 +60,34 @@ export const VoiceInputOverlay: React.FC<VoiceInputOverlayProps> = ({
     prevIsRecordingRef.current = isRecording
 
     if (isRecording && !wasRecording) {
-      // Just started a new recording session - reset pending text
-      console.log('[VoiceInputOverlay] Recording started, resetting pending text')
+      // Just started a new recording session - increment session counter
+      recordingSessionRef.current += 1
+      currentSessionRef.current = recordingSessionRef.current
+      console.log('[VoiceInputOverlay] Recording started, session:', currentSessionRef.current)
+      setPendingText('')
+    } else if (!isRecording && wasRecording) {
+      // Just stopped recording - append pending text if we have any
+      const textToAppend = pendingText.trim()
+      if (textToAppend && textToAppend !== lastAppendedTextRef.current) {
+        console.log('[VoiceInputOverlay] Recording stopped, appending:', textToAppend)
+        lastAppendedTextRef.current = textToAppend
+        setEditableText(prev => {
+          const separator = prev ? '\n' : ''
+          return prev + separator + textToAppend
+        })
+      }
       setPendingText('')
     }
-  }, [isRecording])
+  }, [isRecording, pendingText])
 
-  // Handle interim text updates - update pending text during recording
+  // Handle interim text updates - only during active recording
   useEffect(() => {
-    if (interimText) {
-      // interimText contains the complete text for the current session
-      // Update pending text for display
+    // Only update pending text if we're currently recording
+    if (isRecording && interimText) {
       console.log('[VoiceInputOverlay] Interim text updated:', interimText)
       setPendingText(interimText)
     }
-  }, [interimText])
-
-  // When recording stops and we have pending text, append it to editable text
-  useEffect(() => {
-    if (!isRecording && pendingText) {
-      // Use a small delay to ensure we have the final text
-      const timer = setTimeout(() => {
-        console.log('[VoiceInputOverlay] Recording stopped, appending pending text:', pendingText)
-        setEditableText(prev => {
-          const separator = prev ? '\n' : ''
-          return prev + separator + pendingText
-        })
-        setPendingText('')
-      }, 100)
-      return () => clearTimeout(timer)
-    }
-  }, [isRecording, pendingText])
+  }, [isRecording, interimText])
 
   // Auto-resize textarea
   useEffect(() => {

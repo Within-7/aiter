@@ -41,7 +41,8 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
       },
       onFinalResult: (text) => {
         console.log('[useVoiceInput] Final result received:', text)
-        setIsRecording(false)
+        // Note: Don't set isRecording to false here - let the service handle it
+        // This allows VAD-triggered final results to not interrupt recording
 
         if (useEditableOverlay) {
           // In editable mode, update interimText with final result for overlay to display
@@ -50,10 +51,10 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
             setInterimText(text)
           }
           console.log('[useVoiceInput] Editable mode: keeping overlay open for user confirmation')
-          // Keep overlay visible, state becomes idle but overlay stays
-          setState('idle')
+          // Don't change state here - let the overlay handle the recording state
         } else {
           // Original behavior: auto-insert text
+          setIsRecording(false)
           setInterimText('')
           setState('idle')
           if (text.trim()) {
