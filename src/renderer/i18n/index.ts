@@ -12,6 +12,7 @@ import enDialogs from './locales/en/dialogs.json'
 import enAbout from './locales/en/about.json'
 import enGit from './locales/en/git.json'
 import enUpdate from './locales/en/update.json'
+import enVoice from './locales/en/voice.json'
 
 // Combine all English translations
 const enResources = {
@@ -24,6 +25,7 @@ const enResources = {
   about: enAbout,
   git: enGit,
   update: enUpdate,
+  voice: enVoice,
 }
 
 // Language resources
@@ -49,7 +51,7 @@ i18n
     resources,
     fallbackLng: 'en', // Fallback to English if language not available
     defaultNS: 'common', // Default namespace
-    ns: ['common', 'settings', 'explorer', 'editor', 'terminal', 'dialogs', 'about', 'git', 'update'],
+    ns: ['common', 'settings', 'explorer', 'editor', 'terminal', 'dialogs', 'about', 'git', 'update', 'voice'],
 
     interpolation: {
       escapeValue: false, // React already escapes values

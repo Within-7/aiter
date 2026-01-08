@@ -9,8 +9,7 @@ import { PDFViewer } from './Editor/PDFViewer'
 import { OfficeViewer } from './Editor/OfficeViewer'
 import { TerminalContainer } from './TerminalContainer'
 import { ConfirmDialog } from './FileTree/ConfirmDialog'
-import { VoiceInputButton, VoiceInputOverlay } from './VoiceInput'
-import { useVoiceInput } from '../hooks/useVoiceInput'
+import { VoiceInputButton } from './VoiceInput'
 import { defaultVoiceInputSettings } from '../../types/voiceInput'
 import { getProjectColor } from '../utils/projectColors'
 import '../styles/WorkArea.css'
@@ -56,50 +55,13 @@ export const WorkArea: React.FC = () => {
   // Get voice input settings
   const voiceSettings = state.settings.voiceInput || defaultVoiceInputSettings
 
-  // Voice input handler - write text to active terminal or editor
-  const handleVoiceTextInsert = useCallback((text: string) => {
-    console.log('[WorkArea] handleVoiceTextInsert called with:', text)
-    console.log('[WorkArea] activeTerminalId:', state.activeTerminalId, 'activeEditorTabId:', state.activeEditorTabId)
+  // Toggle voice panel
+  const handleVoicePanelToggle = useCallback(() => {
+    dispatch({ type: 'TOGGLE_VOICE_PANEL' })
+  }, [dispatch])
 
-    // Check if editor is active (takes priority)
-    if (state.activeEditorTabId && !state.activeTerminalId) {
-      console.log('[WorkArea] Dispatching to editor')
-      // Dispatch custom event for Monaco Editor to handle
-      window.dispatchEvent(new CustomEvent('voice-input-insert', {
-        detail: { text }
-      }))
-      return
-    }
-
-    // Check if terminal is active
-    if (state.activeTerminalId) {
-      console.log('[WorkArea] Writing to terminal:', state.activeTerminalId)
-      // Write to active terminal
-      window.api.terminal.write(state.activeTerminalId, text)
-      // Auto-execute if enabled
-      if (voiceSettings.autoExecuteInTerminal) {
-        window.api.terminal.write(state.activeTerminalId, '\r')
-      }
-      return
-    }
-
-    // Fallback: if there's an active editor tab, send to editor
-    if (state.activeEditorTabId) {
-      console.log('[WorkArea] Fallback: dispatching to editor')
-      window.dispatchEvent(new CustomEvent('voice-input-insert', {
-        detail: { text }
-      }))
-      return
-    }
-
-    console.log('[WorkArea] No active target for voice input, text not inserted:', text)
-  }, [state.activeTerminalId, state.activeEditorTabId, voiceSettings.autoExecuteInTerminal])
-
-  // Voice input hook
-  const voiceInput = useVoiceInput({
-    settings: voiceSettings,
-    onTextInsert: handleVoiceTextInsert
-  })
+  // Voice button shows active state when panel is open
+  const voiceButtonState = state.showVoicePanel ? 'recording' : 'idle'
 
   // Derive active tab ID from global state
   const activeTabId = state.activeEditorTabId
@@ -506,11 +468,11 @@ export const WorkArea: React.FC = () => {
           />
         </div>
         <div className={`work-area-tabs-right ${isWindows ? 'windows-platform' : ''}`}>
-          {/* Voice Input Button */}
+          {/* Voice Input Button - toggles voice panel */}
           <VoiceInputButton
             isEnabled={voiceSettings.enabled}
-            state={voiceInput.state}
-            onClick={voiceInput.toggleRecording}
+            state={voiceButtonState as 'idle' | 'recording' | 'processing' | 'error'}
+            onClick={handleVoicePanelToggle}
           />
           <button
             className={`mode-toggle-button ${!supportsPreview ? 'disabled' : ''}`}
@@ -605,20 +567,6 @@ export const WorkArea: React.FC = () => {
           onCancel={handleCancelCloseTerminal}
         />
       )}
-
-      {/* Voice Input Overlay */}
-      <VoiceInputOverlay
-        isVisible={voiceInput.isOverlayVisible && voiceSettings.enabled}
-        state={voiceInput.state}
-        interimText={voiceInput.interimText}
-        provider={voiceSettings.provider}
-        error={voiceInput.error}
-        isRecording={voiceInput.isRecording}
-        onClose={voiceInput.closeOverlay}
-        onConfirm={voiceInput.confirmText}
-        onStartRecording={voiceInput.startRecording}
-        onStopRecording={voiceInput.stopRecording}
-      />
     </div>
   )
 }

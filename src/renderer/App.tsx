@@ -3,6 +3,7 @@ import { AppContext, appReducer, initialState } from './context/AppContext'
 import { SessionState } from '../types'
 import { Sidebar } from './components/Sidebar'
 import { WorkArea } from './components/WorkArea'
+import { VoicePanelContainer } from './components/VoicePanel/VoicePanelContainer'
 import { StatusBar } from './components/StatusBar'
 import { PluginPanel } from './components/Plugins/PluginPanel'
 import { AboutPanel } from './components/About/AboutPanel'
@@ -308,6 +309,9 @@ function App() {
             </ErrorBoundary>
             <ErrorBoundary name="WorkArea">
               <WorkArea />
+            </ErrorBoundary>
+            <ErrorBoundary name="VoicePanel">
+              <VoicePanelContainer />
             </ErrorBoundary>
           </div>
           <ErrorBoundary name="StatusBar">

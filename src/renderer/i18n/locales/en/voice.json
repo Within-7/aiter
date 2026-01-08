@@ -1,0 +1,44 @@
+{
+  "title": "Voice Assistant",
+  "status": {
+    "idle": "Ready",
+    "recording": "Recording...",
+    "processing": "Processing...",
+    "error": "Error"
+  },
+  "actions": {
+    "holdToSpeak": "Hold Option/Alt to speak",
+    "releaseToStop": "Release to stop",
+    "startRecording": "Start Recording",
+    "stopRecording": "Stop",
+    "continueRecording": "Continue",
+    "insertToTerminal": "Insert to Terminal",
+    "insertToEditor": "Insert to Editor",
+    "copy": "Copy",
+    "clear": "Clear",
+    "clearAll": "Clear All",
+    "delete": "Delete",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "messages": {
+    "empty": "No voice input yet",
+    "emptyHint": "Hold Option/Alt key or click the microphone button to start recording",
+    "noTarget": "No active terminal or editor",
+    "inserted": "Inserted to {{target}}",
+    "copied": "Copied to clipboard",
+    "cleared": "Cleared all messages"
+  },
+  "settings": {
+    "title": "Voice Settings",
+    "provider": "Provider",
+    "language": "Language"
+  },
+  "errors": {
+    "notEnabled": "Voice input is not enabled",
+    "noMicrophone": "Microphone access denied",
+    "connectionFailed": "Connection failed",
+    "recognitionFailed": "Recognition failed"
+  }
+}

@@ -34,6 +34,7 @@ export interface AppState {
   showAboutPanel: boolean
   showSettingsPanel: boolean
   showWorkspaceManager: boolean
+  showVoicePanel: boolean
   sidebarView: SidebarView
 }
 
@@ -68,6 +69,8 @@ export type AppAction =
   | { type: 'SET_SETTINGS_PANEL'; payload: boolean }
   | { type: 'TOGGLE_WORKSPACE_MANAGER' }
   | { type: 'SET_WORKSPACE_MANAGER'; payload: boolean }
+  | { type: 'TOGGLE_VOICE_PANEL' }
+  | { type: 'SET_VOICE_PANEL'; payload: boolean }
   | { type: 'SET_SIDEBAR_VIEW'; payload: SidebarView }
   | { type: 'SELECT_TAB'; payload: { tabId: string; shiftKey: boolean; ctrlKey: boolean } }
   | { type: 'CLEAR_TAB_SELECTION' }
@@ -120,6 +123,7 @@ export const initialState: AppState = {
   showAboutPanel: false,
   showSettingsPanel: false,
   showWorkspaceManager: false,
+  showVoicePanel: false,
   sidebarView: 'explorer'
 }
 

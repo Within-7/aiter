@@ -38,6 +38,12 @@ export function uiReducer(state: AppState, action: AppAction): AppState {
     case 'SET_WORKSPACE_MANAGER':
       return { ...state, showWorkspaceManager: action.payload }
 
+    case 'TOGGLE_VOICE_PANEL':
+      return { ...state, showVoicePanel: !state.showVoicePanel }
+
+    case 'SET_VOICE_PANEL':
+      return { ...state, showVoicePanel: action.payload }
+
     case 'SET_SIDEBAR_VIEW':
       return { ...state, sidebarView: action.payload }
 
