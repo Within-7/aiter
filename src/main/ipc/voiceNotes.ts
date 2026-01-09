@@ -1,8 +1,11 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import type { VoiceTranscription, VoiceNotesFile } from '../../types/voiceInput'
 import { VOICE_NOTES_DIR, VOICE_NOTES_FILENAME } from '../../types/voiceInput'
+
+// Reference to main window for sending file tree refresh events
+let mainWindow: BrowserWindow | null = null
 
 /**
  * Voice Notes IPC handlers for persisting voice transcriptions to project directories.
@@ -93,6 +96,15 @@ async function ensureVoiceNotesDir(projectPath: string): Promise<void> {
 
       // Add to ignore files only when first creating the directory
       await Promise.all(IGNORE_FILES.map(file => addToIgnoreFile(projectPath, file)))
+
+      // Notify renderer to refresh file tree
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        console.log(`[voiceNotes] Sending file tree refresh for ${projectPath}`)
+        mainWindow.webContents.send('fileWatcher:changed', {
+          projectPath,
+          changeCount: 1
+        })
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
         throw error
@@ -135,7 +147,10 @@ async function writeVoiceNotes(projectPath: string, data: VoiceNotesFile): Promi
   await fs.writeFile(filePath, content, 'utf-8')
 }
 
-export function registerVoiceNotesHandlers() {
+export function registerVoiceNotesHandlers(window: BrowserWindow) {
+  // Store reference to main window for file tree refresh
+  mainWindow = window
+
   // Load voice notes for a project
   ipcMain.handle('voiceNotes:load', async (_, { projectPath }: { projectPath: string }) => {
     try {

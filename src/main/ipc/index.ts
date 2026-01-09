@@ -46,7 +46,7 @@ export function setupIPC(
   registerPluginHandlers(window)
   registerAppHandlers(window, workspaceManager, storeManager)
   registerTemplateHandlers()
-  registerVoiceNotesHandlers()
+  registerVoiceNotesHandlers(window)
 
   console.log('IPC handlers registered')
 }
