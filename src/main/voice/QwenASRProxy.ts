@@ -291,15 +291,28 @@ export class QwenASRProxy {
   private stop(): void {
     if (!this.isRunning) return
 
-    console.log('[QwenASRProxy] Stopping...')
+    console.log('[QwenASRProxy] Stopping session:', this.sessionId)
+    const stoppingSessionId = this.sessionId
+    const stoppingWs = this.ws  // Capture the current WebSocket reference
     this.isRunning = false
 
     // Send commit before closing
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (stoppingWs?.readyState === WebSocket.OPEN) {
       this.commit()
       // Give server time to process final audio
       setTimeout(() => {
-        this.cleanup()
+        // Only close if this is still the same WebSocket (not replaced by a new session)
+        if (this.ws === stoppingWs) {
+          console.log('[QwenASRProxy] Delayed cleanup for session:', stoppingSessionId)
+          this.cleanup()
+        } else {
+          // A new session has started, just close the old WebSocket quietly
+          console.log('[QwenASRProxy] Skipping cleanup, new session started. Old:', stoppingSessionId, 'Current:', this.sessionId)
+          if (stoppingWs.readyState === WebSocket.OPEN || stoppingWs.readyState === WebSocket.CONNECTING) {
+            stoppingWs.removeAllListeners()
+            stoppingWs.close(1000, 'Session replaced')
+          }
+        }
       }, 500)
     } else {
       this.cleanup()
