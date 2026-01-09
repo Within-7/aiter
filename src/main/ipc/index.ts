@@ -16,6 +16,7 @@ import { registerGitHandlers } from './git'
 import { registerPluginHandlers } from './plugins'
 import { registerAppHandlers } from './app'
 import { registerTemplateHandlers } from './templates'
+import { registerVoiceNotesHandlers } from './voiceNotes'
 
 export function setupIPC(
   window: BrowserWindow,
@@ -45,6 +46,7 @@ export function setupIPC(
   registerPluginHandlers(window)
   registerAppHandlers(window, workspaceManager, storeManager)
   registerTemplateHandlers()
+  registerVoiceNotesHandlers()
 
   console.log('IPC handlers registered')
 }

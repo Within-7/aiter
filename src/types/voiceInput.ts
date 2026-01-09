@@ -78,6 +78,18 @@ export interface VoiceTranscription {
   insertedTo?: 'terminal' | 'editor'  // 插入到哪里
 }
 
+// 语音记录文件格式 (存储在项目的 .airter/voice-notes.json)
+export interface VoiceNotesFile {
+  version: 1
+  projectPath: string
+  notes: VoiceTranscription[]
+  lastUpdated: number
+}
+
+// 语音记录存储路径常量
+export const VOICE_NOTES_DIR = '.airter'
+export const VOICE_NOTES_FILENAME = 'voice-notes.json'
+
 // 默认语音输入设置
 export const defaultVoiceInputSettings: VoiceInputSettings = {
   enabled: false,

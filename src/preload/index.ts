@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { Project, Terminal, AppSettings, FileNode, Plugin, PluginInstallProgress, PluginUpdateProgress, GitStatus, GitCommit, FileChange, DetectedShell, VersionManagerInfo, ShellType, Workspace, SessionState } from '../types'
+import { Project, Terminal, AppSettings, FileNode, Plugin, PluginInstallProgress, PluginUpdateProgress, GitStatus, GitCommit, FileChange, DetectedShell, VersionManagerInfo, ShellType, Workspace, SessionState, VoiceTranscription, VoiceNotesFile } from '../types'
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -458,6 +458,22 @@ contextBridge.exposeInMainWorld('api', {
         return () => ipcRenderer.removeListener('voice:qwen-asr:closed', listener)
       }
     }
+  },
+
+  // Voice Notes APIs (persisting transcriptions to project directories)
+  voiceNotes: {
+    load: (projectPath: string) =>
+      ipcRenderer.invoke('voiceNotes:load', { projectPath }),
+    save: (projectPath: string, notes: VoiceTranscription[]) =>
+      ipcRenderer.invoke('voiceNotes:save', { projectPath, notes }),
+    add: (projectPath: string, note: VoiceTranscription) =>
+      ipcRenderer.invoke('voiceNotes:add', { projectPath, note }),
+    update: (projectPath: string, noteId: string, text: string) =>
+      ipcRenderer.invoke('voiceNotes:update', { projectPath, noteId, text }),
+    delete: (projectPath: string, noteId: string) =>
+      ipcRenderer.invoke('voiceNotes:delete', { projectPath, noteId }),
+    clear: (projectPath: string) =>
+      ipcRenderer.invoke('voiceNotes:clear', { projectPath })
   }
 })
 
@@ -941,6 +957,36 @@ export interface API {
       onError(callback: (data: { error: string }) => void): () => void
       onClosed(callback: (data: { code: number; reason: string }) => void): () => void
     }
+  }
+  voiceNotes: {
+    load(projectPath: string): Promise<{
+      success: boolean;
+      data?: VoiceNotesFile;
+      error?: string;
+    }>
+    save(projectPath: string, notes: VoiceTranscription[]): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+    add(projectPath: string, note: VoiceTranscription): Promise<{
+      success: boolean;
+      data?: VoiceNotesFile;
+      error?: string;
+    }>
+    update(projectPath: string, noteId: string, text: string): Promise<{
+      success: boolean;
+      data?: VoiceNotesFile;
+      error?: string;
+    }>
+    delete(projectPath: string, noteId: string): Promise<{
+      success: boolean;
+      data?: VoiceNotesFile;
+      error?: string;
+    }>
+    clear(projectPath: string): Promise<{
+      success: boolean;
+      error?: string;
+    }>
   }
 }
 
