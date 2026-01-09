@@ -20,6 +20,8 @@ export function useVoiceNotesPersistence() {
   const lastSavedRef = useRef<string>('')
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const loadedProjectRef = useRef<string | null>(null)
+  // Track if we're currently loading to prevent save during load
+  const isLoadingRef = useRef<boolean>(false)
   // Use ref to track voiceTranscriptions for use in loadNotes without causing re-renders
   const voiceTranscriptionsRef = useRef(voiceTranscriptions)
   voiceTranscriptionsRef.current = voiceTranscriptions
@@ -32,8 +34,11 @@ export function useVoiceNotesPersistence() {
    * Load voice notes from project directory
    */
   const loadNotes = useCallback(async (path: string, projectId: string) => {
+    // Set loading flag BEFORE any async operation to prevent race condition
+    isLoadingRef.current = true
+    console.log('[VoiceNotesPersistence] Loading notes for project:', path, 'projectId:', projectId)
+
     try {
-      console.log('[VoiceNotesPersistence] Loading notes for project:', path, 'projectId:', projectId)
       const result = await window.api.voiceNotes.load(path)
 
       if (result.success && result.data) {
@@ -52,20 +57,25 @@ export function useVoiceNotesPersistence() {
         // Combine: other projects' notes + loaded project's notes
         const combinedNotes = [...existingOtherProjectNotes, ...loadedNotes]
 
-        dispatch({ type: 'SET_VOICE_TRANSCRIPTIONS', payload: combinedNotes })
+        // Update refs BEFORE dispatching to prevent save effect from saving stale data
         lastSavedRef.current = JSON.stringify(loadedNotes)
         loadedProjectRef.current = projectId
+
+        dispatch({ type: 'SET_VOICE_TRANSCRIPTIONS', payload: combinedNotes })
 
         console.log(`[VoiceNotesPersistence] Loaded ${loadedNotes.length} notes for project ${projectId}`)
       } else {
         console.log('[VoiceNotesPersistence] No existing notes or empty file for project:', projectId)
-        loadedProjectRef.current = projectId
         // Initialize with empty array for this project
         lastSavedRef.current = '[]'
+        loadedProjectRef.current = projectId
       }
     } catch (error) {
       console.error('[VoiceNotesPersistence] Failed to load notes:', error)
       loadedProjectRef.current = projectId
+    } finally {
+      // Clear loading flag after everything is done
+      isLoadingRef.current = false
     }
   }, [dispatch])
 
@@ -148,11 +158,18 @@ export function useVoiceNotesPersistence() {
       projectPath,
       activeProjectId,
       loadedProjectRef: loadedProjectRef.current,
+      isLoading: isLoadingRef.current,
       transcriptions: voiceTranscriptions.map(t => ({ id: t.id, projectId: t.projectId, text: t.text.substring(0, 20) }))
     })
 
     if (!projectPath || !activeProjectId) {
       console.log('[VoiceNotesPersistence] Skipping save: no projectPath or activeProjectId')
+      return
+    }
+
+    // Skip save if we're currently loading (prevents race condition)
+    if (isLoadingRef.current) {
+      console.log('[VoiceNotesPersistence] Skipping save: currently loading')
       return
     }
 
