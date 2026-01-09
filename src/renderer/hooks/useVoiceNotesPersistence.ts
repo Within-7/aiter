@@ -10,7 +10,7 @@ import type { VoiceTranscription } from '../../types/voiceInput'
  * - Auto-saving voice notes when transcriptions are modified (debounced)
  * - Filtering transcriptions by project for multi-project scenarios
  *
- * Voice notes are stored in `.airter/voice-notes.json` within each project.
+ * Voice notes are stored in `.aiter/voice-notes.json` within each project.
  */
 export function useVoiceNotesPersistence() {
   const { state, dispatch } = useContext(AppContext)
