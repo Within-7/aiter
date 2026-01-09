@@ -27,9 +27,25 @@ export const VoicePanelContainer: React.FC = () => {
   }
 
   // Handle inserting text to terminal
+  // Terminal-specific: sanitize text to prevent accidental command execution
   const handleInsertToTerminal = useCallback((text: string) => {
     if (state.activeTerminalId) {
-      window.api.terminal.write(state.activeTerminalId, text)
+      // Sanitize text for terminal:
+      // 1. Replace newlines with spaces (prevent multiple command execution)
+      // 2. Replace carriage returns
+      // 3. Remove control characters (prevent Ctrl+C, Ctrl+D, etc.)
+      // 4. Collapse multiple spaces and trim
+      const sanitizedText = text
+        .replace(/\r\n/g, ' ')  // Windows-style newlines
+        .replace(/\n/g, ' ')    // Unix-style newlines
+        .replace(/\r/g, ' ')    // Old Mac-style newlines
+        .replace(/\t/g, ' ')    // Tab characters (prevent autocomplete trigger)
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters (except already handled \n\r\t)
+        .replace(/\s+/g, ' ')   // Collapse multiple spaces
+        .trim()
+
+      window.api.terminal.write(state.activeTerminalId, sanitizedText)
       // Auto-execute if enabled
       if (voiceSettings.autoExecuteInTerminal) {
         window.api.terminal.write(state.activeTerminalId, '\r')

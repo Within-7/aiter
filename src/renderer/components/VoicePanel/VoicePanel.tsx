@@ -129,9 +129,13 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
   }, [activeTarget, onInsertToTerminal, onInsertToEditor])
 
   const handleInsertAll = useCallback(() => {
-    const allText = messages.map(m => m.text).join('\n')
+    // Use appropriate separator based on target
+    // Terminal: space (newlines would execute as separate commands)
+    // Editor: newline (preserve paragraph structure)
+    const separator = activeTarget === 'terminal' ? ' ' : '\n\n'
+    const allText = messages.map(m => m.text).join(separator)
     handleInsert(allText)
-  }, [messages, handleInsert])
+  }, [messages, handleInsert, activeTarget])
 
   const getProviderLabel = () => {
     switch (provider) {
