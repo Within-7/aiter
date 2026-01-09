@@ -29,6 +29,8 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
 
   const managerRef = useRef<VoiceInputManager | null>(null)
   const finalTextRef = useRef<string>('')
+  const interimTextRef = useRef<string>('')  // Ref to track latest interim text
+  const isRecordingRef = useRef(false)  // Ref to avoid stale closure issues
   const onTextInsertRef = useRef(onTextInsert)
   onTextInsertRef.current = onTextInsert
 
@@ -43,6 +45,7 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
     managerRef.current = new VoiceInputManager({
       settings,
       onInterimResult: (text) => {
+        interimTextRef.current = text  // Update ref for stopRecording to use
         setInterimText(text)
         setError(null)
       },
@@ -51,18 +54,21 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
         // Store final text for insertion when recording ends
         if (text.trim()) {
           finalTextRef.current = text
+          interimTextRef.current = text
           setInterimText(text)
         }
       },
       onError: (err) => {
         console.error('[useInlineVoiceInput] Error:', err)
         setError(err)
+        isRecordingRef.current = false
         setIsRecording(false)
       },
       onStateChange: (newState) => {
         console.log('[useInlineVoiceInput] State:', newState)
         setState(newState)
         if (newState === 'idle' || newState === 'error') {
+          isRecordingRef.current = false
           setIsRecording(false)
         }
       }
@@ -83,29 +89,41 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
 
   // Start recording (called by Push-to-Talk)
   const startRecording = useCallback(async () => {
-    if (!managerRef.current || isRecording) return
+    // Use ref to check recording state to avoid stale closure
+    if (!managerRef.current || isRecordingRef.current) {
+      console.log('[useInlineVoiceInput] Start blocked: manager=', !!managerRef.current, 'isRecording=', isRecordingRef.current)
+      return
+    }
 
     console.log('[useInlineVoiceInput] Start recording')
+    isRecordingRef.current = true
     setIsActive(true)
     setIsRecording(true)
     setInterimText('')
+    interimTextRef.current = ''
     setError(null)
     finalTextRef.current = ''
 
     onStart?.()
     await managerRef.current.start()
-  }, [isRecording, onStart])
+  }, [onStart])
 
   // Stop recording and insert text (called by Push-to-Talk on key release)
   const stopRecording = useCallback(() => {
-    if (!isRecording && !isActive) return
+    // Use ref to check state to avoid stale closure
+    if (!isRecordingRef.current) {
+      console.log('[useInlineVoiceInput] Stop blocked: not recording')
+      return
+    }
 
     console.log('[useInlineVoiceInput] Stop recording')
+    isRecordingRef.current = false  // Mark as stopped immediately
     managerRef.current?.stop()
 
     // Wait a short moment for any pending final result
     setTimeout(() => {
-      const textToInsert = finalTextRef.current || interimText
+      // Use refs instead of state to get latest values
+      const textToInsert = finalTextRef.current || interimTextRef.current
 
       if (textToInsert.trim()) {
         console.log('[useInlineVoiceInput] Auto-inserting:', textToInsert)
@@ -116,19 +134,22 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
       setIsActive(false)
       setIsRecording(false)
       setInterimText('')
+      interimTextRef.current = ''
       setState('idle')
       finalTextRef.current = ''
       onEnd?.()
     }, 100) // Small delay to catch final result
-  }, [isRecording, isActive, interimText, onEnd])
+  }, [onEnd])
 
   // Force close without inserting
   const cancel = useCallback(() => {
     console.log('[useInlineVoiceInput] Cancel')
+    isRecordingRef.current = false
     managerRef.current?.stop()
     setIsActive(false)
     setIsRecording(false)
     setInterimText('')
+    interimTextRef.current = ''
     setState('idle')
     setError(null)
     finalTextRef.current = ''
