@@ -26,25 +26,35 @@ function getVoiceNotesPath(projectPath: string): string {
 }
 
 /**
- * List of common ignore files to update when creating .aiter directory
+ * Find all ignore files in the project root directory.
+ * Matches files that:
+ * - End with 'ignore' (e.g., .gitignore, .dockerignore, .prettierignore)
+ * - Are hidden files (start with .)
  */
-const IGNORE_FILES = [
-  '.gitignore',
-  '.dockerignore',
-  '.prettierignore',
-  '.eslintignore',
-  '.npmignore'
-]
+async function findIgnoreFiles(projectPath: string): Promise<string[]> {
+  try {
+    const entries = await fs.readdir(projectPath, { withFileTypes: true })
+    return entries
+      .filter(entry =>
+        entry.isFile() &&
+        entry.name.startsWith('.') &&
+        entry.name.toLowerCase().endsWith('ignore')
+      )
+      .map(entry => entry.name)
+  } catch (error) {
+    console.warn('[voiceNotes] Failed to read project directory:', error)
+    return []
+  }
+}
 
 /**
- * Add .aiter/ to an ignore file if it exists and doesn't already contain the entry
+ * Add .aiter/ to an ignore file if it doesn't already contain the entry
  */
 async function addToIgnoreFile(projectPath: string, ignoreFile: string): Promise<void> {
   const filePath = path.join(projectPath, ignoreFile)
   const ignoreEntry = `${VOICE_NOTES_DIR}/`
 
   try {
-    // Check if ignore file exists
     const content = await fs.readFile(filePath, 'utf-8')
 
     // Check if .aiter/ is already in the file (with various formats)
@@ -66,10 +76,7 @@ async function addToIgnoreFile(projectPath: string, ignoreFile: string): Promise
       console.log(`[voiceNotes] Added ${ignoreEntry} to ${ignoreFile}`)
     }
   } catch (error) {
-    // File doesn't exist, that's fine - skip it
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      console.warn(`[voiceNotes] Failed to update ${ignoreFile}:`, error)
-    }
+    console.warn(`[voiceNotes] Failed to update ${ignoreFile}:`, error)
   }
 }
 
@@ -94,8 +101,12 @@ async function ensureVoiceNotesDir(projectPath: string): Promise<void> {
       await fs.mkdir(dirPath, { recursive: true })
       console.log(`[voiceNotes] Created directory: ${dirPath}`)
 
-      // Add to ignore files only when first creating the directory
-      await Promise.all(IGNORE_FILES.map(file => addToIgnoreFile(projectPath, file)))
+      // Find and update all ignore files in the project
+      const ignoreFiles = await findIgnoreFiles(projectPath)
+      if (ignoreFiles.length > 0) {
+        console.log(`[voiceNotes] Found ignore files: ${ignoreFiles.join(', ')}`)
+        await Promise.all(ignoreFiles.map(file => addToIgnoreFile(projectPath, file)))
+      }
 
       // Notify renderer to refresh file tree
       if (mainWindow && !mainWindow.isDestroyed()) {
