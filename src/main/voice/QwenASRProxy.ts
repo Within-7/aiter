@@ -104,11 +104,10 @@ export class QwenASRProxy {
   private async start(options: QwenASRProxyOptions): Promise<void> {
     console.log('[QwenASRProxy] start() called with region:', options.region)
 
-    if (this.isRunning) {
-      console.warn('[QwenASRProxy] Already running')
-      // If already running, just send ready event again
-      this.sendToRenderer('voice:qwen-asr:ready', {})
-      return
+    // If already running, cleanup first to support rapid consecutive starts
+    if (this.isRunning || this.ws) {
+      console.log('[QwenASRProxy] Cleaning up previous session before starting new one')
+      this.cleanupWithoutNotify() // Don't send closed event to renderer
     }
 
     this.options = options
@@ -358,7 +357,30 @@ export class QwenASRProxy {
 
   private cleanup(): void {
     console.log('[QwenASRProxy] Cleaning up...')
+    this.cleanupInternal()
+  }
 
+  /**
+   * Cleanup without sending closed event to renderer.
+   * Used when starting a new session to avoid triggering old session's cleanup handlers.
+   */
+  private cleanupWithoutNotify(): void {
+    console.log('[QwenASRProxy] Cleaning up (silent)...')
+
+    if (this.ws) {
+      // Remove all listeners before closing to prevent close event
+      this.ws.removeAllListeners()
+      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
+        this.ws.close(1000, 'New session started')
+      }
+      this.ws = null
+    }
+
+    this.isRunning = false
+    this.options = null
+  }
+
+  private cleanupInternal(): void {
     if (this.ws) {
       if (this.ws.readyState === WebSocket.OPEN) {
         this.ws.close(1000, 'Normal closure')

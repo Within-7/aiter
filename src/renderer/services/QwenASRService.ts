@@ -40,6 +40,9 @@ export class QwenASRService implements VoiceRecognitionService {
   private sessionId = 0
   private static globalSessionCounter = 0
 
+  // Track if cleanup has been called for current session to prevent double cleanup
+  private cleanedUp = false
+
   constructor(options: QwenASROptions) {
     this.options = options
     this.interimCallback = options.onInterimResult
@@ -66,6 +69,7 @@ export class QwenASRService implements VoiceRecognitionService {
     this.allSegments = []
     this.hasFinalResult = false
     this.userStopped = false
+    this.cleanedUp = false
 
     try {
       // 1. Setup IPC event listeners first (with session ID for isolation)
@@ -125,7 +129,7 @@ export class QwenASRService implements VoiceRecognitionService {
   }
 
   private setupIPCListeners(forSessionId: number): void {
-    // Clean up any existing listeners
+    // Clean up any existing listeners from previous sessions
     this.cleanupIPCListeners()
 
     // Helper to check if this event is for the current session
@@ -196,7 +200,7 @@ export class QwenASRService implements VoiceRecognitionService {
       }
       console.error('[QwenASR] Error from proxy:', data.error)
       this.errorCallback?.(data.error)
-      this.cleanup()
+      this.cleanupForSession(forSessionId)
     })
     this.cleanupFunctions.push(cleanupError)
 
@@ -207,7 +211,7 @@ export class QwenASRService implements VoiceRecognitionService {
         return
       }
       console.log('[QwenASR] Connection closed:', data.code, data.reason)
-      this.cleanup()
+      this.cleanupForSession(forSessionId)
     })
     this.cleanupFunctions.push(cleanupClosed)
   }
@@ -215,6 +219,17 @@ export class QwenASRService implements VoiceRecognitionService {
   private cleanupIPCListeners(): void {
     this.cleanupFunctions.forEach(cleanup => cleanup())
     this.cleanupFunctions = []
+  }
+
+  /**
+   * Cleanup only if the session ID matches - prevents old session cleanup from affecting new sessions
+   */
+  private cleanupForSession(sessionId: number): void {
+    if (this.sessionId !== sessionId) {
+      console.log('[QwenASR] Skipping cleanup for old session:', sessionId, 'current:', this.sessionId)
+      return
+    }
+    this.cleanup()
   }
 
   stop(): void {
@@ -230,7 +245,8 @@ export class QwenASRService implements VoiceRecognitionService {
       return
     }
 
-    console.log('[QwenASR] Stopping...')
+    const stoppingSessionId = this.sessionId
+    console.log('[QwenASR] Stopping session:', stoppingSessionId)
     this.isRunning = false
     this.userStopped = true // Mark that user explicitly stopped
 
@@ -240,6 +256,14 @@ export class QwenASRService implements VoiceRecognitionService {
     // Give server time to process final audio
     // After timeout, trigger final result (if server hasn't already) and cleanup
     setTimeout(() => {
+      // Only process if this is still the same session (user hasn't started a new recording)
+      if (this.sessionId !== stoppingSessionId) {
+        console.log('[QwenASR] Skipping timeout cleanup for old session:', stoppingSessionId, 'current:', this.sessionId)
+        // Still need to stop the old WebSocket connection
+        window.api.voice.qwenAsr.stop().catch(console.error)
+        return
+      }
+
       // Only trigger if server hasn't sent final result
       if (!this.hasFinalResult) {
         this.hasFinalResult = true
@@ -461,7 +485,14 @@ export class QwenASRService implements VoiceRecognitionService {
   }
 
   private cleanup(): void {
-    console.log('[QwenASR] Cleaning up...')
+    // Prevent double cleanup
+    if (this.cleanedUp) {
+      console.log('[QwenASR] Already cleaned up, skipping')
+      return
+    }
+    this.cleanedUp = true
+
+    console.log('[QwenASR] Cleaning up session:', this.sessionId)
 
     // Clean up IPC listeners
     this.cleanupIPCListeners()

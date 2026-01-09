@@ -20,6 +20,9 @@ export function useVoiceNotesPersistence() {
   const lastSavedRef = useRef<string>('')
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const loadedProjectRef = useRef<string | null>(null)
+  // Use ref to track voiceTranscriptions for use in loadNotes without causing re-renders
+  const voiceTranscriptionsRef = useRef(voiceTranscriptions)
+  voiceTranscriptionsRef.current = voiceTranscriptions
 
   // Get current project path
   const activeProject = projects.find(p => p.id === activeProjectId)
@@ -28,21 +31,22 @@ export function useVoiceNotesPersistence() {
   /**
    * Load voice notes from project directory
    */
-  const loadNotes = useCallback(async (path: string) => {
+  const loadNotes = useCallback(async (path: string, projectId: string) => {
     try {
-      console.log('[VoiceNotesPersistence] Loading notes for project:', path)
+      console.log('[VoiceNotesPersistence] Loading notes for project:', path, 'projectId:', projectId)
       const result = await window.api.voiceNotes.load(path)
 
       if (result.success && result.data) {
         // Merge loaded notes with existing notes from other projects
-        const existingOtherProjectNotes = voiceTranscriptions.filter(
-          t => t.projectId && t.projectId !== activeProjectId
+        const currentTranscriptions = voiceTranscriptionsRef.current
+        const existingOtherProjectNotes = currentTranscriptions.filter(
+          t => t.projectId && t.projectId !== projectId
         )
 
         // Add projectId to loaded notes if missing
         const loadedNotes = result.data.notes.map(note => ({
           ...note,
-          projectId: note.projectId || activeProjectId
+          projectId: note.projectId || projectId
         }))
 
         // Combine: other projects' notes + loaded project's notes
@@ -50,17 +54,20 @@ export function useVoiceNotesPersistence() {
 
         dispatch({ type: 'SET_VOICE_TRANSCRIPTIONS', payload: combinedNotes })
         lastSavedRef.current = JSON.stringify(loadedNotes)
-        loadedProjectRef.current = activeProjectId || null
+        loadedProjectRef.current = projectId
 
-        console.log(`[VoiceNotesPersistence] Loaded ${loadedNotes.length} notes`)
+        console.log(`[VoiceNotesPersistence] Loaded ${loadedNotes.length} notes for project ${projectId}`)
       } else {
-        console.log('[VoiceNotesPersistence] No existing notes or empty file')
-        loadedProjectRef.current = activeProjectId || null
+        console.log('[VoiceNotesPersistence] No existing notes or empty file for project:', projectId)
+        loadedProjectRef.current = projectId
+        // Initialize with empty array for this project
+        lastSavedRef.current = '[]'
       }
     } catch (error) {
       console.error('[VoiceNotesPersistence] Failed to load notes:', error)
+      loadedProjectRef.current = projectId
     }
-  }, [activeProjectId, voiceTranscriptions, dispatch])
+  }, [dispatch])
 
   /**
    * Save voice notes to project directory
@@ -111,12 +118,14 @@ export function useVoiceNotesPersistence() {
    */
   useEffect(() => {
     if (!projectPath || !activeProjectId) {
+      console.log('[VoiceNotesPersistence] No project path or activeProjectId, skipping load')
       return
     }
 
     // Only load if we haven't loaded for this project yet
     if (loadedProjectRef.current !== activeProjectId) {
-      loadNotes(projectPath)
+      console.log('[VoiceNotesPersistence] Project changed, loading notes. Old:', loadedProjectRef.current, 'New:', activeProjectId)
+      loadNotes(projectPath, activeProjectId)
     }
   }, [activeProjectId, projectPath, loadNotes])
 
@@ -174,10 +183,10 @@ export function useVoiceNotesPersistence() {
 
     /** Manually reload notes from disk */
     reload: useCallback(() => {
-      if (projectPath) {
+      if (projectPath && activeProjectId) {
         loadedProjectRef.current = null // Force reload
-        loadNotes(projectPath)
+        loadNotes(projectPath, activeProjectId)
       }
-    }, [projectPath, loadNotes])
+    }, [projectPath, activeProjectId, loadNotes])
   }
 }
