@@ -427,33 +427,33 @@ contextBridge.exposeInMainWorld('api', {
         ipcRenderer.invoke('voice:qwen-asr:commit'),
       stop: () =>
         ipcRenderer.invoke('voice:qwen-asr:stop'),
-      onConnected: (callback: () => void) => {
-        const listener = () => callback()
+      onConnected: (callback: (data: { sessionId?: number }) => void) => {
+        const listener = (_: unknown, data: { sessionId?: number }) => callback(data)
         ipcRenderer.on('voice:qwen-asr:connected', listener)
         return () => ipcRenderer.removeListener('voice:qwen-asr:connected', listener)
       },
-      onReady: (callback: () => void) => {
-        const listener = () => callback()
+      onReady: (callback: (data: { sessionId?: number }) => void) => {
+        const listener = (_: unknown, data: { sessionId?: number }) => callback(data)
         ipcRenderer.on('voice:qwen-asr:ready', listener)
         return () => ipcRenderer.removeListener('voice:qwen-asr:ready', listener)
       },
-      onInterim: (callback: (data: { text: string }) => void) => {
-        const listener = (_: unknown, data: { text: string }) => callback(data)
+      onInterim: (callback: (data: { text: string; sessionId?: number }) => void) => {
+        const listener = (_: unknown, data: { text: string; sessionId?: number }) => callback(data)
         ipcRenderer.on('voice:qwen-asr:interim', listener)
         return () => ipcRenderer.removeListener('voice:qwen-asr:interim', listener)
       },
-      onFinal: (callback: (data: { text: string }) => void) => {
-        const listener = (_: unknown, data: { text: string }) => callback(data)
+      onFinal: (callback: (data: { text: string; sessionId?: number }) => void) => {
+        const listener = (_: unknown, data: { text: string; sessionId?: number }) => callback(data)
         ipcRenderer.on('voice:qwen-asr:final', listener)
         return () => ipcRenderer.removeListener('voice:qwen-asr:final', listener)
       },
-      onError: (callback: (data: { error: string }) => void) => {
-        const listener = (_: unknown, data: { error: string }) => callback(data)
+      onError: (callback: (data: { error: string; sessionId?: number }) => void) => {
+        const listener = (_: unknown, data: { error: string; sessionId?: number }) => callback(data)
         ipcRenderer.on('voice:qwen-asr:error', listener)
         return () => ipcRenderer.removeListener('voice:qwen-asr:error', listener)
       },
-      onClosed: (callback: (data: { code: number; reason: string }) => void) => {
-        const listener = (_: unknown, data: { code: number; reason: string }) => callback(data)
+      onClosed: (callback: (data: { code: number; reason: string; sessionId?: number }) => void) => {
+        const listener = (_: unknown, data: { code: number; reason: string; sessionId?: number }) => callback(data)
         ipcRenderer.on('voice:qwen-asr:closed', listener)
         return () => ipcRenderer.removeListener('voice:qwen-asr:closed', listener)
       }
@@ -946,16 +946,16 @@ export interface API {
   }
   voice: {
     qwenAsr: {
-      start(options: { apiKey: string; region: 'cn' | 'intl'; language?: string }): Promise<{ success: boolean; error?: string }>
+      start(options: { apiKey: string; region: 'cn' | 'intl'; language?: string }): Promise<{ success: boolean; error?: string; sessionId?: number }>
       sendAudio(base64Audio: string): Promise<{ success: boolean; error?: string }>
       commit(): Promise<{ success: boolean; error?: string }>
       stop(): Promise<{ success: boolean; error?: string }>
-      onConnected(callback: () => void): () => void
-      onReady(callback: () => void): () => void
-      onInterim(callback: (data: { text: string }) => void): () => void
-      onFinal(callback: (data: { text: string }) => void): () => void
-      onError(callback: (data: { error: string }) => void): () => void
-      onClosed(callback: (data: { code: number; reason: string }) => void): () => void
+      onConnected(callback: (data: { sessionId?: number }) => void): () => void
+      onReady(callback: (data: { sessionId?: number }) => void): () => void
+      onInterim(callback: (data: { text: string; sessionId?: number }) => void): () => void
+      onFinal(callback: (data: { text: string; sessionId?: number }) => void): () => void
+      onError(callback: (data: { error: string; sessionId?: number }) => void): () => void
+      onClosed(callback: (data: { code: number; reason: string; sessionId?: number }) => void): () => void
     }
   }
   voiceNotes: {

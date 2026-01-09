@@ -32,6 +32,9 @@ export class QwenASRProxy {
   private isRunning = false
   private mainWindow: BrowserWindow | null = null
 
+  // Session ID to allow renderer to filter events from old sessions
+  private sessionId = 0
+
   private readonly model = 'qwen3-asr-flash-realtime'
 
   constructor() {
@@ -62,8 +65,12 @@ export class QwenASRProxy {
     ipcMain.handle('voice:qwen-asr:start', async (_, options: QwenASRProxyOptions) => {
       console.log('[QwenASRProxy] IPC: start called')
       try {
+        // Increment session ID for each new session
+        this.sessionId++
+        const sessionId = this.sessionId
+        console.log('[QwenASRProxy] Starting session:', sessionId)
         await this.start(options)
-        return { success: true }
+        return { success: true, sessionId }
       } catch (error) {
         console.error('[QwenASRProxy] IPC: start failed:', error)
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
@@ -136,10 +143,11 @@ export class QwenASRProxy {
         return
       }
 
+      const currentSessionId = this.sessionId
       this.ws.on('open', () => {
-        console.log('[QwenASRProxy] WebSocket connected')
+        console.log('[QwenASRProxy] WebSocket connected for session:', currentSessionId)
         this.sendSessionUpdate(options.language || 'zh')
-        this.sendToRenderer('voice:qwen-asr:connected', {})
+        this.sendToRenderer('voice:qwen-asr:connected', { sessionId: currentSessionId })
       })
 
       this.ws.on('message', (data) => {
@@ -149,27 +157,27 @@ export class QwenASRProxy {
           // Check for session ready before handling
           if ((message.type === 'session.created' || message.type === 'session.updated') && !sessionReady) {
             sessionReady = true
-            console.log('[QwenASRProxy] Session ready, resolving start()')
-            this.sendToRenderer('voice:qwen-asr:ready', {})
+            console.log('[QwenASRProxy] Session ready, resolving start() for session:', currentSessionId)
+            this.sendToRenderer('voice:qwen-asr:ready', { sessionId: currentSessionId })
             resolve()
           }
 
-          this.handleMessage(message)
+          this.handleMessage(message, currentSessionId)
         } catch (e) {
           console.error('[QwenASRProxy] Failed to parse message:', e)
         }
       })
 
       this.ws.on('error', (err) => {
-        console.error('[QwenASRProxy] WebSocket error:', err.message)
-        this.sendToRenderer('voice:qwen-asr:error', { error: err.message || 'WebSocket 连接错误' })
+        console.error('[QwenASRProxy] WebSocket error for session:', currentSessionId, err.message)
+        this.sendToRenderer('voice:qwen-asr:error', { error: err.message || 'WebSocket 连接错误', sessionId: currentSessionId })
         this.cleanup()
         reject(new Error(err.message || 'WebSocket connection failed'))
       })
 
       this.ws.on('close', (code, reason) => {
-        console.log('[QwenASRProxy] WebSocket closed:', code, reason.toString())
-        this.sendToRenderer('voice:qwen-asr:closed', { code, reason: reason.toString() })
+        console.log('[QwenASRProxy] WebSocket closed for session:', currentSessionId, code, reason.toString())
+        this.sendToRenderer('voice:qwen-asr:closed', { code, reason: reason.toString(), sessionId: currentSessionId })
         this.cleanup()
         if (!sessionReady) {
           reject(new Error(`WebSocket closed: ${code} ${reason.toString()}`))
@@ -298,31 +306,31 @@ export class QwenASRProxy {
     }
   }
 
-  private handleMessage(data: any): void {
+  private handleMessage(data: any, sessionId: number): void {
     // Log all message types for debugging
     if (data.type !== 'session.created' && data.type !== 'session.updated') {
-      console.log('[QwenASRProxy] Message received:', data.type, JSON.stringify(data).substring(0, 200))
+      console.log('[QwenASRProxy] Message received for session:', sessionId, data.type, JSON.stringify(data).substring(0, 200))
     }
 
     switch (data.type) {
       case 'session.created':
       case 'session.updated':
-        console.log('[QwenASRProxy] Session ready')
-        this.sendToRenderer('voice:qwen-asr:ready', {})
+        console.log('[QwenASRProxy] Session ready:', sessionId)
+        this.sendToRenderer('voice:qwen-asr:ready', { sessionId })
         break
 
       case 'conversation.item.input_audio_transcription.text':
         // Real-time interim results are in the 'stash' field
         if (data.stash) {
-          console.log('[QwenASRProxy] Interim result:', data.stash)
-          this.sendToRenderer('voice:qwen-asr:interim', { text: data.stash })
+          console.log('[QwenASRProxy] Interim result for session:', sessionId, data.stash)
+          this.sendToRenderer('voice:qwen-asr:interim', { text: data.stash, sessionId })
         }
         break
 
       case 'conversation.item.input_audio_transcription.completed':
-        console.log('[QwenASRProxy] Final result:', data.transcript)
+        console.log('[QwenASRProxy] Final result for session:', sessionId, data.transcript)
         if (data.transcript) {
-          this.sendToRenderer('voice:qwen-asr:final', { text: data.transcript })
+          this.sendToRenderer('voice:qwen-asr:final', { text: data.transcript, sessionId })
         }
         break
 
@@ -330,12 +338,12 @@ export class QwenASRProxy {
         const errorMsg = data.error?.message || '识别错误'
         // Ignore "no audio" errors - this happens when user stops without speaking
         if (errorMsg.includes('no invalid audio') || errorMsg.includes('no audio')) {
-          console.log('[QwenASRProxy] No audio data, ignoring error:', errorMsg)
+          console.log('[QwenASRProxy] No audio data for session:', sessionId, ', ignoring error:', errorMsg)
           // Send empty final result instead of error
-          this.sendToRenderer('voice:qwen-asr:final', { text: '' })
+          this.sendToRenderer('voice:qwen-asr:final', { text: '', sessionId })
         } else {
-          console.error('[QwenASRProxy] Error:', errorMsg)
-          this.sendToRenderer('voice:qwen-asr:error', { error: errorMsg })
+          console.error('[QwenASRProxy] Error for session:', sessionId, errorMsg)
+          this.sendToRenderer('voice:qwen-asr:error', { error: errorMsg, sessionId })
         }
         break
 
