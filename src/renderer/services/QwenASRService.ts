@@ -36,6 +36,10 @@ export class QwenASRService implements VoiceRecognitionService {
   // IPC event cleanup functions
   private cleanupFunctions: Array<() => void> = []
 
+  // Session ID to isolate IPC events between rapid consecutive sessions
+  private sessionId = 0
+  private static globalSessionCounter = 0
+
   constructor(options: QwenASROptions) {
     this.options = options
     this.interimCallback = options.onInterimResult
@@ -52,6 +56,11 @@ export class QwenASRService implements VoiceRecognitionService {
       return
     }
 
+    // Increment session ID to isolate this session from previous cleanup events
+    this.sessionId = ++QwenASRService.globalSessionCounter
+    const currentSessionId = this.sessionId
+    console.log('[QwenASR] Starting session:', currentSessionId)
+
     this.isRunning = true
     this.accumulatedText = ''
     this.allSegments = []
@@ -59,9 +68,9 @@ export class QwenASRService implements VoiceRecognitionService {
     this.userStopped = false
 
     try {
-      // 1. Setup IPC event listeners first
-      console.log('[QwenASR] Setting up IPC listeners...')
-      this.setupIPCListeners()
+      // 1. Setup IPC event listeners first (with session ID for isolation)
+      console.log('[QwenASR] Setting up IPC listeners for session:', currentSessionId)
+      this.setupIPCListeners(currentSessionId)
 
       // 2. Get microphone permission
       console.log('[QwenASR] Requesting microphone permission...')
@@ -115,12 +124,19 @@ export class QwenASRService implements VoiceRecognitionService {
     }
   }
 
-  private setupIPCListeners(): void {
+  private setupIPCListeners(forSessionId: number): void {
     // Clean up any existing listeners
     this.cleanupIPCListeners()
 
+    // Helper to check if this event is for the current session
+    const isCurrentSession = () => this.sessionId === forSessionId
+
     // Listen for ready event (for logging, audio capture is started after start() returns)
     const cleanupReady = window.api.voice.qwenAsr.onReady(() => {
+      if (!isCurrentSession()) {
+        console.log('[QwenASR] Ignoring ready event for old session:', forSessionId, 'current:', this.sessionId)
+        return
+      }
       console.log('[QwenASR] Session ready event received')
     })
     this.cleanupFunctions.push(cleanupReady)
@@ -128,6 +144,7 @@ export class QwenASRService implements VoiceRecognitionService {
     // Listen for interim results
     // Note: Qwen-ASR sends complete interim text in 'stash' field, not incremental deltas
     const cleanupInterim = window.api.voice.qwenAsr.onInterim((data) => {
+      if (!isCurrentSession()) return
       // stash contains the complete interim text for current segment
       this.accumulatedText = data.text
       // Combine with previous segments for display
@@ -138,6 +155,10 @@ export class QwenASRService implements VoiceRecognitionService {
 
     // Listen for final results (VAD segment completion or user stop)
     const cleanupFinal = window.api.voice.qwenAsr.onFinal((data) => {
+      if (!isCurrentSession()) {
+        console.log('[QwenASR] Ignoring final event for old session:', forSessionId, 'current:', this.sessionId)
+        return
+      }
       const text = data.text || this.accumulatedText
       console.log('[QwenASR] Server final result:', text, 'userStopped:', this.userStopped)
 
@@ -169,6 +190,10 @@ export class QwenASRService implements VoiceRecognitionService {
 
     // Listen for errors
     const cleanupError = window.api.voice.qwenAsr.onError((data) => {
+      if (!isCurrentSession()) {
+        console.log('[QwenASR] Ignoring error event for old session:', forSessionId, 'current:', this.sessionId)
+        return
+      }
       console.error('[QwenASR] Error from proxy:', data.error)
       this.errorCallback?.(data.error)
       this.cleanup()
@@ -177,6 +202,10 @@ export class QwenASRService implements VoiceRecognitionService {
 
     // Listen for connection closed
     const cleanupClosed = window.api.voice.qwenAsr.onClosed((data) => {
+      if (!isCurrentSession()) {
+        console.log('[QwenASR] Ignoring closed event for old session:', forSessionId, 'current:', this.sessionId)
+        return
+      }
       console.log('[QwenASR] Connection closed:', data.code, data.reason)
       this.cleanup()
     })
