@@ -74,9 +74,14 @@ export class QwenASRService implements VoiceRecognitionService {
     this.hasFinalResult = false
     this.userStopped = false
     this.cleanedUp = false
+    this.mainSessionId = 0  // Reset, will be set after start() returns
 
     try {
-      // 1. Get microphone permission first
+      // 1. Setup IPC event listeners BEFORE start() to catch all events
+      // The listeners will dynamically check this.mainSessionId
+      this.setupIPCListeners()
+
+      // 2. Get microphone permission
       console.log('[QwenASR] Requesting microphone permission...')
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -95,7 +100,7 @@ export class QwenASRService implements VoiceRecognitionService {
         return
       }
 
-      // 2. Start WebSocket connection via main process
+      // 3. Start WebSocket connection via main process
       // This returns the session ID assigned by main process
       console.log('[QwenASR] Starting WebSocket via IPC...')
       const result = await window.api.voice.qwenAsr.start({
@@ -116,13 +121,9 @@ export class QwenASRService implements VoiceRecognitionService {
         throw new Error(result.error || 'Failed to start ASR')
       }
 
-      // Store the session ID from main process - this is used to filter IPC events
+      // Store the session ID from main process - used by IPC listeners to filter events
       this.mainSessionId = result.sessionId || 0
       console.log('[QwenASR] Started via IPC proxy, main session ID:', this.mainSessionId)
-
-      // 3. Setup IPC event listeners with the main process session ID
-      // IMPORTANT: Do this AFTER getting sessionId from start() to ensure correct filtering
-      this.setupIPCListeners(this.mainSessionId)
 
       // 4. Start audio capture immediately after start() returns
       await this.startAudioCapture()
@@ -133,25 +134,28 @@ export class QwenASRService implements VoiceRecognitionService {
     }
   }
 
-  private setupIPCListeners(forSessionId: number): void {
+  private setupIPCListeners(): void {
     // Clean up any existing listeners from previous sessions
     this.cleanupIPCListeners()
 
-    console.log('[QwenASR] Setting up IPC listeners for main session ID:', forSessionId)
+    console.log('[QwenASR] Setting up IPC listeners')
 
     // Helper to check if this event is for the current session using main process session ID
+    // Uses this.mainSessionId dynamically (not a closure-captured value)
     const isEventForThisSession = (eventSessionId: number | undefined) => {
+      // If mainSessionId is not yet set (0), accept events for the session being started
+      if (this.mainSessionId === 0) return true
       if (eventSessionId === undefined) return true // Backwards compatibility
-      return eventSessionId === forSessionId
+      return eventSessionId === this.mainSessionId
     }
 
     // Listen for ready event (for logging, audio capture is started after start() returns)
     const cleanupReady = window.api.voice.qwenAsr.onReady((data) => {
       if (!isEventForThisSession(data?.sessionId)) {
-        console.log('[QwenASR] Ignoring ready event for session:', data?.sessionId, 'expected:', forSessionId)
+        console.log('[QwenASR] Ignoring ready event for session:', data?.sessionId, 'expected:', this.mainSessionId)
         return
       }
-      console.log('[QwenASR] Session ready event received for session:', forSessionId)
+      console.log('[QwenASR] Session ready event received for session:', data?.sessionId)
     })
     this.cleanupFunctions.push(cleanupReady)
 
@@ -170,7 +174,7 @@ export class QwenASRService implements VoiceRecognitionService {
     // Listen for final results (VAD segment completion or user stop)
     const cleanupFinal = window.api.voice.qwenAsr.onFinal((data) => {
       if (!isEventForThisSession(data?.sessionId)) {
-        console.log('[QwenASR] Ignoring final event for session:', data?.sessionId, 'expected:', forSessionId)
+        console.log('[QwenASR] Ignoring final event for session:', data?.sessionId, 'expected:', this.mainSessionId)
         return
       }
       const text = data.text || this.accumulatedText
@@ -213,23 +217,23 @@ export class QwenASRService implements VoiceRecognitionService {
     // Listen for errors
     const cleanupError = window.api.voice.qwenAsr.onError((data) => {
       if (!isEventForThisSession(data?.sessionId)) {
-        console.log('[QwenASR] Ignoring error event for session:', data?.sessionId, 'expected:', forSessionId)
+        console.log('[QwenASR] Ignoring error event for session:', data?.sessionId, 'expected:', this.mainSessionId)
         return
       }
       console.error('[QwenASR] Error from proxy:', data.error)
       this.errorCallback?.(data.error)
-      this.cleanupForSession(forSessionId)
+      this.cleanup()
     })
     this.cleanupFunctions.push(cleanupError)
 
     // Listen for connection closed
     const cleanupClosed = window.api.voice.qwenAsr.onClosed((data) => {
       if (!isEventForThisSession(data?.sessionId)) {
-        console.log('[QwenASR] Ignoring closed event for session:', data?.sessionId, 'expected:', forSessionId)
+        console.log('[QwenASR] Ignoring closed event for session:', data?.sessionId, 'expected:', this.mainSessionId)
         return
       }
-      console.log('[QwenASR] Connection closed for session:', forSessionId, data.code, data.reason)
-      this.cleanupForSession(forSessionId)
+      console.log('[QwenASR] Connection closed for session:', this.mainSessionId, data.code, data.reason)
+      this.cleanup()
     })
     this.cleanupFunctions.push(cleanupClosed)
   }
@@ -237,17 +241,6 @@ export class QwenASRService implements VoiceRecognitionService {
   private cleanupIPCListeners(): void {
     this.cleanupFunctions.forEach(cleanup => cleanup())
     this.cleanupFunctions = []
-  }
-
-  /**
-   * Cleanup only if the session ID matches - prevents old session cleanup from affecting new sessions
-   */
-  private cleanupForSession(sessionId: number): void {
-    if (this.mainSessionId !== sessionId) {
-      console.log('[QwenASR] Skipping cleanup for old session:', sessionId, 'current:', this.mainSessionId)
-      return
-    }
-    this.cleanup()
   }
 
   /**
