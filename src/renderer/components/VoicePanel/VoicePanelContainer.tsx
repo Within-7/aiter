@@ -64,13 +64,14 @@ export const VoicePanelContainer: React.FC = () => {
   }, [state.activeEditorTabId])
 
   // Voice input hook - panel mode doesn't auto-insert
-  // Disable Push-to-Talk here since it's handled by inline voice input in WorkArea
+  // Enable Push-to-Talk when panel is open so Option key triggers recording in panel
   const voiceInput = useVoiceInput({
     settings: {
       ...voiceSettings,
       pushToTalk: {
         ...voiceSettings.pushToTalk,
-        enabled: false // Push-to-Talk is handled by useInlineVoiceInput
+        // Enable Push-to-Talk only when panel is open
+        enabled: voiceSettings.pushToTalk.enabled && state.showVoicePanel
       }
     },
     onTextInsert: undefined, // Panel handles insertion manually
