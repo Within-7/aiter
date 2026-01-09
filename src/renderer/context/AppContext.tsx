@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import { Project, Terminal, AppSettings, EditorTab, ShortcutConfig } from '../../types'
+import { Project, Terminal, AppSettings, EditorTab, ShortcutConfig, VoiceTranscription } from '../../types'
 import { combinedReducer } from './reducers'
 
 // Default keyboard shortcuts (labels are translated via i18n in SettingsPanel)
@@ -36,6 +36,8 @@ export interface AppState {
   showWorkspaceManager: boolean
   showVoicePanel: boolean
   sidebarView: SidebarView
+  // Voice transcription history (shared between inline and panel modes)
+  voiceTranscriptions: VoiceTranscription[]
 }
 
 export type AppAction =
@@ -71,6 +73,11 @@ export type AppAction =
   | { type: 'SET_WORKSPACE_MANAGER'; payload: boolean }
   | { type: 'TOGGLE_VOICE_PANEL' }
   | { type: 'SET_VOICE_PANEL'; payload: boolean }
+  | { type: 'ADD_VOICE_TRANSCRIPTION'; payload: VoiceTranscription }
+  | { type: 'UPDATE_VOICE_TRANSCRIPTION'; payload: { id: string; text: string } }
+  | { type: 'DELETE_VOICE_TRANSCRIPTION'; payload: string }
+  | { type: 'CLEAR_VOICE_TRANSCRIPTIONS' }
+  | { type: 'SET_VOICE_TRANSCRIPTIONS'; payload: VoiceTranscription[] }
   | { type: 'SET_SIDEBAR_VIEW'; payload: SidebarView }
   | { type: 'SELECT_TAB'; payload: { tabId: string; shiftKey: boolean; ctrlKey: boolean } }
   | { type: 'CLEAR_TAB_SELECTION' }
@@ -124,7 +131,8 @@ export const initialState: AppState = {
   showSettingsPanel: false,
   showWorkspaceManager: false,
   showVoicePanel: false,
-  sidebarView: 'explorer'
+  sidebarView: 'explorer',
+  voiceTranscriptions: []
 }
 
 /**

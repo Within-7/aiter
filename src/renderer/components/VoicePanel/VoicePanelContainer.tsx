@@ -2,7 +2,7 @@ import React, { useContext, useCallback } from 'react'
 import { AppContext } from '../../context/AppContext'
 import { VoicePanel } from './VoicePanel'
 import { useVoiceInput } from '../../hooks/useVoiceInput'
-import { defaultVoiceInputSettings } from '../../../types/voiceInput'
+import { defaultVoiceInputSettings, VoiceTranscription } from '../../../types/voiceInput'
 
 /**
  * Container component that connects VoicePanel to AppContext and voice input logic
@@ -84,6 +84,23 @@ export const VoicePanelContainer: React.FC = () => {
     dispatch({ type: 'SET_VOICE_PANEL', payload: false })
   }, [voiceInput, dispatch])
 
+  // Voice transcription handlers (connected to global state)
+  const handleAddTranscription = useCallback((transcription: VoiceTranscription) => {
+    dispatch({ type: 'ADD_VOICE_TRANSCRIPTION', payload: transcription })
+  }, [dispatch])
+
+  const handleUpdateTranscription = useCallback((id: string, text: string) => {
+    dispatch({ type: 'UPDATE_VOICE_TRANSCRIPTION', payload: { id, text } })
+  }, [dispatch])
+
+  const handleDeleteTranscription = useCallback((id: string) => {
+    dispatch({ type: 'DELETE_VOICE_TRANSCRIPTION', payload: id })
+  }, [dispatch])
+
+  const handleClearTranscriptions = useCallback(() => {
+    dispatch({ type: 'CLEAR_VOICE_TRANSCRIPTIONS' })
+  }, [dispatch])
+
   // Don't render if panel is not open or voice is not enabled
   if (!state.showVoicePanel) {
     return null
@@ -103,6 +120,11 @@ export const VoicePanelContainer: React.FC = () => {
       onInsertToTerminal={handleInsertToTerminal}
       onInsertToEditor={handleInsertToEditor}
       activeTarget={getActiveTarget()}
+      transcriptions={state.voiceTranscriptions}
+      onAddTranscription={handleAddTranscription}
+      onUpdateTranscription={handleUpdateTranscription}
+      onDeleteTranscription={handleDeleteTranscription}
+      onClearTranscriptions={handleClearTranscriptions}
     />
   )
 }

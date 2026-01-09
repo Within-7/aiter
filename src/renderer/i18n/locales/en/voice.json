@@ -28,7 +28,8 @@
     "noTarget": "No active terminal or editor",
     "inserted": "Inserted to {{target}}",
     "copied": "Copied to clipboard",
-    "cleared": "Cleared all messages"
+    "cleared": "Cleared all messages",
+    "sourceInline": "From inline input (Push-to-Talk)"
   },
   "settings": {
     "title": "Voice Settings",

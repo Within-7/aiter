@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { VoiceInputState, VoiceProvider } from '../../../types/voiceInput'
+import type { VoiceInputState, VoiceProvider, VoiceTranscription } from '../../../types/voiceInput'
 import './VoicePanel.css'
 
 export interface VoiceMessage {
@@ -8,6 +8,7 @@ export interface VoiceMessage {
   text: string
   timestamp: Date
   isEditing?: boolean
+  source?: 'inline' | 'panel'  // Source indicator
 }
 
 interface VoicePanelProps {
@@ -23,6 +24,12 @@ interface VoicePanelProps {
   onInsertToTerminal: (text: string) => void
   onInsertToEditor: (text: string) => void
   activeTarget: 'terminal' | 'editor' | null
+  // Global transcription history (shared with inline mode)
+  transcriptions: VoiceTranscription[]
+  onAddTranscription: (transcription: VoiceTranscription) => void
+  onUpdateTranscription: (id: string, text: string) => void
+  onDeleteTranscription: (id: string) => void
+  onClearTranscriptions: () => void
 }
 
 export const VoicePanel: React.FC<VoicePanelProps> = ({
@@ -37,38 +44,52 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
   onStopRecording,
   onInsertToTerminal,
   onInsertToEditor,
-  activeTarget
+  activeTarget,
+  transcriptions,
+  onAddTranscription,
+  onUpdateTranscription,
+  onDeleteTranscription,
+  onClearTranscriptions
 }) => {
   const { t } = useTranslation('voice')
-  const [messages, setMessages] = useState<VoiceMessage[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Convert global transcriptions to local message format for display
+  const messages = useMemo<VoiceMessage[]>(() => {
+    return transcriptions.map(t => ({
+      id: t.id,
+      text: t.text,
+      timestamp: new Date(t.timestamp),
+      source: t.source
+    }))
+  }, [transcriptions])
+
   // Track previous recording state to detect when recording stops
   const prevIsRecordingRef = useRef(isRecording)
   const lastAddedTextRef = useRef('')
 
-  // When recording stops, add the transcribed text as a new message
+  // When recording stops, add the transcribed text as a new message (panel mode)
   useEffect(() => {
     const wasRecording = prevIsRecordingRef.current
     prevIsRecordingRef.current = isRecording
 
     if (wasRecording && !isRecording && interimText.trim()) {
-      // Recording just stopped with text - add as new message
+      // Recording just stopped with text - add as new transcription
       const text = interimText.trim()
       if (text !== lastAddedTextRef.current) {
         lastAddedTextRef.current = text
-        const newMessage: VoiceMessage = {
+        onAddTranscription({
           id: Date.now().toString(),
           text,
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, newMessage])
+          timestamp: Date.now(),
+          source: 'panel'
+        })
       }
     }
-  }, [isRecording, interimText])
+  }, [isRecording, interimText, onAddTranscription])
 
   // Scroll to bottom when new messages are added
   useEffect(() => {
@@ -83,8 +104,8 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
   }, [isOpen])
 
   const handleDelete = useCallback((id: string) => {
-    setMessages(prev => prev.filter(m => m.id !== id))
-  }, [])
+    onDeleteTranscription(id)
+  }, [onDeleteTranscription])
 
   const handleEdit = useCallback((message: VoiceMessage) => {
     setEditingId(message.id)
@@ -93,13 +114,11 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
 
   const handleSaveEdit = useCallback(() => {
     if (editingId && editText.trim()) {
-      setMessages(prev => prev.map(m =>
-        m.id === editingId ? { ...m, text: editText.trim() } : m
-      ))
+      onUpdateTranscription(editingId, editText.trim())
     }
     setEditingId(null)
     setEditText('')
-  }, [editingId, editText])
+  }, [editingId, editText, onUpdateTranscription])
 
   const handleCancelEdit = useCallback(() => {
     setEditingId(null)
@@ -116,9 +135,9 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
   }, [messages])
 
   const handleClearAll = useCallback(() => {
-    setMessages([])
+    onClearTranscriptions()
     lastAddedTextRef.current = ''
-  }, [])
+  }, [onClearTranscriptions])
 
   const handleInsert = useCallback((text: string) => {
     if (activeTarget === 'terminal') {
@@ -204,7 +223,7 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
         ) : (
           <>
             {messages.map(message => (
-              <div key={message.id} className="voice-message">
+              <div key={message.id} className={`voice-message ${message.source === 'inline' ? 'voice-message-inline' : ''}`}>
                 {editingId === message.id ? (
                   <div className="voice-message-edit">
                     <textarea
@@ -224,6 +243,15 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
                   </div>
                 ) : (
                   <>
+                    <div className="voice-message-header">
+                      {message.source === 'inline' && (
+                        <span className="voice-message-source" title={t('messages.sourceInline')}>
+                          <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+                            <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/>
+                          </svg>
+                        </span>
+                      )}
+                    </div>
                     <div className="voice-message-text">{message.text}</div>
                     <div className="voice-message-actions">
                       <button

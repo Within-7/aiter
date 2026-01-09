@@ -11,7 +11,7 @@ import { TerminalContainer } from './TerminalContainer'
 import { ConfirmDialog } from './FileTree/ConfirmDialog'
 import { VoiceInputButton, InlineVoiceBubble } from './VoiceInput'
 import { useInlineVoiceInput } from '../hooks/useInlineVoiceInput'
-import { defaultVoiceInputSettings } from '../../types/voiceInput'
+import { defaultVoiceInputSettings, VoiceTranscription } from '../../types/voiceInput'
 import { getProjectColor } from '../utils/projectColors'
 import '../styles/WorkArea.css'
 
@@ -74,6 +74,8 @@ export const WorkArea: React.FC = () => {
       .replace(/\s+/g, ' ')
       .trim()
 
+    let insertedTo: 'terminal' | 'editor' | undefined
+
     // Check if terminal is active
     if (state.activeTerminalId) {
       const sanitizedText = sanitizeForTerminal(text)
@@ -82,19 +84,28 @@ export const WorkArea: React.FC = () => {
       if (voiceSettings.autoExecuteInTerminal) {
         window.api.terminal.write(state.activeTerminalId, '\r')
       }
-      return
-    }
-
-    // Check if editor is active
-    if (state.activeEditorTabId) {
+      insertedTo = 'terminal'
+    } else if (state.activeEditorTabId) {
+      // Check if editor is active
       window.dispatchEvent(new CustomEvent('voice-input-insert', {
         detail: { text }
       }))
-      return
+      insertedTo = 'editor'
+    } else {
+      console.log('[WorkArea] No active target for inline voice input')
     }
 
-    console.log('[WorkArea] No active target for inline voice input')
-  }, [state.activeTerminalId, state.activeEditorTabId, voiceSettings.autoExecuteInTerminal])
+    // Add to voice transcription history (shared with voice panel)
+    const transcription: VoiceTranscription = {
+      id: Date.now().toString(),
+      text: text.trim(),
+      timestamp: Date.now(),
+      source: 'inline',
+      projectId: state.activeProjectId,
+      insertedTo
+    }
+    dispatch({ type: 'ADD_VOICE_TRANSCRIPTION', payload: transcription })
+  }, [state.activeTerminalId, state.activeEditorTabId, state.activeProjectId, voiceSettings.autoExecuteInTerminal, dispatch])
 
   // Inline voice input (Push-to-Talk mode)
   // Only enable if voice panel is not open (avoid conflict)

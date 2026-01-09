@@ -44,6 +44,32 @@ export function uiReducer(state: AppState, action: AppAction): AppState {
     case 'SET_VOICE_PANEL':
       return { ...state, showVoicePanel: action.payload }
 
+    case 'ADD_VOICE_TRANSCRIPTION':
+      return {
+        ...state,
+        voiceTranscriptions: [...state.voiceTranscriptions, action.payload]
+      }
+
+    case 'UPDATE_VOICE_TRANSCRIPTION':
+      return {
+        ...state,
+        voiceTranscriptions: state.voiceTranscriptions.map(t =>
+          t.id === action.payload.id ? { ...t, text: action.payload.text } : t
+        )
+      }
+
+    case 'DELETE_VOICE_TRANSCRIPTION':
+      return {
+        ...state,
+        voiceTranscriptions: state.voiceTranscriptions.filter(t => t.id !== action.payload)
+      }
+
+    case 'CLEAR_VOICE_TRANSCRIPTIONS':
+      return { ...state, voiceTranscriptions: [] }
+
+    case 'SET_VOICE_TRANSCRIPTIONS':
+      return { ...state, voiceTranscriptions: action.payload }
+
     case 'SET_SIDEBAR_VIEW':
       return { ...state, sidebarView: action.payload }
 

@@ -68,6 +68,16 @@ export interface VoiceInputSettings {
   silenceTimeout: number
 }
 
+// 语音转录消息
+export interface VoiceTranscription {
+  id: string
+  text: string
+  timestamp: number  // Unix timestamp for serialization
+  source: 'inline' | 'panel'  // 来源：内联录音或面板录音
+  projectId?: string  // 关联的项目 ID
+  insertedTo?: 'terminal' | 'editor'  // 插入到哪里
+}
+
 // 默认语音输入设置
 export const defaultVoiceInputSettings: VoiceInputSettings = {
   enabled: false,
