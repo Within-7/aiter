@@ -11,6 +11,12 @@ interface QwenASROptions {
   onError: (error: string) => void
 }
 
+/** Result returned when stopping recording */
+export interface StopResult {
+  text: string
+  segments: string[]
+}
+
 /**
  * QwenASRService - Client-side interface for Qwen-ASR via Electron IPC
  *
@@ -42,6 +48,9 @@ export class QwenASRService implements VoiceRecognitionService {
 
   // Track if cleanup has been called for current session to prevent double cleanup
   private cleanedUp = false
+
+  // Promise resolve function for stop() to return final result
+  private stopResolve: ((result: StopResult) => void) | null = null
 
   constructor(options: QwenASROptions) {
     this.options = options
@@ -171,9 +180,17 @@ export class QwenASRService implements VoiceRecognitionService {
         if (!this.hasFinalResult) {
           this.hasFinalResult = true
           // Combine all segments with the current text
-          const allText = [...this.allSegments, text].filter(s => s.trim()).join('\n')
+          const segments = [...this.allSegments, text].filter(s => s.trim())
+          const allText = segments.join('\n')
           console.log('[QwenASR] User stopped, final combined result:', allText)
           this.finalCallback?.(allText)
+
+          // Resolve the stop() Promise with the result
+          if (this.stopResolve) {
+            const result: StopResult = { text: allText, segments }
+            this.stopResolve(result)
+            this.stopResolve = null
+          }
         }
       } else {
         // VAD segment completion - accumulate and notify
@@ -232,50 +249,69 @@ export class QwenASRService implements VoiceRecognitionService {
     this.cleanup()
   }
 
-  stop(): void {
-    if (!this.isRunning) {
-      console.log('[QwenASR] stop() called but not running')
-      // Even if not running, trigger final callback to end "processing" state
-      if (!this.hasFinalResult) {
-        this.hasFinalResult = true
-        // Return all accumulated segments
+  /**
+   * Stop recording and return the final transcription result.
+   * Returns a Promise that resolves when the server sends the final result
+   * (or times out after 800ms).
+   */
+  stop(): Promise<StopResult> {
+    return new Promise((resolve) => {
+      if (!this.isRunning) {
+        console.log('[QwenASR] stop() called but not running')
+        // Even if not running, return accumulated segments
         const allText = this.allSegments.join('\n')
-        this.finalCallback?.(allText)
-      }
-      return
-    }
+        const result: StopResult = { text: allText, segments: [...this.allSegments] }
 
-    const stoppingSessionId = this.sessionId
-    console.log('[QwenASR] Stopping session:', stoppingSessionId)
-    this.isRunning = false
-    this.userStopped = true // Mark that user explicitly stopped
-
-    // Send commit signal via IPC to get final transcription
-    window.api.voice.qwenAsr.commit().catch(console.error)
-
-    // Give server time to process final audio
-    // After timeout, trigger final result (if server hasn't already) and cleanup
-    setTimeout(() => {
-      // Only process if this is still the same session (user hasn't started a new recording)
-      if (this.sessionId !== stoppingSessionId) {
-        console.log('[QwenASR] Skipping timeout cleanup for old session:', stoppingSessionId, 'current:', this.sessionId)
-        // Still need to stop the old WebSocket connection
-        window.api.voice.qwenAsr.stop().catch(console.error)
+        if (!this.hasFinalResult) {
+          this.hasFinalResult = true
+          this.finalCallback?.(allText)
+        }
+        resolve(result)
         return
       }
 
-      // Only trigger if server hasn't sent final result
-      if (!this.hasFinalResult) {
-        this.hasFinalResult = true
-        // Combine all segments with current accumulated text
-        const allText = [...this.allSegments, this.accumulatedText].filter(s => s.trim()).join('\n')
-        console.log('[QwenASR] Timeout final result:', allText || '(empty)')
-        this.finalCallback?.(allText)
-      }
+      const stoppingSessionId = this.sessionId
+      console.log('[QwenASR] Stopping session:', stoppingSessionId)
+      this.isRunning = false
+      this.userStopped = true // Mark that user explicitly stopped
+      this.stopResolve = resolve // Store resolve function for onFinal handler
 
-      window.api.voice.qwenAsr.stop().catch(console.error)
-      this.cleanup()
-    }, 800) // Wait for server to send final result
+      // Send commit signal via IPC to get final transcription
+      window.api.voice.qwenAsr.commit().catch(console.error)
+
+      // Give server time to process final audio
+      // After timeout, resolve with whatever we have and cleanup
+      setTimeout(() => {
+        // Only process if this is still the same session (user hasn't started a new recording)
+        if (this.sessionId !== stoppingSessionId) {
+          console.log('[QwenASR] Skipping timeout cleanup for old session:', stoppingSessionId, 'current:', this.sessionId)
+          // Still need to stop the old WebSocket connection
+          window.api.voice.qwenAsr.stop().catch(console.error)
+          // Resolve with empty result for old session
+          resolve({ text: '', segments: [] })
+          return
+        }
+
+        // Only trigger if server hasn't sent final result yet
+        if (!this.hasFinalResult) {
+          this.hasFinalResult = true
+          // Combine all segments with current accumulated text
+          const allText = [...this.allSegments, this.accumulatedText].filter(s => s.trim()).join('\n')
+          console.log('[QwenASR] Timeout final result:', allText || '(empty)')
+          const result: StopResult = {
+            text: allText,
+            segments: [...this.allSegments, this.accumulatedText].filter(s => s.trim())
+          }
+          this.finalCallback?.(allText)
+          this.stopResolve = null
+          resolve(result)
+        }
+        // If hasFinalResult is true, resolve was already called by onFinal handler
+
+        window.api.voice.qwenAsr.stop().catch(console.error)
+        this.cleanup()
+      }, 800) // Wait for server to send final result
+    })
   }
 
   onInterimResult(callback: (text: string) => void): void {
@@ -311,11 +347,15 @@ export class QwenASRService implements VoiceRecognitionService {
       }
 
       // Create audio worklet processor inline as a Blob
+      // Use smaller buffer (1024 samples = ~21ms at 48kHz) to reduce latency
+      // and prevent losing audio at the start/end of recording
       const workletCode = `
         class AudioProcessor extends AudioWorkletProcessor {
           constructor() {
             super();
-            this.bufferSize = 4096;
+            // Smaller buffer = less latency but more frequent messages
+            // 1024 samples at 48kHz = ~21ms of audio
+            this.bufferSize = 1024;
             this.buffer = new Float32Array(this.bufferSize);
             this.bufferIndex = 0;
           }

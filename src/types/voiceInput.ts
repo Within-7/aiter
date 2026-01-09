@@ -21,7 +21,8 @@ export interface RecognitionOptions {
 // 语音识别服务接口
 export interface VoiceRecognitionService {
   start(options: RecognitionOptions): Promise<void>
-  stop(): void
+  /** Stop recording and return final result. Returns Promise for async result retrieval. */
+  stop(): void | Promise<unknown>
   onInterimResult(callback: (text: string) => void): void
   onFinalResult(callback: (text: string) => void): void
   onError(callback: (error: string) => void): void

@@ -109,7 +109,7 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
   }, [onStart])
 
   // Stop recording and insert text (called by Push-to-Talk on key release)
-  const stopRecording = useCallback(() => {
+  const stopRecording = useCallback(async () => {
     // Use ref to check state to avoid stale closure
     if (!isRecordingRef.current) {
       console.log('[useInlineVoiceInput] Stop blocked: not recording')
@@ -118,27 +118,28 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
 
     console.log('[useInlineVoiceInput] Stop recording')
     isRecordingRef.current = false  // Mark as stopped immediately
-    managerRef.current?.stop()
 
-    // Wait a short moment for any pending final result
-    setTimeout(() => {
-      // Use refs instead of state to get latest values
-      const textToInsert = finalTextRef.current || interimTextRef.current
+    // Stop recording and wait for final result from the ASR service
+    // This now returns a Promise that resolves when the server sends final result
+    // (or times out after 800ms)
+    const result = await managerRef.current?.stop()
 
-      if (textToInsert.trim()) {
-        console.log('[useInlineVoiceInput] Auto-inserting:', textToInsert)
-        onTextInsertRef.current(textToInsert)
-      }
+    // Use the result from stop() if available, otherwise fall back to refs
+    const textToInsert = result?.text || finalTextRef.current || interimTextRef.current
 
-      // Reset state
-      setIsActive(false)
-      setIsRecording(false)
-      setInterimText('')
-      interimTextRef.current = ''
-      setState('idle')
-      finalTextRef.current = ''
-      onEnd?.()
-    }, 100) // Small delay to catch final result
+    if (textToInsert.trim()) {
+      console.log('[useInlineVoiceInput] Auto-inserting:', textToInsert)
+      onTextInsertRef.current(textToInsert)
+    }
+
+    // Reset state
+    setIsActive(false)
+    setIsRecording(false)
+    setInterimText('')
+    interimTextRef.current = ''
+    setState('idle')
+    finalTextRef.current = ''
+    onEnd?.()
   }, [onEnd])
 
   // Force close without inserting

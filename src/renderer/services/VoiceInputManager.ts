@@ -5,7 +5,7 @@ import type {
   RecognitionOptions,
   VoiceInputSettings
 } from '../../types/voiceInput'
-import { QwenASRService } from './QwenASRService'
+import { QwenASRService, StopResult } from './QwenASRService'
 
 interface VoiceInputManagerOptions {
   settings: VoiceInputSettings
@@ -160,13 +160,28 @@ export class VoiceInputManager {
     }
   }
 
-  stop(): void {
+  /**
+   * Stop recording and return the final transcription.
+   * Returns a Promise that resolves with the final text when available.
+   */
+  async stop(): Promise<StopResult | null> {
     if (this.currentState !== 'recording') {
-      return
+      return null
     }
 
     this.setState('processing')
-    this.service?.stop()
+
+    // QwenASRService.stop() returns a Promise<StopResult>
+    // Web Speech API stop() returns void
+    const stopResult = this.service?.stop()
+
+    // If stop() returns a Promise (QwenASR), await it; otherwise return null (Web Speech)
+    if (stopResult && typeof (stopResult as Promise<StopResult>).then === 'function') {
+      const result = await (stopResult as Promise<StopResult>)
+      return result || null
+    }
+
+    return null
   }
 
   // 切换引擎
