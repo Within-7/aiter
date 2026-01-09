@@ -125,6 +125,7 @@ export const VoicePanelContainer: React.FC = () => {
       onUpdateTranscription={handleUpdateTranscription}
       onDeleteTranscription={handleDeleteTranscription}
       onClearTranscriptions={handleClearTranscriptions}
+      activeProjectId={state.activeProjectId}
     />
   )
 }

@@ -89,6 +89,7 @@ export function registerVoiceNotesHandlers() {
     projectPath: string
     notes: VoiceTranscription[]
   }) => {
+    console.log('[voiceNotes:save] Called with:', { projectPath, notesCount: notes.length })
     try {
       const data: VoiceNotesFile = {
         version: 1,
@@ -96,11 +97,13 @@ export function registerVoiceNotesHandlers() {
         notes,
         lastUpdated: Date.now()
       }
+      console.log('[voiceNotes:save] Writing to:', getVoiceNotesPath(projectPath))
       await writeVoiceNotes(projectPath, data)
+      console.log('[voiceNotes:save] Success!')
       return { success: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
-      console.error('[voiceNotes:save] Error:', message)
+      console.error('[voiceNotes:save] Error:', message, error)
       return { success: false, error: message }
     }
   })

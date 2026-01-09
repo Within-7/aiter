@@ -30,6 +30,8 @@ interface VoicePanelProps {
   onUpdateTranscription: (id: string, text: string) => void
   onDeleteTranscription: (id: string) => void
   onClearTranscriptions: () => void
+  // Active project ID for persistence
+  activeProjectId: string | null
 }
 
 export const VoicePanel: React.FC<VoicePanelProps> = ({
@@ -49,7 +51,8 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
   onAddTranscription,
   onUpdateTranscription,
   onDeleteTranscription,
-  onClearTranscriptions
+  onClearTranscriptions,
+  activeProjectId
 }) => {
   const { t } = useTranslation('voice')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -85,11 +88,12 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
           id: Date.now().toString(),
           text,
           timestamp: Date.now(),
-          source: 'panel'
+          source: 'panel',
+          projectId: activeProjectId || undefined
         })
       }
     }
-  }, [isRecording, interimText, onAddTranscription])
+  }, [isRecording, interimText, onAddTranscription, activeProjectId])
 
   // Scroll to bottom when new messages are added
   useEffect(() => {

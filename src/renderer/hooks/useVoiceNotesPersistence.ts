@@ -73,22 +73,32 @@ export function useVoiceNotesPersistence() {
    * Save voice notes to project directory
    */
   const saveNotes = useCallback(async (path: string, notes: VoiceTranscription[]) => {
+    console.log('[VoiceNotesPersistence] saveNotes called:', {
+      path,
+      totalNotes: notes.length,
+      activeProjectId,
+      notesWithProjectId: notes.filter(n => n.projectId).length
+    })
+
     // Only save notes for the current project
     const projectNotes = notes.filter(n => n.projectId === activeProjectId)
+    console.log('[VoiceNotesPersistence] Filtered projectNotes:', projectNotes.length)
+
     const serialized = JSON.stringify(projectNotes)
 
     // Skip if nothing changed
     if (serialized === lastSavedRef.current) {
+      console.log('[VoiceNotesPersistence] Skipping save: nothing changed')
       return
     }
 
     try {
-      console.log('[VoiceNotesPersistence] Saving notes to:', path)
+      console.log('[VoiceNotesPersistence] Saving notes to:', path, 'count:', projectNotes.length)
       const result = await window.api.voiceNotes.save(path, projectNotes)
 
       if (result.success) {
         lastSavedRef.current = serialized
-        console.log(`[VoiceNotesPersistence] Saved ${projectNotes.length} notes`)
+        console.log(`[VoiceNotesPersistence] Saved ${projectNotes.length} notes successfully`)
       } else {
         console.error('[VoiceNotesPersistence] Failed to save:', result.error)
       }
@@ -133,13 +143,28 @@ export function useVoiceNotesPersistence() {
    * Save notes when transcriptions change
    */
   useEffect(() => {
+    console.log('[VoiceNotesPersistence] Transcriptions changed:', {
+      count: voiceTranscriptions.length,
+      projectPath,
+      activeProjectId,
+      loadedProjectRef: loadedProjectRef.current,
+      transcriptions: voiceTranscriptions.map(t => ({ id: t.id, projectId: t.projectId, text: t.text.substring(0, 20) }))
+    })
+
     if (!projectPath || !activeProjectId) {
+      console.log('[VoiceNotesPersistence] Skipping save: no projectPath or activeProjectId')
       return
     }
 
     // Only save if we've already loaded for this project (avoid saving on initial load)
     if (loadedProjectRef.current === activeProjectId) {
+      console.log('[VoiceNotesPersistence] Triggering debouncedSave')
       debouncedSave(projectPath, voiceTranscriptions)
+    } else {
+      console.log('[VoiceNotesPersistence] Skipping save: loadedProjectRef.current !== activeProjectId', {
+        loadedProjectRef: loadedProjectRef.current,
+        activeProjectId
+      })
     }
   }, [voiceTranscriptions, projectPath, activeProjectId, debouncedSave])
 
