@@ -340,3 +340,97 @@
     transform: scaleY(1);
   }
 }
+
+/* ============================================
+   Inline Voice Bubble (Push-to-Talk Mode)
+   ============================================ */
+
+.inline-voice-bubble {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #1e1e1e;
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
+  padding: 10px 16px;
+  min-width: 200px;
+  max-width: 400px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: bubble-appear 0.15s ease-out;
+}
+
+.inline-voice-bubble.recording {
+  border-color: #f14c4c;
+  box-shadow: 0 4px 16px rgba(241, 76, 76, 0.2);
+}
+
+.inline-voice-bubble.processing {
+  border-color: #dcdcaa;
+}
+
+.inline-voice-bubble.error {
+  border-color: #f14c4c;
+}
+
+@keyframes bubble-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.bubble-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bubble-icon {
+  flex-shrink: 0;
+  color: #888888;
+}
+
+.bubble-icon.recording {
+  color: #f14c4c;
+  animation: pulse 1s infinite;
+}
+
+.bubble-icon.spinning {
+  color: #dcdcaa;
+  animation: spin 1s linear infinite;
+}
+
+.bubble-icon.error {
+  color: #f14c4c;
+}
+
+.bubble-text {
+  flex: 1;
+  font-size: 14px;
+  color: #cccccc;
+  line-height: 1.4;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.recording-pulse-small {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f14c4c;
+  animation: pulse 1s infinite;
+}
+
+.bubble-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #666666;
+  text-align: center;
+}

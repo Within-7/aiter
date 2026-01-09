@@ -64,8 +64,15 @@ export const VoicePanelContainer: React.FC = () => {
   }, [state.activeEditorTabId])
 
   // Voice input hook - panel mode doesn't auto-insert
+  // Disable Push-to-Talk here since it's handled by inline voice input in WorkArea
   const voiceInput = useVoiceInput({
-    settings: voiceSettings,
+    settings: {
+      ...voiceSettings,
+      pushToTalk: {
+        ...voiceSettings.pushToTalk,
+        enabled: false // Push-to-Talk is handled by useInlineVoiceInput
+      }
+    },
     onTextInsert: undefined, // Panel handles insertion manually
     useEditableOverlay: true // Keep editable behavior for interim text tracking
   })

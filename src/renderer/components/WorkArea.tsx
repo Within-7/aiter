@@ -9,7 +9,8 @@ import { PDFViewer } from './Editor/PDFViewer'
 import { OfficeViewer } from './Editor/OfficeViewer'
 import { TerminalContainer } from './TerminalContainer'
 import { ConfirmDialog } from './FileTree/ConfirmDialog'
-import { VoiceInputButton } from './VoiceInput'
+import { VoiceInputButton, InlineVoiceBubble } from './VoiceInput'
+import { useInlineVoiceInput } from '../hooks/useInlineVoiceInput'
 import { defaultVoiceInputSettings } from '../../types/voiceInput'
 import { getProjectColor } from '../utils/projectColors'
 import '../styles/WorkArea.css'
@@ -60,8 +61,57 @@ export const WorkArea: React.FC = () => {
     dispatch({ type: 'TOGGLE_VOICE_PANEL' })
   }, [dispatch])
 
-  // Voice button shows active state when panel is open
-  const voiceButtonState = state.showVoicePanel ? 'recording' : 'idle'
+  // Handle inline voice text insertion (for Push-to-Talk)
+  const handleInlineVoiceInsert = useCallback((text: string) => {
+    // Sanitize text for terminal: replace newlines with spaces
+    const sanitizeForTerminal = (t: string) => t
+      .replace(/\r\n/g, ' ')
+      .replace(/\n/g, ' ')
+      .replace(/\r/g, ' ')
+      .replace(/\t/g, ' ')
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    // Check if terminal is active
+    if (state.activeTerminalId) {
+      const sanitizedText = sanitizeForTerminal(text)
+      window.api.terminal.write(state.activeTerminalId, sanitizedText)
+      // Auto-execute if enabled
+      if (voiceSettings.autoExecuteInTerminal) {
+        window.api.terminal.write(state.activeTerminalId, '\r')
+      }
+      return
+    }
+
+    // Check if editor is active
+    if (state.activeEditorTabId) {
+      window.dispatchEvent(new CustomEvent('voice-input-insert', {
+        detail: { text }
+      }))
+      return
+    }
+
+    console.log('[WorkArea] No active target for inline voice input')
+  }, [state.activeTerminalId, state.activeEditorTabId, voiceSettings.autoExecuteInTerminal])
+
+  // Inline voice input (Push-to-Talk mode)
+  // Only enable if voice panel is not open (avoid conflict)
+  const inlineVoice = useInlineVoiceInput({
+    settings: {
+      ...voiceSettings,
+      pushToTalk: {
+        ...voiceSettings.pushToTalk,
+        // Disable Push-to-Talk if voice panel is open
+        enabled: voiceSettings.pushToTalk.enabled && !state.showVoicePanel
+      }
+    },
+    onTextInsert: handleInlineVoiceInsert
+  })
+
+  // Voice button shows active state when panel is open or inline recording
+  const voiceButtonState = state.showVoicePanel || inlineVoice.isActive ? 'recording' : 'idle'
 
   // Derive active tab ID from global state
   const activeTabId = state.activeEditorTabId
@@ -567,6 +617,14 @@ export const WorkArea: React.FC = () => {
           onCancel={handleCancelCloseTerminal}
         />
       )}
+
+      {/* Inline Voice Bubble (Push-to-Talk mode) */}
+      <InlineVoiceBubble
+        isVisible={inlineVoice.isActive && voiceSettings.enabled}
+        state={inlineVoice.state}
+        interimText={inlineVoice.interimText}
+        error={inlineVoice.error}
+      />
     </div>
   )
 }
