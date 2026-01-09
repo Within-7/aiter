@@ -23,16 +23,80 @@ function getVoiceNotesPath(projectPath: string): string {
 }
 
 /**
- * Ensure the .aiter directory exists
+ * List of common ignore files to update when creating .aiter directory
+ */
+const IGNORE_FILES = [
+  '.gitignore',
+  '.dockerignore',
+  '.prettierignore',
+  '.eslintignore',
+  '.npmignore'
+]
+
+/**
+ * Add .aiter/ to an ignore file if it exists and doesn't already contain the entry
+ */
+async function addToIgnoreFile(projectPath: string, ignoreFile: string): Promise<void> {
+  const filePath = path.join(projectPath, ignoreFile)
+  const ignoreEntry = `${VOICE_NOTES_DIR}/`
+
+  try {
+    // Check if ignore file exists
+    const content = await fs.readFile(filePath, 'utf-8')
+
+    // Check if .aiter/ is already in the file (with various formats)
+    const lines = content.split('\n')
+    const hasEntry = lines.some(line => {
+      const trimmed = line.trim()
+      return trimmed === VOICE_NOTES_DIR ||
+             trimmed === `${VOICE_NOTES_DIR}/` ||
+             trimmed === `/${VOICE_NOTES_DIR}` ||
+             trimmed === `/${VOICE_NOTES_DIR}/`
+    })
+
+    if (!hasEntry) {
+      // Add .aiter/ to the end of the file
+      const newContent = content.endsWith('\n')
+        ? `${content}${ignoreEntry}\n`
+        : `${content}\n${ignoreEntry}\n`
+      await fs.writeFile(filePath, newContent, 'utf-8')
+      console.log(`[voiceNotes] Added ${ignoreEntry} to ${ignoreFile}`)
+    }
+  } catch (error) {
+    // File doesn't exist, that's fine - skip it
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.warn(`[voiceNotes] Failed to update ${ignoreFile}:`, error)
+    }
+  }
+}
+
+/**
+ * Ensure the .aiter directory exists and is added to ignore files
  */
 async function ensureVoiceNotesDir(projectPath: string): Promise<void> {
   const dirPath = path.join(projectPath, VOICE_NOTES_DIR)
+
+  // Check if directory already exists
+  let dirExists = false
   try {
-    await fs.mkdir(dirPath, { recursive: true })
-  } catch (error) {
-    // Directory might already exist
-    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
-      throw error
+    const stat = await fs.stat(dirPath)
+    dirExists = stat.isDirectory()
+  } catch {
+    // Directory doesn't exist
+  }
+
+  // Create directory if it doesn't exist
+  if (!dirExists) {
+    try {
+      await fs.mkdir(dirPath, { recursive: true })
+      console.log(`[voiceNotes] Created directory: ${dirPath}`)
+
+      // Add to ignore files only when first creating the directory
+      await Promise.all(IGNORE_FILES.map(file => addToIgnoreFile(projectPath, file)))
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+        throw error
+      }
     }
   }
 }
