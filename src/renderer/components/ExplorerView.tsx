@@ -60,6 +60,13 @@ export function ExplorerView() {
     }
   }, [activeProjectId])
 
+  // Sync activeProjectId to global state for persistence hooks
+  useEffect(() => {
+    if (activeProjectId && activeProjectId !== state.activeProjectId) {
+      dispatch({ type: 'SET_ACTIVE_PROJECT', payload: activeProjectId })
+    }
+  }, [activeProjectId, state.activeProjectId, dispatch])
+
   const handleAddProject = () => {
     setDialog({ type: 'template-selector' })
   }
