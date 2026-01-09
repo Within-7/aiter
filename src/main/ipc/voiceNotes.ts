@@ -7,7 +7,7 @@ import { VOICE_NOTES_DIR, VOICE_NOTES_FILENAME } from '../../types/voiceInput'
 /**
  * Voice Notes IPC handlers for persisting voice transcriptions to project directories.
  *
- * Voice notes are stored in `.airter/voice-notes.json` within each project directory.
+ * Voice notes are stored in `.aiter/voice-notes.json` within each project directory.
  * This allows:
  * - Project-level organization of voice notes
  * - Version control integration (user can choose to gitignore or track)
@@ -23,7 +23,7 @@ function getVoiceNotesPath(projectPath: string): string {
 }
 
 /**
- * Ensure the .airter directory exists
+ * Ensure the .aiter directory exists
  */
 async function ensureVoiceNotesDir(projectPath: string): Promise<void> {
   const dirPath = path.join(projectPath, VOICE_NOTES_DIR)
