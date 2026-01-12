@@ -28,8 +28,12 @@ export class VoiceInputManager {
   private initService(): void {
     const { settings } = this.options
 
-    // 清理旧服务
-    this.service = null
+    // 清理旧服务 - 必须调用 stop() 来释放音频资源
+    if (this.service) {
+      console.log('[VoiceInputManager] Cleaning up old service')
+      this.service.stop()
+      this.service = null
+    }
 
     // 确定实际使用的 provider
     let actualProvider = settings.provider

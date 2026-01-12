@@ -64,9 +64,13 @@ export class QwenASRService implements VoiceRecognitionService {
     console.log('[QwenASR] start() called')
 
     if (this.isRunning) {
-      console.warn('QwenASR is already running')
-      return
+      console.warn('[QwenASR] Already running, cleaning up first')
+      // Force cleanup before starting new session
+      this.forceCleanup()
     }
+
+    // Also cleanup any leftover audio resources from previous sessions
+    this.forceCleanup()
 
     this.isRunning = true
     this.accumulatedText = ''
@@ -284,16 +288,6 @@ export class QwenASRService implements VoiceRecognitionService {
       // Give server time to process final audio
       // After timeout, resolve with whatever we have and cleanup
       setTimeout(() => {
-        // Only process if this is still the same session (user hasn't started a new recording)
-        if (this.mainSessionId !== stoppingSessionId) {
-          console.log('[QwenASR] Skipping timeout cleanup for old session:', stoppingSessionId, 'current:', this.mainSessionId)
-          // Still need to stop the old WebSocket connection
-          window.api.voice.qwenAsr.stop().catch(console.error)
-          // Resolve with empty result for old session
-          resolve({ text: '', segments: [] })
-          return
-        }
-
         // Only trigger if server hasn't sent final result yet
         if (!this.hasFinalResult) {
           this.hasFinalResult = true
@@ -535,11 +529,27 @@ export class QwenASRService implements VoiceRecognitionService {
     this.cleanedUp = true
 
     console.log('[QwenASR] Cleaning up session:', this.mainSessionId)
+    this.cleanupResources()
+  }
 
+  /**
+   * Force cleanup regardless of cleanedUp flag.
+   * Used when starting a new session to ensure old resources are released.
+   */
+  private forceCleanup(): void {
+    console.log('[QwenASR] Force cleanup')
+    this.cleanupResources()
+  }
+
+  /**
+   * Internal resource cleanup - releases all audio resources.
+   */
+  private cleanupResources(): void {
     // Clean up IPC listeners
     this.cleanupIPCListeners()
 
     if (this.workletNode) {
+      this.workletNode.port.onmessage = null  // Remove message handler to stop processing
       this.workletNode.disconnect()
       this.workletNode = null
     }

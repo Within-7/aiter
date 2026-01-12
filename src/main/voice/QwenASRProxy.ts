@@ -8,42 +8,23 @@ interface QwenASRProxyOptions {
 }
 
 /**
- * Connection states for the Keep-Alive WebSocket model
- */
-type ConnectionState = 'DISCONNECTED' | 'CONNECTING' | 'READY' | 'RECORDING' | 'PROCESSING'
-
-/**
- * QwenASRProxy - WebSocket proxy for Qwen ASR service with connection reuse
+ * QwenASRProxy - WebSocket proxy for Qwen ASR service
  *
  * This proxy runs in the Electron main process to bypass browser WebSocket
  * header limitations. The DashScope API requires Bearer token authentication
  * via HTTP headers, which browsers cannot set for WebSocket connections.
  *
- * Connection Reuse Model:
- * - Maintains a persistent WebSocket connection between recordings
- * - Uses input_audio_buffer.clear before each new recording
- * - Uses input_audio_buffer.commit to signal end of recording
- * - Auto-reconnects at 25 minutes (before 30-minute server limit)
- * - Auto-reconnects on connection errors
+ * NOTE: Qwen-ASR does NOT support input_audio_buffer.clear, so each recording
+ * session requires a new WebSocket connection. Connection reuse is not possible.
  */
 export class QwenASRProxy {
   private ws: WebSocket | null = null
   private options: QwenASRProxyOptions | null = null
-  private connectionState: ConnectionState = 'DISCONNECTED'
+  private isRunning = false
   private mainWindow: BrowserWindow | null = null
 
   // Session ID to allow renderer to filter events from old sessions
   private sessionId = 0
-
-  // Connection health management
-  private connectionStartTime: number = 0
-  private reconnectTimer: NodeJS.Timeout | null = null
-  private readonly MAX_CONNECTION_AGE_MS = 25 * 60 * 1000 // 25 minutes (before 30-min limit)
-  private readonly RECONNECT_CHECK_INTERVAL_MS = 60 * 1000 // Check every minute
-
-  // Pending start resolve/reject for connection establishment
-  private pendingStartResolve: (() => void) | null = null
-  private pendingStartReject: ((error: Error) => void) | null = null
 
   private readonly model = 'qwen3-asr-flash-realtime'
 
@@ -68,96 +49,18 @@ export class QwenASRProxy {
       : 'wss://dashscope.aliyuncs.com/api-ws/v1/realtime'
   }
 
-  /**
-   * Check if the existing connection can be reused
-   */
-  private canReuseConnection(options: QwenASRProxyOptions): boolean {
-    // Must have an existing connection in READY state
-    if (!this.ws || this.connectionState !== 'READY') {
-      return false
-    }
-
-    // Must have same API key and region
-    if (!this.options ||
-        this.options.apiKey !== options.apiKey ||
-        this.options.region !== options.region) {
-      return false
-    }
-
-    // WebSocket must be in OPEN state
-    if (this.ws.readyState !== WebSocket.OPEN) {
-      return false
-    }
-
-    return true
-  }
-
-  /**
-   * Start connection health monitoring timer
-   */
-  private startConnectionHealthMonitor(): void {
-    this.stopConnectionHealthMonitor()
-
-    this.reconnectTimer = setInterval(() => {
-      if (this.connectionState === 'DISCONNECTED') {
-        this.stopConnectionHealthMonitor()
-        return
-      }
-
-      const connectionAge = Date.now() - this.connectionStartTime
-      if (connectionAge >= this.MAX_CONNECTION_AGE_MS) {
-        console.log('[QwenASRProxy] Connection approaching 30-min limit, reconnecting...')
-        // Only reconnect if we're in READY state (not actively recording)
-        if (this.connectionState === 'READY') {
-          this.reconnect()
-        }
-      }
-    }, this.RECONNECT_CHECK_INTERVAL_MS)
-  }
-
-  /**
-   * Stop connection health monitoring timer
-   */
-  private stopConnectionHealthMonitor(): void {
-    if (this.reconnectTimer) {
-      clearInterval(this.reconnectTimer)
-      this.reconnectTimer = null
-    }
-  }
-
-  /**
-   * Reconnect by closing current connection and establishing new one
-   */
-  private async reconnect(): Promise<void> {
-    console.log('[QwenASRProxy] Reconnecting...')
-    const savedOptions = this.options
-
-    // Clean up current connection silently
-    this.cleanupWithoutNotify()
-
-    // Re-establish connection if we have options
-    if (savedOptions) {
-      try {
-        await this.ensureConnection(savedOptions)
-        console.log('[QwenASRProxy] Reconnection successful')
-      } catch (error) {
-        console.error('[QwenASRProxy] Reconnection failed:', error)
-      }
-    }
-  }
-
   private setupIPC() {
     console.log('[QwenASRProxy] Setting up IPC handlers...')
 
-    // Start ASR recording session (reuses connection if possible)
+    // Start ASR session - creates new WebSocket connection each time
     ipcMain.handle('voice:qwen-asr:start', async (_, options: QwenASRProxyOptions) => {
-      console.log('[QwenASRProxy] IPC: start called, state:', this.connectionState)
+      console.log('[QwenASRProxy] IPC: start called')
       try {
-        // Increment session ID for each new recording session
+        // Increment session ID for each new session
         this.sessionId++
         const sessionId = this.sessionId
-        console.log('[QwenASRProxy] Starting recording session:', sessionId)
-        await this.startRecording(options)
+        console.log('[QwenASRProxy] Starting session:', sessionId)
+        await this.start(options)
         return { success: true, sessionId }
       } catch (error) {
         console.error('[QwenASRProxy] IPC: start failed:', error)
@@ -185,20 +88,20 @@ export class QwenASRProxy {
       }
     })
 
-    // Stop ASR recording (keeps connection alive for reuse)
+    // Stop ASR session - closes WebSocket connection
     ipcMain.handle('voice:qwen-asr:stop', async () => {
       try {
-        this.stopRecording()
+        this.stop()
         return { success: true }
       } catch (error) {
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
       }
     })
 
-    // Disconnect (closes connection entirely)
+    // Disconnect (alias for stop, kept for API compatibility)
     ipcMain.handle('voice:qwen-asr:disconnect', async () => {
       try {
-        this.disconnect()
+        this.stop()
         return { success: true }
       } catch (error) {
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
@@ -206,36 +109,27 @@ export class QwenASRProxy {
     })
   }
 
-  /**
-   * Ensure a WebSocket connection is established and ready.
-   * Reuses existing connection if possible.
-   */
-  private async ensureConnection(options: QwenASRProxyOptions): Promise<void> {
-    // Check if we can reuse the existing connection
-    if (this.canReuseConnection(options)) {
-      console.log('[QwenASRProxy] Reusing existing connection')
-      return
-    }
+  private async start(options: QwenASRProxyOptions): Promise<void> {
+    console.log('[QwenASRProxy] start() called with region:', options.region)
 
-    console.log('[QwenASRProxy] Creating new connection, region:', options.region)
-
-    // Clean up any existing connection
-    if (this.ws) {
-      console.log('[QwenASRProxy] Cleaning up old connection before new one')
+    // Always cleanup previous connection before starting new one
+    // This is critical because Qwen-ASR doesn't support clearing audio buffer
+    if (this.isRunning || this.ws) {
+      console.log('[QwenASRProxy] Cleaning up previous session before starting new one')
       this.cleanupWithoutNotify()
     }
 
     this.options = options
-    this.connectionState = 'CONNECTING'
-    this.connectionStartTime = Date.now()
+    this.isRunning = true
 
     const url = `${this.getBaseUrl()}?model=${this.model}`
     console.log('[QwenASRProxy] Connecting to:', url)
 
     return new Promise((resolve, reject) => {
-      this.pendingStartResolve = resolve
-      this.pendingStartReject = reject
+      let sessionReady = false
+      const currentSessionId = this.sessionId
 
+      console.log('[QwenASRProxy] Creating WebSocket for session:', currentSessionId)
       try {
         this.ws = new WebSocket(url, {
           headers: {
@@ -246,105 +140,64 @@ export class QwenASRProxy {
         console.log('[QwenASRProxy] WebSocket object created')
       } catch (wsError) {
         console.error('[QwenASRProxy] WebSocket creation failed:', wsError)
-        this.connectionState = 'DISCONNECTED'
-        this.pendingStartResolve = null
-        this.pendingStartReject = null
+        this.isRunning = false
         reject(wsError)
         return
       }
 
-      // Note: We use this.sessionId in all handlers below instead of a closure-captured value
-      // This is critical for connection reuse - when the connection is reused for a new session,
-      // the handlers should use the current session ID, not the one from when connection was created
-
       this.ws.on('open', () => {
-        console.log('[QwenASRProxy] WebSocket connected')
+        console.log('[QwenASRProxy] WebSocket connected for session:', currentSessionId)
         this.sendSessionUpdate(options.language || 'zh')
-        // Use this.sessionId for current session
-        this.sendToRenderer('voice:qwen-asr:connected', { sessionId: this.sessionId })
+        this.sendToRenderer('voice:qwen-asr:connected', { sessionId: currentSessionId })
       })
 
       this.ws.on('message', (data) => {
         try {
           const message = JSON.parse(data.toString())
-          // Use this.sessionId (current active session) instead of closure-captured value
-          // This is important for connection reuse - messages should be sent to current session
-          this.handleMessage(message, this.sessionId)
+
+          // Check for session ready before handling
+          if ((message.type === 'session.created' || message.type === 'session.updated') && !sessionReady) {
+            sessionReady = true
+            console.log('[QwenASRProxy] Session ready, resolving start() for session:', currentSessionId)
+            this.sendToRenderer('voice:qwen-asr:ready', { sessionId: currentSessionId })
+            resolve()
+          }
+
+          this.handleMessage(message, currentSessionId)
         } catch (e) {
           console.error('[QwenASRProxy] Failed to parse message:', e)
         }
       })
 
       this.ws.on('error', (err) => {
-        console.error('[QwenASRProxy] WebSocket error:', err.message)
-        const errorSessionId = this.sessionId
-        this.sendToRenderer('voice:qwen-asr:error', {
-          error: err.message || 'WebSocket 连接错误',
-          sessionId: errorSessionId
-        })
-
-        // Reject pending start if still waiting
-        if (this.pendingStartReject) {
-          this.pendingStartReject(new Error(err.message || 'WebSocket connection failed'))
-          this.pendingStartResolve = null
-          this.pendingStartReject = null
-        }
-
+        console.error('[QwenASRProxy] WebSocket error for session:', currentSessionId, err.message)
+        this.sendToRenderer('voice:qwen-asr:error', { error: err.message || 'WebSocket 连接错误', sessionId: currentSessionId })
         this.cleanup()
+        if (!sessionReady) {
+          reject(new Error(err.message || 'WebSocket connection failed'))
+        }
       })
 
       this.ws.on('close', (code, reason) => {
-        console.log('[QwenASRProxy] WebSocket closed:', code, reason.toString())
-        const closeSessionId = this.sessionId
-        this.sendToRenderer('voice:qwen-asr:closed', {
-          code,
-          reason: reason.toString(),
-          sessionId: closeSessionId
-        })
-
-        // Reject pending start if still waiting
-        if (this.pendingStartReject) {
-          this.pendingStartReject(new Error(`WebSocket closed: ${code} ${reason.toString()}`))
-          this.pendingStartResolve = null
-          this.pendingStartReject = null
+        console.log('[QwenASRProxy] WebSocket closed for session:', currentSessionId, code, reason.toString())
+        // Only send closed event if this is still the current session
+        if (currentSessionId === this.sessionId) {
+          this.sendToRenderer('voice:qwen-asr:closed', { code, reason: reason.toString(), sessionId: currentSessionId })
+          this.cleanup()
         }
-
-        this.cleanup()
+        if (!sessionReady) {
+          reject(new Error(`WebSocket closed: ${code} ${reason.toString()}`))
+        }
       })
 
       // Timeout for connection
       setTimeout(() => {
-        if (this.connectionState === 'CONNECTING' && this.pendingStartReject) {
-          this.pendingStartReject(new Error('Connection timeout'))
-          this.pendingStartResolve = null
-          this.pendingStartReject = null
+        if (!sessionReady) {
+          reject(new Error('Connection timeout'))
           this.cleanup()
         }
       }, 10000)
     })
-  }
-
-  /**
-   * Start a new recording session.
-   * Reuses existing connection if possible, otherwise establishes new one.
-   *
-   * Note: Qwen-ASR automatically clears the audio buffer after commit,
-   * so no explicit clear is needed before new recordings.
-   */
-  private async startRecording(options: QwenASRProxyOptions): Promise<void> {
-    console.log('[QwenASRProxy] startRecording() called, state:', this.connectionState)
-
-    // Ensure connection is established
-    await this.ensureConnection(options)
-
-    // Update state to recording
-    // Note: Qwen-ASR doesn't have input_audio_buffer.clear event.
-    // After commit, the buffer is automatically ready for new audio.
-    this.connectionState = 'RECORDING'
-
-    const currentSessionId = this.sessionId
-    console.log('[QwenASRProxy] Recording started for session:', currentSessionId)
-    this.sendToRenderer('voice:qwen-asr:ready', { sessionId: currentSessionId })
   }
 
   /**
@@ -441,34 +294,35 @@ export class QwenASRProxy {
     }
   }
 
-  /**
-   * Stop recording but keep connection alive for reuse.
-   * Sends commit to signal end of speech and transitions to PROCESSING state.
-   */
-  private stopRecording(): void {
-    if (this.connectionState !== 'RECORDING') {
-      console.log('[QwenASRProxy] stopRecording called but not recording, state:', this.connectionState)
-      return
+  private stop(): void {
+    if (!this.isRunning) return
+
+    console.log('[QwenASRProxy] Stopping session:', this.sessionId)
+    const stoppingSessionId = this.sessionId
+    const stoppingWs = this.ws  // Capture the current WebSocket reference
+    this.isRunning = false
+
+    // Send commit before closing
+    if (stoppingWs?.readyState === WebSocket.OPEN) {
+      this.commit()
+      // Give server time to process final audio
+      setTimeout(() => {
+        // Only close if this is still the same WebSocket (not replaced by a new session)
+        if (this.ws === stoppingWs) {
+          console.log('[QwenASRProxy] Delayed cleanup for session:', stoppingSessionId)
+          this.cleanup()
+        } else {
+          // A new session has started, just close the old WebSocket quietly
+          console.log('[QwenASRProxy] Skipping cleanup, new session started. Old:', stoppingSessionId, 'Current:', this.sessionId)
+          if (stoppingWs.readyState === WebSocket.OPEN || stoppingWs.readyState === WebSocket.CONNECTING) {
+            stoppingWs.removeAllListeners()
+            stoppingWs.close(1000, 'Session replaced')
+          }
+        }
+      }, 500)
+    } else {
+      this.cleanup()
     }
-
-    console.log('[QwenASRProxy] Stopping recording for session:', this.sessionId)
-
-    // Send commit to signal end of speech
-    this.commit()
-
-    // Transition to PROCESSING state (waiting for final result)
-    this.connectionState = 'PROCESSING'
-    console.log('[QwenASRProxy] State changed to PROCESSING, connection kept alive')
-  }
-
-  /**
-   * Disconnect and close the WebSocket connection entirely.
-   * Call this when the user exits voice input mode or app is closing.
-   */
-  private disconnect(): void {
-    console.log('[QwenASRProxy] Disconnecting...')
-    this.stopConnectionHealthMonitor()
-    this.cleanup()
   }
 
   private handleMessage(data: any, sessionId: number): void {
@@ -480,25 +334,8 @@ export class QwenASRProxy {
     switch (data.type) {
       case 'session.created':
       case 'session.updated':
-        console.log('[QwenASRProxy] Session ready, state:', this.connectionState)
-
-        // If we're in CONNECTING state, this means connection is ready
-        if (this.connectionState === 'CONNECTING') {
-          this.connectionState = 'READY'
-          console.log('[QwenASRProxy] Connection established, state changed to READY')
-
-          // Start connection health monitoring
-          this.startConnectionHealthMonitor()
-
-          // Resolve pending start
-          if (this.pendingStartResolve) {
-            this.pendingStartResolve()
-            this.pendingStartResolve = null
-            this.pendingStartReject = null
-          }
-        }
-        // Note: Don't send ready event here for session.updated during connection
-        // The ready event is sent in startRecording() after connection is ensured
+        console.log('[QwenASRProxy] Session ready:', sessionId)
+        this.sendToRenderer('voice:qwen-asr:ready', { sessionId })
         break
 
       case 'conversation.item.input_audio_transcription.text':
@@ -514,12 +351,6 @@ export class QwenASRProxy {
         if (data.transcript !== undefined) {
           this.sendToRenderer('voice:qwen-asr:final', { text: data.transcript || '', sessionId })
         }
-
-        // After receiving final result, transition back to READY state
-        if (this.connectionState === 'PROCESSING') {
-          this.connectionState = 'READY'
-          console.log('[QwenASRProxy] Final result received, state changed back to READY')
-        }
         break
 
       case 'error': {
@@ -529,11 +360,6 @@ export class QwenASRProxy {
           console.log('[QwenASRProxy] No audio data for session:', sessionId, ', ignoring error:', errorMsg)
           // Send empty final result instead of error
           this.sendToRenderer('voice:qwen-asr:final', { text: '', sessionId })
-
-          // Transition back to READY state
-          if (this.connectionState === 'PROCESSING') {
-            this.connectionState = 'READY'
-          }
         } else {
           console.error('[QwenASRProxy] Error for session:', sessionId, errorMsg)
           this.sendToRenderer('voice:qwen-asr:error', { error: errorMsg, sessionId })
@@ -564,53 +390,38 @@ export class QwenASRProxy {
 
   /**
    * Cleanup without sending closed event to renderer.
-   * Used when reconnecting or switching to new connection.
+   * Used when starting a new session to avoid triggering old session's cleanup handlers.
    */
   private cleanupWithoutNotify(): void {
     console.log('[QwenASRProxy] Cleaning up (silent)...')
-
-    this.stopConnectionHealthMonitor()
 
     if (this.ws) {
       // Remove all listeners before closing to prevent close event
       this.ws.removeAllListeners()
       if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
-        this.ws.close(1000, 'Connection replaced')
+        this.ws.close(1000, 'New session started')
       }
       this.ws = null
     }
 
-    this.connectionState = 'DISCONNECTED'
-    this.pendingStartResolve = null
-    this.pendingStartReject = null
-    // Note: Don't clear this.options here - needed for reconnection
+    this.isRunning = false
+    this.options = null
   }
 
   private cleanupInternal(): void {
-    this.stopConnectionHealthMonitor()
-
     if (this.ws) {
-      if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
+      if (this.ws.readyState === WebSocket.OPEN) {
         this.ws.close(1000, 'Normal closure')
       }
       this.ws = null
     }
 
-    this.connectionState = 'DISCONNECTED'
+    this.isRunning = false
     this.options = null
-    this.pendingStartResolve = null
-    this.pendingStartReject = null
   }
 
   destroy(): void {
-    this.disconnect()
-  }
-
-  /**
-   * Get current connection state (for debugging)
-   */
-  getConnectionState(): ConnectionState {
-    return this.connectionState
+    this.cleanup()
   }
 }
 
