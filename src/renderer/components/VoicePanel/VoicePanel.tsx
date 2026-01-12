@@ -160,17 +160,6 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
     handleInsert(allText)
   }, [messages, handleInsert, activeTarget])
 
-  const getProviderLabel = () => {
-    switch (provider) {
-      case 'qwen-asr':
-        return 'Qwen-ASR'
-      case 'system':
-        return 'System'
-      default:
-        return provider
-    }
-  }
-
   const getStatusText = () => {
     if (isRecording) return t('status.recording')
     if (state === 'processing') return t('status.processing')
@@ -189,40 +178,25 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
 
   return (
     <div className="voice-panel">
-      {/* Header */}
+      {/* Header with integrated status */}
       <div className="voice-panel-header">
         <div className="voice-panel-title">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
-            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-          </svg>
+          <span className={`voice-panel-status-dot ${getStatusClass()}`} title={getStatusText()} />
           <span>{t('title')}</span>
-          <span className="voice-panel-provider">{getProviderLabel()}</span>
+          {error && <span className="voice-panel-error" title={error}>!</span>}
         </div>
         <button className="voice-panel-close" onClick={onClose} title={t('actions.cancel')}>
-          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
             <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
           </svg>
         </button>
-      </div>
-
-      {/* Status bar */}
-      <div className={`voice-panel-status ${getStatusClass()}`}>
-        {isRecording && <span className="recording-indicator" />}
-        <span className="status-text">{getStatusText()}</span>
-        {error && <span className="error-text">{error}</span>}
       </div>
 
       {/* Messages list */}
       <div className="voice-panel-messages">
         {messages.length === 0 && !isRecording && !interimText ? (
           <div className="voice-panel-empty">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="48" height="48">
-              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-            </svg>
-            <p>{t('messages.empty')}</p>
-            <p className="hint">{t('messages.emptyHint')}</p>
+            <p>{t('messages.emptyHint')}</p>
           </div>
         ) : (
           <>
@@ -237,48 +211,31 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
                       autoFocus
                     />
                     <div className="voice-message-edit-actions">
-                      <button onClick={handleSaveEdit} className="btn-save">
-                        {t('actions.save')}
-                      </button>
-                      <button onClick={handleCancelEdit} className="btn-cancel">
-                        {t('actions.cancel')}
-                      </button>
+                      <button onClick={handleSaveEdit} className="btn-save">{t('actions.save')}</button>
+                      <button onClick={handleCancelEdit} className="btn-cancel">{t('actions.cancel')}</button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <div className="voice-message-header">
-                      {message.source === 'inline' && (
-                        <span className="voice-message-source" title={t('messages.sourceInline')}>
-                          <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
-                            <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/>
-                          </svg>
-                        </span>
-                      )}
-                    </div>
                     <div className="voice-message-text">{message.text}</div>
                     <div className="voice-message-actions">
-                      <button
-                        onClick={() => handleInsert(message.text)}
-                        title={activeTarget === 'terminal' ? t('actions.insertToTerminal') : t('actions.insertToEditor')}
-                        disabled={!activeTarget}
-                      >
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                      <button onClick={() => handleInsert(message.text)} title={t('actions.insert')} disabled={!activeTarget}>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
                           <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                         </svg>
                       </button>
                       <button onClick={() => handleCopy(message.text)} title={t('actions.copy')}>
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
                           <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                         </svg>
                       </button>
                       <button onClick={() => handleEdit(message)} title={t('actions.edit')}>
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
                           <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                         </svg>
                       </button>
                       <button onClick={() => handleDelete(message.id)} title={t('actions.delete')}>
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
                           <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                         </svg>
                       </button>
@@ -316,46 +273,42 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
           {isRecording ? t('actions.releaseToStop') : t('actions.holdToSpeak')}
         </div>
         <div className="voice-panel-buttons">
+          {/* Primary action: Record/Stop */}
           {isRecording ? (
-            <button className="btn-stop" onClick={onStopRecording}>
-              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+            <button className="btn-primary btn-stop" onClick={onStopRecording}>
+              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                 <rect x="6" y="6" width="12" height="12" rx="2"/>
               </svg>
-              {t('actions.stopRecording')}
+              <span>{t('actions.stopRecording')}</span>
             </button>
           ) : (
-            <button className="btn-record" onClick={onStartRecording}>
-              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+            <button className="btn-primary btn-record" onClick={onStartRecording}>
+              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                 <circle cx="12" cy="12" r="6"/>
               </svg>
-              {t('actions.startRecording')}
+              <span>{t('actions.startRecording')}</span>
             </button>
           )}
 
+          {/* Secondary actions */}
           {messages.length > 0 && (
-            <>
-              <button
-                className="btn-insert"
-                onClick={handleInsertAll}
-                disabled={!activeTarget}
-                title={!activeTarget ? t('messages.noTarget') : undefined}
-              >
-                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+            <div className="voice-panel-secondary">
+              <button className="btn-secondary" onClick={handleInsertAll} disabled={!activeTarget} title={t('actions.insert')}>
+                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                   <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                 </svg>
-                {activeTarget === 'terminal' ? t('actions.insertToTerminal') : t('actions.insertToEditor')}
               </button>
-              <button className="btn-copy" onClick={handleCopyAll} title={t('actions.copy')}>
-                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+              <button className="btn-secondary" onClick={handleCopyAll} title={t('actions.copy')}>
+                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                   <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                 </svg>
               </button>
-              <button className="btn-clear" onClick={handleClearAll} title={t('actions.clearAll')}>
-                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+              <button className="btn-secondary" onClick={handleClearAll} title={t('actions.clearAll')}>
+                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
                   <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                 </svg>
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
