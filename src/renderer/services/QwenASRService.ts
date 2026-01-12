@@ -21,6 +21,10 @@ export interface StopResult {
   segments: string[]
   /** Backup ID if transcription failed and audio was saved */
   backupId?: string
+  /** True if recording was done in offline mode and needs backup */
+  needsBackup?: boolean
+  /** Error message from offline mode */
+  offlineError?: string
 }
 
 /**
@@ -62,6 +66,10 @@ export class QwenASRService implements VoiceRecognitionService {
   private accumulatedAudioChunks: Int16Array[] = []
   private recordingStartTime = 0
 
+  // Offline mode: when WebSocket connection fails, continue recording locally
+  private isOfflineMode = false
+  private offlineError: string | null = null
+
   constructor(options: QwenASROptions) {
     this.options = options
     this.interimCallback = options.onInterimResult
@@ -89,13 +97,11 @@ export class QwenASRService implements VoiceRecognitionService {
     this.mainSessionId = 0  // Reset, will be set after start() returns
     this.accumulatedAudioChunks = []  // Reset audio backup buffer
     this.recordingStartTime = Date.now()
+    this.isOfflineMode = false
+    this.offlineError = null
 
     try {
-      // 1. Setup IPC event listeners BEFORE start() to catch all events
-      // The listeners will dynamically check this.mainSessionId
-      this.setupIPCListeners()
-
-      // 2. Get microphone permission
+      // 1. Get microphone permission FIRST - this is required for recording
       console.log('[QwenASR] Requesting microphone permission...')
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -114,34 +120,53 @@ export class QwenASRService implements VoiceRecognitionService {
         return
       }
 
-      // 3. Start WebSocket connection via main process
-      // This returns the session ID assigned by main process
-      console.log('[QwenASR] Starting WebSocket via IPC...')
-      const result = await window.api.voice.qwenAsr.start({
-        apiKey: this.options.apiKey,
-        region: this.options.region,
-        language: options?.language || this.options.language || 'zh'
-      })
-
-      // Check if stopped while waiting for WebSocket connection
-      if (!this.isRunning) {
-        console.log('[QwenASR] Stopped while waiting for WebSocket, aborting')
-        window.api.voice.qwenAsr.stop().catch(console.error)
-        this.cleanup()
-        return
-      }
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to start ASR')
-      }
-
-      // Store the session ID from main process - used by IPC listeners to filter events
-      this.mainSessionId = result.sessionId || 0
-      console.log('[QwenASR] Started via IPC proxy, main session ID:', this.mainSessionId)
-
-      // 4. Start audio capture immediately after start() returns
+      // 2. Start audio capture BEFORE WebSocket connection
+      // This ensures we're recording even if network fails
       await this.startAudioCapture()
+
+      // 3. Setup IPC event listeners for ASR results
+      this.setupIPCListeners()
+
+      // 4. Try to start WebSocket connection via main process
+      // If this fails, we continue in offline mode
+      console.log('[QwenASR] Starting WebSocket via IPC...')
+      try {
+        const result = await window.api.voice.qwenAsr.start({
+          apiKey: this.options.apiKey,
+          region: this.options.region,
+          language: options?.language || this.options.language || 'zh'
+        })
+
+        // Check if stopped while waiting for WebSocket connection
+        if (!this.isRunning) {
+          console.log('[QwenASR] Stopped while waiting for WebSocket, aborting')
+          window.api.voice.qwenAsr.stop().catch(console.error)
+          this.cleanup()
+          return
+        }
+
+        if (!result.success) {
+          // WebSocket connection failed - enter offline mode
+          this.isOfflineMode = true
+          this.offlineError = result.error || 'Failed to start ASR'
+          console.warn('[QwenASR] WebSocket connection failed, entering offline mode:', this.offlineError)
+          // Show a non-blocking notification to user (recording continues)
+          this.interimCallback?.('⏺ 离线录音中...')
+        } else {
+          // Store the session ID from main process - used by IPC listeners to filter events
+          this.mainSessionId = result.sessionId || 0
+          console.log('[QwenASR] Started via IPC proxy, main session ID:', this.mainSessionId)
+        }
+      } catch (wsError) {
+        // Network error or other WebSocket connection failure - enter offline mode
+        this.isOfflineMode = true
+        this.offlineError = wsError instanceof Error ? wsError.message : 'Network error'
+        console.warn('[QwenASR] WebSocket connection error, entering offline mode:', this.offlineError)
+        // Show a non-blocking notification to user (recording continues)
+        this.interimCallback?.('⏺ 离线录音中...')
+      }
     } catch (error) {
+      // Critical error (e.g., microphone permission denied) - cannot continue
       console.error('[QwenASR] Start error:', error)
       this.errorCallback?.(error instanceof Error ? error.message : '启动失败')
       this.cleanup()
@@ -269,6 +294,8 @@ export class QwenASRService implements VoiceRecognitionService {
    * Stop recording and return the final transcription result.
    * Returns a Promise that resolves when the server sends the final result
    * (or times out after 800ms).
+   *
+   * In offline mode, returns immediately with needsBackup flag set.
    */
   stop(): Promise<StopResult> {
     return new Promise((resolve) => {
@@ -287,9 +314,35 @@ export class QwenASRService implements VoiceRecognitionService {
       }
 
       const stoppingSessionId = this.mainSessionId
-      console.log('[QwenASR] Stopping session:', stoppingSessionId)
+      const wasOffline = this.isOfflineMode
+      const offlineErrorMsg = this.offlineError
+
+      console.log('[QwenASR] Stopping session:', stoppingSessionId, 'offline:', wasOffline)
       this.isRunning = false
       this.userStopped = true // Mark that user explicitly stopped
+
+      // If in offline mode, resolve immediately - no server to wait for
+      if (wasOffline) {
+        this.hasFinalResult = true
+        const duration = this.getAccumulatedDuration()
+        console.log('[QwenASR] Offline recording stopped, duration:', duration.toFixed(1), 's')
+
+        // Return result indicating backup is needed
+        const result: StopResult = {
+          text: '', // No transcription in offline mode
+          segments: [],
+          needsBackup: true,
+          offlineError: offlineErrorMsg || undefined
+        }
+
+        // Clear the interim text showing offline status
+        this.finalCallback?.('')
+        this.cleanup()
+        resolve(result)
+        return
+      }
+
+      // Online mode - wait for server response
       this.stopResolve = resolve // Store resolve function for onFinal handler
 
       // Send commit signal via IPC to get final transcription

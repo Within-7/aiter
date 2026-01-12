@@ -120,6 +120,16 @@ export const VoicePanelContainer: React.FC = () => {
     }
   }, [state.activeEditorTabId])
 
+  // Track pending offline backup error (set when offline recording stops)
+  const [pendingOfflineError, setPendingOfflineError] = useState<string | null>(null)
+
+  // Handle offline backup needed callback
+  const handleOfflineBackupNeeded = useCallback((offlineError: string) => {
+    console.log('[VoicePanelContainer] Offline backup needed:', offlineError)
+    // Set the pending error - the effect below will handle the actual saving
+    setPendingOfflineError(offlineError)
+  }, [])
+
   // Voice input hook - panel mode doesn't auto-insert
   // Enable Push-to-Talk when panel is open so Option key triggers recording in panel
   const voiceInput = useVoiceInput({
@@ -132,8 +142,40 @@ export const VoicePanelContainer: React.FC = () => {
       }
     },
     onTextInsert: undefined, // Panel handles insertion manually
-    useEditableOverlay: true // Keep editable behavior for interim text tracking
+    useEditableOverlay: true, // Keep editable behavior for interim text tracking
+    onOfflineBackupNeeded: handleOfflineBackupNeeded
   })
+
+  // Save offline backup when pendingOfflineError is set
+  useEffect(() => {
+    const saveOfflineBackup = async () => {
+      if (!pendingOfflineError) return
+
+      const projectPath = getActiveProjectPath()
+      if (!projectPath) {
+        console.warn('[VoicePanelContainer] No project path for offline backup')
+        setPendingOfflineError(null)
+        return
+      }
+
+      const duration = voiceInput.getAccumulatedDuration()
+      if (duration > 0.5) {
+        console.log('[VoicePanelContainer] Saving offline backup, duration:', duration.toFixed(1), 's')
+        const backupId = await voiceInput.saveBackup(projectPath, pendingOfflineError)
+        if (backupId) {
+          console.log('[VoicePanelContainer] Offline backup saved:', backupId)
+          await reloadBackups()
+        }
+      } else {
+        console.log('[VoicePanelContainer] Recording too short for backup:', duration.toFixed(1), 's')
+      }
+
+      // Clear the pending error
+      setPendingOfflineError(null)
+    }
+
+    saveOfflineBackup()
+  }, [pendingOfflineError, getActiveProjectPath, voiceInput, reloadBackups])
 
   // Auto-save backup when transcription fails (error occurs)
   // This effect runs when voiceInput.error changes

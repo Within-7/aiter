@@ -8,10 +8,12 @@ interface UseVoiceInputOptions {
   onTextInsert?: (text: string) => void
   /** If true, don't auto-insert on final result - let user confirm in overlay */
   useEditableOverlay?: boolean
+  /** Called when offline recording is stopped and needs backup */
+  onOfflineBackupNeeded?: (error: string) => void
 }
 
 export function useVoiceInput(options: UseVoiceInputOptions) {
-  const { settings, onTextInsert, useEditableOverlay = true } = options
+  const { settings, onTextInsert, useEditableOverlay = true, onOfflineBackupNeeded } = options
 
   const [isRecording, setIsRecording] = useState(false)
   const [interimText, setInterimText] = useState('')
@@ -21,9 +23,11 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
   const [isOverlayVisible, setIsOverlayVisible] = useState(false)
 
   const managerRef = useRef<VoiceInputManager | null>(null)
-  // Use ref to always have the latest onTextInsert callback
+  // Use ref to always have the latest callbacks
   const onTextInsertRef = useRef(onTextInsert)
   onTextInsertRef.current = onTextInsert
+  const onOfflineBackupNeededRef = useRef(onOfflineBackupNeeded)
+  onOfflineBackupNeededRef.current = onOfflineBackupNeeded
 
   // 初始化管理器
   useEffect(() => {
@@ -74,6 +78,15 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
         if (newState === 'idle' || newState === 'error') {
           setIsRecording(false)
         }
+      },
+      onOfflineBackupNeeded: (offlineError) => {
+        console.log('[useVoiceInput] Offline backup needed:', offlineError)
+        // Clear the interim text (was showing "⏺ 离线录音中...")
+        setInterimText('')
+        setState('idle')
+        setIsRecording(false)
+        // Notify the container to save backup
+        onOfflineBackupNeededRef.current?.(offlineError)
       }
     })
 

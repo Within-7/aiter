@@ -13,6 +13,8 @@ interface VoiceInputManagerOptions {
   onFinalResult: (text: string) => void
   onError: (error: string) => void
   onStateChange: (state: VoiceInputState) => void
+  /** Called when offline recording needs backup (e.g., network unavailable) */
+  onOfflineBackupNeeded?: (error: string) => void
 }
 
 export class VoiceInputManager {
@@ -182,6 +184,13 @@ export class VoiceInputManager {
     // If stop() returns a Promise (QwenASR), await it; otherwise return null (Web Speech)
     if (stopResult && typeof (stopResult as Promise<StopResult>).then === 'function') {
       const result = await (stopResult as Promise<StopResult>)
+
+      // Check if offline recording needs backup
+      if (result?.needsBackup) {
+        console.log('[VoiceInputManager] Offline recording detected, triggering backup callback')
+        this.options.onOfflineBackupNeeded?.(result.offlineError || '网络不可用')
+      }
+
       return result || null
     }
 
