@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { VoiceInputState, VoiceProvider, VoiceTranscription } from '../../../types/voiceInput'
+import type { VoiceInputState, VoiceProvider, VoiceTranscription, VoiceBackup } from '../../../types/voiceInput'
 import './VoicePanel.css'
 
 export interface VoiceMessage {
@@ -32,6 +32,11 @@ interface VoicePanelProps {
   onClearTranscriptions: () => void
   // Active project ID for persistence
   activeProjectId: string | null
+  // Pending audio backups (failed transcriptions)
+  pendingBackups: VoiceBackup[]
+  onRetryBackup: (backupId: string) => void
+  onDeleteBackup: (backupId: string) => void
+  retryingBackupId?: string | null
 }
 
 export const VoicePanel: React.FC<VoicePanelProps> = ({
@@ -52,7 +57,11 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
   onUpdateTranscription,
   onDeleteTranscription,
   onClearTranscriptions,
-  activeProjectId
+  activeProjectId,
+  pendingBackups,
+  onRetryBackup,
+  onDeleteBackup,
+  retryingBackupId
 }) => {
   const { t } = useTranslation('voice')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -174,6 +183,17 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
     return 'idle'
   }
 
+  // Format duration in seconds
+  const formatDuration = (seconds: number) => {
+    return `${seconds.toFixed(1)}s`
+  }
+
+  // Format timestamp to time string
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp)
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
   if (!isOpen) return null
 
   return (
@@ -194,12 +214,75 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
 
       {/* Messages list */}
       <div className="voice-panel-messages">
-        {messages.length === 0 && !isRecording && !interimText ? (
+        {messages.length === 0 && pendingBackups.length === 0 && !isRecording && !interimText ? (
           <div className="voice-panel-empty">
             <p>{t('messages.emptyHint')}</p>
           </div>
         ) : (
           <>
+            {/* Pending backups (failed transcriptions) */}
+            {pendingBackups.map(backup => (
+              <div key={`backup-${backup.id}`} className={`voice-message voice-backup-pending ${backup.status === 'retrying' || retryingBackupId === backup.id ? 'voice-backup-retrying' : ''}`}>
+                <div className="voice-backup-content">
+                  <div className="voice-backup-icon">
+                    {backup.status === 'retrying' || retryingBackupId === backup.id ? (
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" className="spinning">
+                        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div className="voice-backup-info">
+                    <div className="voice-backup-title">
+                      {backup.status === 'retrying' || retryingBackupId === backup.id
+                        ? t('backup.retrying', { defaultValue: '重试中...' })
+                        : t('backup.pending', { defaultValue: '待转录' })}
+                      <span className="voice-backup-duration">({formatDuration(backup.duration)})</span>
+                    </div>
+                    <div className="voice-backup-meta">
+                      {t('backup.recordedAt', { defaultValue: '录制于' })} {formatTime(backup.timestamp)}
+                      {backup.retryCount > 0 && (
+                        <span className="voice-backup-retry-count">
+                          · {t('backup.retryCount', { count: backup.retryCount, defaultValue: `已重试 ${backup.retryCount} 次` })}
+                        </span>
+                      )}
+                    </div>
+                    {backup.lastError && (
+                      <div className="voice-backup-error" title={backup.lastError}>
+                        {backup.lastError.length > 50 ? backup.lastError.slice(0, 50) + '...' : backup.lastError}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="voice-backup-actions">
+                  <button
+                    onClick={() => onRetryBackup(backup.id)}
+                    disabled={backup.status === 'retrying' || retryingBackupId === backup.id}
+                    title={t('backup.retry', { defaultValue: '重试' })}
+                    className="btn-retry"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+                      <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onDeleteBackup(backup.id)}
+                    disabled={backup.status === 'retrying' || retryingBackupId === backup.id}
+                    title={t('actions.delete')}
+                    className="btn-delete"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
+                      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Transcribed messages */}
             {messages.map(message => (
               <div key={message.id} className={`voice-message ${message.source === 'inline' ? 'voice-message-inline' : ''}`}>
                 {editingId === message.id ? (

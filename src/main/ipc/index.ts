@@ -17,6 +17,7 @@ import { registerPluginHandlers } from './plugins'
 import { registerAppHandlers } from './app'
 import { registerTemplateHandlers } from './templates'
 import { registerVoiceNotesHandlers } from './voiceNotes'
+import { registerVoiceBackupHandlers } from './voiceBackup'
 
 export function setupIPC(
   window: BrowserWindow,
@@ -47,6 +48,7 @@ export function setupIPC(
   registerAppHandlers(window, workspaceManager, storeManager)
   registerTemplateHandlers()
   registerVoiceNotesHandlers(window)
+  registerVoiceBackupHandlers(window)
 
   console.log('IPC handlers registered')
 }

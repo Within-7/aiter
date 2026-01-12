@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { Project, Terminal, AppSettings, FileNode, Plugin, PluginInstallProgress, PluginUpdateProgress, GitStatus, GitCommit, FileChange, DetectedShell, VersionManagerInfo, ShellType, Workspace, SessionState, VoiceTranscription, VoiceNotesFile } from '../types'
+import type { VoiceBackup } from '../types/voiceInput'
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -476,6 +477,22 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('voiceNotes:delete', { projectPath, noteId }),
     clear: (projectPath: string) =>
       ipcRenderer.invoke('voiceNotes:clear', { projectPath })
+  },
+
+  // Voice Backup APIs (backup audio for failed transcriptions)
+  voiceBackup: {
+    save: (projectPath: string, backup: VoiceBackup, audioData: string) =>
+      ipcRenderer.invoke('voiceBackup:save', { projectPath, backup, audioData }),
+    list: (projectPath: string) =>
+      ipcRenderer.invoke('voiceBackup:list', { projectPath }),
+    read: (projectPath: string, backupId: string) =>
+      ipcRenderer.invoke('voiceBackup:read', { projectPath, backupId }),
+    update: (projectPath: string, backupId: string, updates: Partial<VoiceBackup>) =>
+      ipcRenderer.invoke('voiceBackup:update', { projectPath, backupId, updates }),
+    delete: (projectPath: string, backupId: string) =>
+      ipcRenderer.invoke('voiceBackup:delete', { projectPath, backupId }),
+    clear: (projectPath: string) =>
+      ipcRenderer.invoke('voiceBackup:clear', { projectPath })
   }
 })
 
@@ -984,6 +1001,34 @@ export interface API {
     delete(projectPath: string, noteId: string): Promise<{
       success: boolean;
       data?: VoiceNotesFile;
+      error?: string;
+    }>
+    clear(projectPath: string): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+  }
+  voiceBackup: {
+    save(projectPath: string, backup: VoiceBackup, audioData: string): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+    list(projectPath: string): Promise<{
+      success: boolean;
+      backups?: VoiceBackup[];
+      error?: string;
+    }>
+    read(projectPath: string, backupId: string): Promise<{
+      success: boolean;
+      audioData?: string;
+      error?: string;
+    }>
+    update(projectPath: string, backupId: string, updates: Partial<VoiceBackup>): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+    delete(projectPath: string, backupId: string): Promise<{
+      success: boolean;
       error?: string;
     }>
     clear(projectPath: string): Promise<{

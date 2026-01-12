@@ -226,4 +226,54 @@ export class VoiceInputManager {
     }
     this.service = null
   }
+
+  /**
+   * Retry transcription with previously saved audio data.
+   * Only available when using Qwen-ASR provider.
+   *
+   * @param audioBase64 - Base64 encoded audio data
+   * @param sampleRate - Sample rate of the audio
+   * @returns Promise resolving to transcribed text or null
+   */
+  async retryTranscription(audioBase64: string, sampleRate: number = 16000): Promise<string | null> {
+    if (this.currentState === 'recording') {
+      console.warn('[VoiceInputManager] Cannot retry while recording')
+      return null
+    }
+
+    if (!(this.service instanceof QwenASRService)) {
+      console.error('[VoiceInputManager] Retry transcription only available for Qwen-ASR')
+      return null
+    }
+
+    return this.service.retryTranscription(audioBase64, sampleRate)
+  }
+
+  /**
+   * Save current audio as backup for later retry.
+   * Only available when using Qwen-ASR provider.
+   *
+   * @param projectPath - Project path to save backup under
+   * @param error - Error message that triggered the backup
+   * @returns Backup ID if successful, null otherwise
+   */
+  async saveBackup(projectPath: string, error?: string): Promise<string | null> {
+    if (!(this.service instanceof QwenASRService)) {
+      console.error('[VoiceInputManager] Save backup only available for Qwen-ASR')
+      return null
+    }
+
+    return this.service.saveBackup(projectPath, error)
+  }
+
+  /**
+   * Get the duration of accumulated audio in seconds.
+   * Only available when using Qwen-ASR provider.
+   */
+  getAccumulatedDuration(): number {
+    if (!(this.service instanceof QwenASRService)) {
+      return 0
+    }
+    return this.service.getAccumulatedDuration()
+  }
 }

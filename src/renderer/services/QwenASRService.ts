@@ -1,4 +1,4 @@
-import type { VoiceRecognitionService, RecognitionOptions } from '../../types/voiceInput'
+import type { VoiceRecognitionService, RecognitionOptions, VoiceBackup } from '../../types/voiceInput'
 
 interface QwenASROptions {
   apiKey: string
@@ -9,12 +9,18 @@ interface QwenASROptions {
   /** Called when VAD detects end of speech segment (but recording continues) */
   onSegmentComplete?: (text: string) => void
   onError: (error: string) => void
+  /** Project path for audio backup (optional) */
+  projectPath?: string
+  /** Source of the recording */
+  source?: 'inline' | 'panel'
 }
 
 /** Result returned when stopping recording */
 export interface StopResult {
   text: string
   segments: string[]
+  /** Backup ID if transcription failed and audio was saved */
+  backupId?: string
 }
 
 /**
@@ -52,6 +58,10 @@ export class QwenASRService implements VoiceRecognitionService {
   // Promise resolve function for stop() to return final result
   private stopResolve: ((result: StopResult) => void) | null = null
 
+  // Audio backup: accumulate PCM data during recording
+  private accumulatedAudioChunks: Int16Array[] = []
+  private recordingStartTime = 0
+
   constructor(options: QwenASROptions) {
     this.options = options
     this.interimCallback = options.onInterimResult
@@ -77,6 +87,8 @@ export class QwenASRService implements VoiceRecognitionService {
     this.userStopped = false
     this.cleanedUp = false
     this.mainSessionId = 0  // Reset, will be set after start() returns
+    this.accumulatedAudioChunks = []  // Reset audio backup buffer
+    this.recordingStartTime = Date.now()
 
     try {
       // 1. Setup IPC event listeners BEFORE start() to catch all events
@@ -415,6 +427,10 @@ export class QwenASRService implements VoiceRecognitionService {
             // Resample from 48kHz to 16kHz
             const audioData = this.resample(inputData, 48000, 16000)
             const pcm16 = this.floatTo16BitPCM(audioData)
+
+            // Accumulate audio for backup
+            this.accumulatedAudioChunks.push(new Int16Array(pcm16))
+
             const base64Audio = this.arrayBufferToBase64(pcm16.buffer)
 
             // Send audio data via IPC (fire and forget, don't await)
@@ -464,6 +480,10 @@ export class QwenASRService implements VoiceRecognitionService {
           const inputData = event.inputBuffer.getChannelData(0)
           const audioData = this.resample(inputData, this.audioContext!.sampleRate, 16000)
           const pcm16 = this.floatTo16BitPCM(audioData)
+
+          // Accumulate audio for backup
+          this.accumulatedAudioChunks.push(new Int16Array(pcm16))
+
           const base64Audio = this.arrayBufferToBase64(pcm16.buffer)
 
           window.api.voice.qwenAsr.sendAudio(base64Audio).catch((err) => {
@@ -571,10 +591,203 @@ export class QwenASRService implements VoiceRecognitionService {
     this.accumulatedText = ''
     this.allSegments = []
     this.userStopped = false
+    // Note: Don't clear accumulatedAudioChunks here - it may still be needed for backup
   }
 
   // Check if service is running
   isActive(): boolean {
     return this.isRunning
+  }
+
+  /**
+   * Get the accumulated audio data as a single base64 encoded string.
+   * This combines all recorded chunks into one PCM buffer.
+   */
+  getAccumulatedAudioBase64(): string {
+    if (this.accumulatedAudioChunks.length === 0) return ''
+
+    // Calculate total length
+    const totalLength = this.accumulatedAudioChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+
+    // Combine all chunks
+    const combined = new Int16Array(totalLength)
+    let offset = 0
+    for (const chunk of this.accumulatedAudioChunks) {
+      combined.set(chunk, offset)
+      offset += chunk.length
+    }
+
+    return this.arrayBufferToBase64(combined.buffer)
+  }
+
+  /**
+   * Get the duration of accumulated audio in seconds.
+   */
+  getAccumulatedDuration(): number {
+    const totalSamples = this.accumulatedAudioChunks.reduce((sum, chunk) => sum + chunk.length, 0)
+    // Sample rate is 16kHz after resampling
+    return totalSamples / 16000
+  }
+
+  /**
+   * Save accumulated audio as a backup for retry.
+   * Returns the backup ID if successful.
+   */
+  async saveBackup(projectPath: string, error?: string): Promise<string | null> {
+    if (!projectPath || this.accumulatedAudioChunks.length === 0) {
+      console.log('[QwenASR] No audio to backup or no project path')
+      return null
+    }
+
+    const audioData = this.getAccumulatedAudioBase64()
+    if (!audioData) return null
+
+    const backupId = this.recordingStartTime.toString()
+    const duration = this.getAccumulatedDuration()
+
+    const backup: VoiceBackup = {
+      id: backupId,
+      timestamp: this.recordingStartTime,
+      projectId: projectPath,
+      source: this.options.source || 'panel',
+      duration,
+      sampleRate: 16000,
+      status: 'pending',
+      retryCount: 0,
+      lastError: error
+    }
+
+    try {
+      console.log('[QwenASR] Saving audio backup:', backupId, 'duration:', duration.toFixed(1), 's')
+      const result = await window.api.voiceBackup.save(projectPath, backup, audioData)
+      if (result.success) {
+        console.log('[QwenASR] Audio backup saved successfully')
+        return backupId
+      } else {
+        console.error('[QwenASR] Failed to save audio backup:', result.error)
+        return null
+      }
+    } catch (err) {
+      console.error('[QwenASR] Error saving audio backup:', err)
+      return null
+    }
+  }
+
+  /**
+   * Delete a backup after successful transcription.
+   */
+  async deleteBackup(projectPath: string, backupId: string): Promise<void> {
+    try {
+      await window.api.voiceBackup.delete(projectPath, backupId)
+      console.log('[QwenASR] Audio backup deleted:', backupId)
+    } catch (err) {
+      console.error('[QwenASR] Error deleting audio backup:', err)
+    }
+  }
+
+  /**
+   * Retry transcription with previously saved audio data.
+   * This creates a new WebSocket session and sends the audio for transcription.
+   *
+   * @param audioBase64 - Base64 encoded 16-bit PCM audio at the specified sample rate
+   * @param sampleRate - Sample rate of the audio (default 16000)
+   * @returns Promise resolving to the transcribed text, or null on failure
+   */
+  async retryTranscription(audioBase64: string, sampleRate: number = 16000): Promise<string | null> {
+    console.log('[QwenASR] Starting retry transcription, audio length:', audioBase64.length)
+
+    try {
+      // Start a new WebSocket session
+      const startResult = await window.api.voice.qwenAsr.start({
+        apiKey: this.options.apiKey,
+        region: this.options.region,
+        language: this.options.language || 'zh'
+      })
+
+      if (!startResult.success) {
+        throw new Error(startResult.error || 'Failed to start ASR session')
+      }
+
+      console.log('[QwenASR] Retry session started, session ID:', startResult.sessionId)
+
+      // Create a promise that resolves when we get a final result
+      const transcriptionPromise = new Promise<string>((resolve, reject) => {
+        let resultText = ''
+        const timeout = setTimeout(() => {
+          cleanup()
+          reject(new Error('Transcription timeout'))
+        }, 30000) // 30 second timeout
+
+        // Setup listeners for this retry session
+        const cleanupFinal = window.api.voice.qwenAsr.onFinal((data) => {
+          if (data?.sessionId !== startResult.sessionId) return
+          resultText = data.text || ''
+          console.log('[QwenASR] Retry got final result:', resultText)
+        })
+
+        const cleanupError = window.api.voice.qwenAsr.onError((data) => {
+          if (data?.sessionId !== startResult.sessionId) return
+          cleanup()
+          reject(new Error(data.error))
+        })
+
+        const cleanupClosed = window.api.voice.qwenAsr.onClosed((data) => {
+          if (data?.sessionId !== startResult.sessionId) return
+          console.log('[QwenASR] Retry session closed')
+          cleanup()
+          resolve(resultText)
+        })
+
+        const cleanup = () => {
+          clearTimeout(timeout)
+          cleanupFinal()
+          cleanupError()
+          cleanupClosed()
+        }
+      })
+
+      // Send all the audio data
+      // For large audio, we may need to send in chunks
+      const CHUNK_SIZE = 32000 // ~32KB per chunk (smaller than typical WebSocket frame limit)
+
+      // Decode base64 to bytes
+      const binaryString = atob(audioBase64)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i)
+      }
+
+      // Send in chunks
+      for (let offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {
+        const end = Math.min(offset + CHUNK_SIZE, bytes.length)
+        const chunk = bytes.slice(offset, end)
+
+        // Convert chunk back to base64
+        let binary = ''
+        for (let i = 0; i < chunk.length; i++) {
+          binary += String.fromCharCode(chunk[i])
+        }
+        const chunkBase64 = btoa(binary)
+
+        await window.api.voice.qwenAsr.sendAudio(chunkBase64)
+        console.log('[QwenASR] Sent retry audio chunk:', offset, '-', end, 'of', bytes.length)
+      }
+
+      // Commit to signal end of audio
+      await window.api.voice.qwenAsr.commit()
+
+      // Wait for result
+      const result = await transcriptionPromise
+
+      // Stop the session
+      await window.api.voice.qwenAsr.stop()
+
+      return result || null
+    } catch (error) {
+      console.error('[QwenASR] Retry transcription error:', error)
+      // Make sure to stop the session on error
+      await window.api.voice.qwenAsr.stop().catch(() => {})
+      throw error
+    }
   }
 }

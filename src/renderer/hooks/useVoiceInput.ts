@@ -162,6 +162,29 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
     }
   }, [isRecording, startRecording, stopRecording])
 
+  // Retry transcription with saved audio data
+  const retryTranscription = useCallback(async (audioBase64: string, sampleRate: number = 16000): Promise<string | null> => {
+    if (!managerRef.current) {
+      console.error('[useVoiceInput] Manager not available for retry')
+      return null
+    }
+    return managerRef.current.retryTranscription(audioBase64, sampleRate)
+  }, [])
+
+  // Save current audio as backup
+  const saveBackup = useCallback(async (projectPath: string, error?: string): Promise<string | null> => {
+    if (!managerRef.current) {
+      console.error('[useVoiceInput] Manager not available for backup')
+      return null
+    }
+    return managerRef.current.saveBackup(projectPath, error)
+  }, [])
+
+  // Get accumulated audio duration
+  const getAccumulatedDuration = useCallback((): number => {
+    return managerRef.current?.getAccumulatedDuration() ?? 0
+  }, [])
+
   // Push-to-Talk 集成
   usePushToTalk({
     triggerKey: settings.pushToTalk.triggerKey,
@@ -185,6 +208,9 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
     toggleRecording,
     confirmText,
     closeOverlay,
+    retryTranscription,
+    saveBackup,
+    getAccumulatedDuration,
 
     // 辅助
     isAvailable: managerRef.current?.isAvailable() ?? false,

@@ -90,6 +90,30 @@ export interface VoiceNotesFile {
 // 语音记录存储路径常量
 export const VOICE_NOTES_DIR = '.aiter'
 export const VOICE_NOTES_FILENAME = 'voice-notes.json'
+export const AUDIO_BACKUPS_DIR = 'audio-backups'
+
+// 音频备份状态
+export type VoiceBackupStatus = 'pending' | 'retrying' | 'failed'
+
+// 音频备份元数据
+export interface VoiceBackup {
+  id: string                    // 时间戳 ID
+  timestamp: number             // 创建时间
+  projectId?: string            // 关联项目
+  source: 'inline' | 'panel'    // 来源
+  duration: number              // 录音时长(秒)
+  sampleRate: number            // 采样率 (16000)
+  status: VoiceBackupStatus     // 状态
+  retryCount: number            // 重试次数
+  lastError?: string            // 最后一次错误信息
+}
+
+// 音频备份文件 (存储在 .aiter/audio-backups/)
+export interface VoiceBackupsIndex {
+  version: 1
+  backups: VoiceBackup[]
+  lastUpdated: number
+}
 
 // 默认语音输入设置
 export const defaultVoiceInputSettings: VoiceInputSettings = {

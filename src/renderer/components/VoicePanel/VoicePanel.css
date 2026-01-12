@@ -379,3 +379,122 @@
 .voice-panel-messages::-webkit-scrollbar-thumb:hover {
   background: #4a4a4a;
 }
+
+/* Pending backup item - Orange accent */
+.voice-backup-pending {
+  border-left: 2px solid #d19a66;
+  background: rgba(209, 154, 102, 0.08);
+}
+
+.voice-backup-pending:hover {
+  border-color: #d19a66;
+}
+
+.voice-backup-retrying {
+  opacity: 0.7;
+}
+
+.voice-backup-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.voice-backup-icon {
+  flex-shrink: 0;
+  color: #d19a66;
+  margin-top: 2px;
+}
+
+.voice-backup-icon svg {
+  display: block;
+}
+
+.voice-backup-icon .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.voice-backup-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-backup-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: #d19a66;
+}
+
+.voice-backup-duration {
+  font-weight: normal;
+  margin-left: 4px;
+  color: #888;
+}
+
+.voice-backup-meta {
+  font-size: 11px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.voice-backup-retry-count {
+  color: #888;
+}
+
+.voice-backup-error {
+  font-size: 11px;
+  color: #f14c4c;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Backup action buttons */
+.voice-backup-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  margin-left: 24px;
+}
+
+.voice-backup-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.voice-backup-actions .btn-retry {
+  color: #d19a66;
+}
+
+.voice-backup-actions .btn-retry:hover:not(:disabled) {
+  background: rgba(209, 154, 102, 0.15);
+}
+
+.voice-backup-actions .btn-delete {
+  color: #666;
+}
+
+.voice-backup-actions .btn-delete:hover:not(:disabled) {
+  background: rgba(241, 76, 76, 0.15);
+  color: #f14c4c;
+}
+
+.voice-backup-actions button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
