@@ -63,13 +63,11 @@ export class QwenASRService implements VoiceRecognitionService {
   async start(options?: RecognitionOptions): Promise<void> {
     console.log('[QwenASR] start() called')
 
+    // Always cleanup any leftover audio resources from previous sessions
+    // This ensures old AudioWorklet is stopped before starting new recording
     if (this.isRunning) {
       console.warn('[QwenASR] Already running, cleaning up first')
-      // Force cleanup before starting new session
-      this.forceCleanup()
     }
-
-    // Also cleanup any leftover audio resources from previous sessions
     this.forceCleanup()
 
     this.isRunning = true
@@ -231,7 +229,7 @@ export class QwenASRService implements VoiceRecognitionService {
     this.cleanupFunctions.push(cleanupError)
 
     // Listen for connection closed
-    // Note: With connection reuse, closed events may indicate reconnection, not an error
+    // Each recording session uses a new WebSocket connection (Qwen-ASR doesn't support buffer clearing)
     const cleanupClosed = window.api.voice.qwenAsr.onClosed((data) => {
       if (!isEventForThisSession(data?.sessionId)) {
         console.log('[QwenASR] Ignoring closed event for session:', data?.sessionId, 'expected:', this.mainSessionId)
