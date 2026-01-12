@@ -253,18 +253,23 @@ export class QwenASRProxy {
         return
       }
 
-      const currentSessionId = this.sessionId
+      // Note: We use this.sessionId in all handlers below instead of a closure-captured value
+      // This is critical for connection reuse - when the connection is reused for a new session,
+      // the handlers should use the current session ID, not the one from when connection was created
 
       this.ws.on('open', () => {
         console.log('[QwenASRProxy] WebSocket connected')
         this.sendSessionUpdate(options.language || 'zh')
-        this.sendToRenderer('voice:qwen-asr:connected', { sessionId: currentSessionId })
+        // Use this.sessionId for current session
+        this.sendToRenderer('voice:qwen-asr:connected', { sessionId: this.sessionId })
       })
 
       this.ws.on('message', (data) => {
         try {
           const message = JSON.parse(data.toString())
-          this.handleMessage(message, currentSessionId)
+          // Use this.sessionId (current active session) instead of closure-captured value
+          // This is important for connection reuse - messages should be sent to current session
+          this.handleMessage(message, this.sessionId)
         } catch (e) {
           console.error('[QwenASRProxy] Failed to parse message:', e)
         }
