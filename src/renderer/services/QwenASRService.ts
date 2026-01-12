@@ -66,6 +66,10 @@ export class QwenASRService implements VoiceRecognitionService {
   private accumulatedAudioChunks: Int16Array[] = []
   private recordingStartTime = 0
 
+  // Streaming backup: write audio to disk as it's recorded
+  private streamingBackupId: string | null = null
+  private streamingBackupStarted = false
+
   // Offline mode: when WebSocket connection fails, continue recording locally
   private isOfflineMode = false
   private offlineError: string | null = null
@@ -97,6 +101,8 @@ export class QwenASRService implements VoiceRecognitionService {
     this.mainSessionId = 0  // Reset, will be set after start() returns
     this.accumulatedAudioChunks = []  // Reset audio backup buffer
     this.recordingStartTime = Date.now()
+    this.streamingBackupId = null
+    this.streamingBackupStarted = false
     this.isOfflineMode = false
     this.offlineError = null
 
@@ -229,6 +235,10 @@ export class QwenASRService implements VoiceRecognitionService {
           console.log('[QwenASR] User stopped, final combined result:', allText)
           this.finalCallback?.(allText)
 
+          // End streaming backup - mark as completed if we got text, pending if empty
+          const transcriptionSucceeded = allText.trim().length > 0
+          this.endStreamingBackup(transcriptionSucceeded, transcriptionSucceeded ? undefined : 'Empty transcription')
+
           // Resolve the stop() Promise with the result
           if (this.stopResolve) {
             const result: StopResult = { text: allText, segments }
@@ -260,6 +270,10 @@ export class QwenASRService implements VoiceRecognitionService {
         return
       }
       console.error('[QwenASR] Error from proxy:', data.error)
+
+      // End streaming backup with error status (pending for retry)
+      this.endStreamingBackup(false, data.error)
+
       this.errorCallback?.(data.error)
       this.cleanup()
     })
@@ -278,6 +292,10 @@ export class QwenASRService implements VoiceRecognitionService {
       // If user stopped, cleanup will be handled by stop()
       if (this.isRunning && !this.userStopped) {
         console.log('[QwenASR] Unexpected connection closure, cleaning up')
+
+        // End streaming backup with error status (pending for retry)
+        this.endStreamingBackup(false, '连接已断开')
+
         this.errorCallback?.('连接已断开')
         this.cleanup()
       }
@@ -327,6 +345,9 @@ export class QwenASRService implements VoiceRecognitionService {
         const duration = this.getAccumulatedDuration()
         console.log('[QwenASR] Offline recording stopped, duration:', duration.toFixed(1), 's')
 
+        // End streaming backup with 'pending' status (needs retry later)
+        this.endStreamingBackup(false, offlineErrorMsg || 'Offline recording')
+
         // Return result indicating backup is needed
         const result: StopResult = {
           text: '', // No transcription in offline mode
@@ -350,7 +371,7 @@ export class QwenASRService implements VoiceRecognitionService {
 
       // Give server time to process final audio
       // After timeout, resolve with whatever we have and cleanup
-      setTimeout(() => {
+      setTimeout(async () => {
         // Only trigger if server hasn't sent final result yet
         if (!this.hasFinalResult) {
           this.hasFinalResult = true
@@ -363,9 +384,15 @@ export class QwenASRService implements VoiceRecognitionService {
           }
           this.finalCallback?.(allText)
           this.stopResolve = null
+
+          // End streaming backup - mark as completed if we got text, pending if empty
+          const transcriptionSucceeded = allText.trim().length > 0
+          await this.endStreamingBackup(transcriptionSucceeded, transcriptionSucceeded ? undefined : 'Empty transcription')
+
           resolve(result)
         }
         // If hasFinalResult is true, resolve was already called by onFinal handler
+        // In that case, streaming backup was already ended by the onFinal handler
 
         window.api.voice.qwenAsr.stop().catch(console.error)
         this.cleanup()
@@ -481,8 +508,11 @@ export class QwenASRService implements VoiceRecognitionService {
             const audioData = this.resample(inputData, 48000, 16000)
             const pcm16 = this.floatTo16BitPCM(audioData)
 
-            // Accumulate audio for backup
+            // Accumulate audio for backup (in-memory)
             this.accumulatedAudioChunks.push(new Int16Array(pcm16))
+
+            // Append to streaming backup (writes to disk)
+            this.appendToStreamingBackup(pcm16)
 
             const base64Audio = this.arrayBufferToBase64(pcm16.buffer)
 
@@ -502,6 +532,9 @@ export class QwenASRService implements VoiceRecognitionService {
       // Don't connect to destination - we don't need audio output
 
       console.log('[QwenASR] Audio capture started with AudioWorklet')
+
+      // Start streaming backup to disk
+      this.startStreamingBackup()
     } catch (error) {
       console.error('[QwenASR] Audio capture error:', error)
 
@@ -534,8 +567,11 @@ export class QwenASRService implements VoiceRecognitionService {
           const audioData = this.resample(inputData, this.audioContext!.sampleRate, 16000)
           const pcm16 = this.floatTo16BitPCM(audioData)
 
-          // Accumulate audio for backup
+          // Accumulate audio for backup (in-memory)
           this.accumulatedAudioChunks.push(new Int16Array(pcm16))
+
+          // Append to streaming backup (writes to disk)
+          this.appendToStreamingBackup(pcm16)
 
           const base64Audio = this.arrayBufferToBase64(pcm16.buffer)
 
@@ -551,10 +587,119 @@ export class QwenASRService implements VoiceRecognitionService {
       processor.connect(this.audioContext.destination)
 
       console.log('[QwenASR] Audio capture started with ScriptProcessor (fallback)')
+
+      // Start streaming backup to disk
+      this.startStreamingBackup()
     } catch (error) {
       console.error('[QwenASR] ScriptProcessor fallback error:', error)
       this.errorCallback?.('音频采集失败')
     }
+  }
+
+  /**
+   * Start streaming backup - creates file on disk and registers in index.
+   * Called when recording starts, before any audio data is captured.
+   */
+  private async startStreamingBackup(): Promise<void> {
+    const projectPath = this.options.projectPath
+    if (!projectPath) {
+      console.log('[QwenASR] No project path, skipping streaming backup')
+      return
+    }
+
+    const backupId = this.recordingStartTime.toString()
+    this.streamingBackupId = backupId
+
+    const backup: VoiceBackup = {
+      id: backupId,
+      timestamp: this.recordingStartTime,
+      projectId: projectPath,
+      source: this.options.source || 'panel',
+      duration: 0, // Will be updated on endStream
+      sampleRate: 16000,
+      status: 'recording',
+      retryCount: 0
+    }
+
+    try {
+      console.log('[QwenASR] Starting streaming backup:', backupId)
+      const result = await window.api.voiceBackup.startStream(projectPath, backup)
+      if (result.success) {
+        this.streamingBackupStarted = true
+        console.log('[QwenASR] Streaming backup started successfully')
+      } else {
+        console.error('[QwenASR] Failed to start streaming backup:', result.error)
+        this.streamingBackupId = null
+      }
+    } catch (err) {
+      console.error('[QwenASR] Error starting streaming backup:', err)
+      this.streamingBackupId = null
+    }
+  }
+
+  /**
+   * Append audio chunk to streaming backup.
+   * Called for each audio chunk during recording.
+   */
+  private appendToStreamingBackup(pcm16: Int16Array): void {
+    if (!this.streamingBackupStarted || !this.streamingBackupId) return
+
+    const base64Chunk = this.arrayBufferToBase64(pcm16.buffer)
+
+    // Fire and forget - don't block audio processing
+    window.api.voiceBackup.appendChunk(this.streamingBackupId, base64Chunk).catch(err => {
+      console.error('[QwenASR] Failed to append chunk to backup:', err)
+    })
+  }
+
+  /**
+   * End streaming backup with final status.
+   * Called when recording stops.
+   *
+   * @param transcriptionSucceeded - If true, marks as 'completed' and file will be deleted
+   * @param error - Error message if transcription failed
+   */
+  private async endStreamingBackup(transcriptionSucceeded: boolean, error?: string): Promise<void> {
+    const projectPath = this.options.projectPath
+    if (!projectPath || !this.streamingBackupStarted || !this.streamingBackupId) {
+      return
+    }
+
+    const duration = this.getAccumulatedDuration()
+    const finalStatus = transcriptionSucceeded ? 'completed' : 'pending'
+
+    try {
+      console.log('[QwenASR] Ending streaming backup:', this.streamingBackupId, 'status:', finalStatus)
+      await window.api.voiceBackup.endStream(projectPath, this.streamingBackupId, finalStatus, duration, error)
+      console.log('[QwenASR] Streaming backup ended successfully')
+    } catch (err) {
+      console.error('[QwenASR] Error ending streaming backup:', err)
+    }
+
+    // Reset streaming state
+    this.streamingBackupId = null
+    this.streamingBackupStarted = false
+  }
+
+  /**
+   * Abort streaming backup - called when recording is aborted unexpectedly.
+   * Deletes incomplete file.
+   */
+  private async abortStreamingBackup(): Promise<void> {
+    const projectPath = this.options.projectPath
+    if (!projectPath || !this.streamingBackupId) {
+      return
+    }
+
+    try {
+      console.log('[QwenASR] Aborting streaming backup:', this.streamingBackupId)
+      await window.api.voiceBackup.abortStream(projectPath, this.streamingBackupId)
+    } catch (err) {
+      console.error('[QwenASR] Error aborting streaming backup:', err)
+    }
+
+    this.streamingBackupId = null
+    this.streamingBackupStarted = false
   }
 
   private resample(inputData: Float32Array, fromRate: number, toRate: number): Float32Array {

@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import * as fs from 'fs/promises'
+import { createWriteStream, WriteStream } from 'fs'
 import * as path from 'path'
 import type { VoiceBackup, VoiceBackupsIndex } from '../../types/voiceInput'
 import { VOICE_NOTES_DIR, AUDIO_BACKUPS_DIR } from '../../types/voiceInput'
@@ -8,6 +9,9 @@ import { VOICE_NOTES_DIR, AUDIO_BACKUPS_DIR } from '../../types/voiceInput'
 let mainWindow: BrowserWindow | null = null
 
 const INDEX_FILENAME = 'index.json'
+
+// Active streaming sessions - maps backupId to write stream
+const activeStreams = new Map<string, WriteStream>()
 
 /**
  * Get the audio backups directory path for a project
@@ -194,6 +198,169 @@ export function registerVoiceBackupHandlers(window: BrowserWindow) {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       console.error('[voiceBackup:clear] Error:', message)
+      return { success: false, error: message }
+    }
+  })
+
+  // === Streaming backup API ===
+
+  // Start a streaming backup session - creates file and registers in index
+  ipcMain.handle('voiceBackup:startStream', async (_, {
+    projectPath,
+    backup
+  }: {
+    projectPath: string
+    backup: VoiceBackup
+  }) => {
+    console.log('[voiceBackup:startStream] Starting stream:', backup.id)
+    try {
+      await ensureBackupsDir(projectPath)
+
+      // Create write stream for audio file
+      const audioPath = path.join(getBackupsDir(projectPath), `${backup.id}.pcm`)
+      const stream = createWriteStream(audioPath)
+
+      // Store stream reference
+      activeStreams.set(backup.id, stream)
+
+      // Add to index with 'recording' status
+      const index = await readIndex(projectPath)
+      index.backups = index.backups.filter(b => b.id !== backup.id)
+      index.backups.push({ ...backup, status: 'recording' as const })
+      await writeIndex(projectPath, index)
+
+      console.log('[voiceBackup:startStream] Stream started:', audioPath)
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[voiceBackup:startStream] Error:', message)
+      return { success: false, error: message }
+    }
+  })
+
+  // Append audio chunk to streaming backup
+  ipcMain.handle('voiceBackup:appendChunk', async (_, {
+    backupId,
+    audioChunk
+  }: {
+    backupId: string
+    audioChunk: string  // base64 encoded PCM chunk
+  }) => {
+    try {
+      const stream = activeStreams.get(backupId)
+      if (!stream) {
+        // Stream not found - might have been closed or never started
+        // This is not necessarily an error (e.g., recording started without project)
+        return { success: false, error: 'Stream not found' }
+      }
+
+      const buffer = Buffer.from(audioChunk, 'base64')
+      stream.write(buffer)
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[voiceBackup:appendChunk] Error:', message)
+      return { success: false, error: message }
+    }
+  })
+
+  // End streaming backup - close file and update index
+  ipcMain.handle('voiceBackup:endStream', async (_, {
+    projectPath,
+    backupId,
+    finalStatus,
+    duration,
+    error: errorMsg
+  }: {
+    projectPath: string
+    backupId: string
+    finalStatus: 'pending' | 'completed'
+    duration: number
+    error?: string
+  }) => {
+    console.log('[voiceBackup:endStream] Ending stream:', backupId, 'status:', finalStatus)
+    try {
+      // Close the write stream
+      const stream = activeStreams.get(backupId)
+      if (stream) {
+        await new Promise<void>((resolve, reject) => {
+          stream.end((err: Error | null | undefined) => {
+            if (err) reject(err)
+            else resolve()
+          })
+        })
+        activeStreams.delete(backupId)
+      }
+
+      // Update index with final status
+      const index = await readIndex(projectPath)
+      const backup = index.backups.find(b => b.id === backupId)
+      if (backup) {
+        backup.status = finalStatus
+        backup.duration = duration
+        if (errorMsg) {
+          backup.lastError = errorMsg
+        }
+        await writeIndex(projectPath, index)
+      }
+
+      // If completed successfully, delete the audio file
+      if (finalStatus === 'completed') {
+        const audioPath = path.join(getBackupsDir(projectPath), `${backupId}.pcm`)
+        try {
+          await fs.unlink(audioPath)
+          // Also remove from index
+          index.backups = index.backups.filter(b => b.id !== backupId)
+          await writeIndex(projectPath, index)
+          console.log('[voiceBackup:endStream] Completed backup deleted:', backupId)
+        } catch (e) {
+          // Ignore if file doesn't exist
+          if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
+        }
+      }
+
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[voiceBackup:endStream] Error:', message)
+      return { success: false, error: message }
+    }
+  })
+
+  // Abort streaming backup - close and delete incomplete file
+  ipcMain.handle('voiceBackup:abortStream', async (_, {
+    projectPath,
+    backupId
+  }: {
+    projectPath: string
+    backupId: string
+  }) => {
+    console.log('[voiceBackup:abortStream] Aborting stream:', backupId)
+    try {
+      // Close the write stream
+      const stream = activeStreams.get(backupId)
+      if (stream) {
+        stream.destroy()
+        activeStreams.delete(backupId)
+      }
+
+      // Delete the incomplete audio file
+      const audioPath = path.join(getBackupsDir(projectPath), `${backupId}.pcm`)
+      try {
+        await fs.unlink(audioPath)
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
+      }
+
+      // Remove from index
+      const index = await readIndex(projectPath)
+      index.backups = index.backups.filter(b => b.id !== backupId)
+      await writeIndex(projectPath, index)
+
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[voiceBackup:abortStream] Error:', message)
       return { success: false, error: message }
     }
   })

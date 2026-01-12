@@ -93,7 +93,7 @@ export const VOICE_NOTES_FILENAME = 'voice-notes.json'
 export const AUDIO_BACKUPS_DIR = 'audio-backups'
 
 // 音频备份状态
-export type VoiceBackupStatus = 'pending' | 'retrying' | 'failed'
+export type VoiceBackupStatus = 'recording' | 'pending' | 'retrying' | 'failed' | 'completed'
 
 // 音频备份元数据
 export interface VoiceBackup {

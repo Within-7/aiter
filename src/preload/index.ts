@@ -492,7 +492,16 @@ contextBridge.exposeInMainWorld('api', {
     delete: (projectPath: string, backupId: string) =>
       ipcRenderer.invoke('voiceBackup:delete', { projectPath, backupId }),
     clear: (projectPath: string) =>
-      ipcRenderer.invoke('voiceBackup:clear', { projectPath })
+      ipcRenderer.invoke('voiceBackup:clear', { projectPath }),
+    // Streaming backup APIs - write audio as it's recorded
+    startStream: (projectPath: string, backup: VoiceBackup) =>
+      ipcRenderer.invoke('voiceBackup:startStream', { projectPath, backup }),
+    appendChunk: (backupId: string, audioChunk: string) =>
+      ipcRenderer.invoke('voiceBackup:appendChunk', { backupId, audioChunk }),
+    endStream: (projectPath: string, backupId: string, finalStatus: 'pending' | 'completed', duration: number, error?: string) =>
+      ipcRenderer.invoke('voiceBackup:endStream', { projectPath, backupId, finalStatus, duration, error }),
+    abortStream: (projectPath: string, backupId: string) =>
+      ipcRenderer.invoke('voiceBackup:abortStream', { projectPath, backupId })
   }
 })
 
@@ -1032,6 +1041,29 @@ export interface API {
       error?: string;
     }>
     clear(projectPath: string): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+    // Streaming backup API
+    startStream(projectPath: string, backup: VoiceBackup): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+    appendChunk(backupId: string, audioChunk: string): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+    endStream(
+      projectPath: string,
+      backupId: string,
+      finalStatus: 'pending' | 'completed',
+      duration: number,
+      error?: string
+    ): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+    abortStream(projectPath: string, backupId: string): Promise<{
       success: boolean;
       error?: string;
     }>
