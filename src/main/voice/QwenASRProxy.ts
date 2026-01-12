@@ -322,6 +322,9 @@ export class QwenASRProxy {
   /**
    * Start a new recording session.
    * Reuses existing connection if possible, otherwise establishes new one.
+   *
+   * Note: Qwen-ASR automatically clears the audio buffer after commit,
+   * so no explicit clear is needed before new recordings.
    */
   private async startRecording(options: QwenASRProxyOptions): Promise<void> {
     console.log('[QwenASRProxy] startRecording() called, state:', this.connectionState)
@@ -329,33 +332,14 @@ export class QwenASRProxy {
     // Ensure connection is established
     await this.ensureConnection(options)
 
-    // Clear audio buffer for new recording
-    this.clearAudioBuffer()
-
     // Update state to recording
+    // Note: Qwen-ASR doesn't have input_audio_buffer.clear event.
+    // After commit, the buffer is automatically ready for new audio.
     this.connectionState = 'RECORDING'
 
     const currentSessionId = this.sessionId
     console.log('[QwenASRProxy] Recording started for session:', currentSessionId)
     this.sendToRenderer('voice:qwen-asr:ready', { sessionId: currentSessionId })
-  }
-
-  /**
-   * Clear the audio buffer to prepare for new recording
-   */
-  private clearAudioBuffer(): void {
-    if (this.ws?.readyState !== WebSocket.OPEN) return
-
-    try {
-      const clearEvent = {
-        event_id: `event_clear_${Date.now()}`,
-        type: 'input_audio_buffer.clear'
-      }
-      console.log('[QwenASRProxy] Clearing audio buffer')
-      this.ws.send(JSON.stringify(clearEvent))
-    } catch (err) {
-      console.error('[QwenASRProxy] Failed to clear audio buffer:', err)
-    }
   }
 
   /**
@@ -510,10 +494,6 @@ export class QwenASRProxy {
         }
         // Note: Don't send ready event here for session.updated during connection
         // The ready event is sent in startRecording() after connection is ensured
-        break
-
-      case 'input_audio_buffer.cleared':
-        console.log('[QwenASRProxy] Audio buffer cleared for session:', sessionId)
         break
 
       case 'conversation.item.input_audio_transcription.text':
