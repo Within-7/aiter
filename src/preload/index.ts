@@ -427,6 +427,8 @@ contextBridge.exposeInMainWorld('api', {
         ipcRenderer.invoke('voice:qwen-asr:commit'),
       stop: () =>
         ipcRenderer.invoke('voice:qwen-asr:stop'),
+      disconnect: () =>
+        ipcRenderer.invoke('voice:qwen-asr:disconnect'),
       onConnected: (callback: (data: { sessionId?: number }) => void) => {
         const listener = (_: unknown, data: { sessionId?: number }) => callback(data)
         ipcRenderer.on('voice:qwen-asr:connected', listener)
@@ -950,6 +952,7 @@ export interface API {
       sendAudio(base64Audio: string): Promise<{ success: boolean; error?: string }>
       commit(): Promise<{ success: boolean; error?: string }>
       stop(): Promise<{ success: boolean; error?: string }>
+      disconnect(): Promise<{ success: boolean; error?: string }>
       onConnected(callback: (data: { sessionId?: number }) => void): () => void
       onReady(callback: (data: { sessionId?: number }) => void): () => void
       onInterim(callback: (data: { text: string; sessionId?: number }) => void): () => void

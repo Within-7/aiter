@@ -227,13 +227,21 @@ export class QwenASRService implements VoiceRecognitionService {
     this.cleanupFunctions.push(cleanupError)
 
     // Listen for connection closed
+    // Note: With connection reuse, closed events may indicate reconnection, not an error
     const cleanupClosed = window.api.voice.qwenAsr.onClosed((data) => {
       if (!isEventForThisSession(data?.sessionId)) {
         console.log('[QwenASR] Ignoring closed event for session:', data?.sessionId, 'expected:', this.mainSessionId)
         return
       }
       console.log('[QwenASR] Connection closed for session:', this.mainSessionId, data.code, data.reason)
-      this.cleanup()
+
+      // Only cleanup if we're still running (unexpected closure)
+      // If user stopped, cleanup will be handled by stop()
+      if (this.isRunning && !this.userStopped) {
+        console.log('[QwenASR] Unexpected connection closure, cleaning up')
+        this.errorCallback?.('连接已断开')
+        this.cleanup()
+      }
     })
     this.cleanupFunctions.push(cleanupClosed)
   }
