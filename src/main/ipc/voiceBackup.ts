@@ -133,12 +133,41 @@ async function migrateFromLegacy(projectPath: string): Promise<VoiceRecordsFile>
   // Sort by timestamp
   records.sort((a, b) => a.timestamp - b.timestamp)
 
-  return {
+  const migratedData: VoiceRecordsFile = {
     version: 2,
     projectPath,
     records,
     lastUpdated: Date.now()
   }
+
+  // Save the migrated data to the new unified file
+  await writeRecords(projectPath, migratedData)
+  console.log(`[voiceBackup] Saved ${records.length} records to voice-records.json`)
+
+  // Delete legacy files after successful migration
+  try {
+    const notesPath = getLegacyNotesPath(projectPath)
+    await fs.unlink(notesPath)
+    console.log('[voiceBackup] Deleted legacy voice-notes.json')
+  } catch (e) {
+    // File doesn't exist - that's fine
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.warn('[voiceBackup] Error deleting legacy voice-notes.json:', e)
+    }
+  }
+
+  try {
+    const indexPath = getIndexPath(projectPath)
+    await fs.unlink(indexPath)
+    console.log('[voiceBackup] Deleted legacy audio-backups/index.json')
+  } catch (e) {
+    // File doesn't exist - that's fine
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.warn('[voiceBackup] Error deleting legacy index.json:', e)
+    }
+  }
+
+  return migratedData
 }
 
 /**

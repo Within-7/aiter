@@ -283,11 +283,6 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
                             </span>
                           )}
                         </div>
-                        {item.data.lastError && (
-                          <div className="voice-backup-error" title={item.data.lastError}>
-                            {item.data.lastError.length > 50 ? item.data.lastError.slice(0, 50) + '...' : item.data.lastError}
-                          </div>
-                        )}
                       </>
                     )}
                   </div>
