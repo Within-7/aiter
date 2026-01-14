@@ -2,7 +2,7 @@ import React, { useContext, useCallback, useState, useEffect, useRef } from 'rea
 import { AppContext } from '../../context/AppContext'
 import { VoicePanel } from './VoicePanel'
 import { useVoiceInput } from '../../hooks/useVoiceInput'
-import { defaultVoiceInputSettings, VoiceTranscription, VoiceBackup } from '../../../types/voiceInput'
+import { defaultVoiceInputSettings, VoiceTranscription, VoiceBackup, VoiceRecord } from '../../../types/voiceInput'
 
 /**
  * Container component that connects VoicePanel to AppContext and voice input logic
@@ -24,9 +24,10 @@ export const VoicePanelContainer: React.FC = () => {
     return project?.path || null
   }, [state.activeProjectId, state.projects])
 
-  // Load pending backups when panel opens or project changes
+  // Load voice records when panel opens or project changes
+  // Records include both transcriptions and pending backups
   useEffect(() => {
-    const loadBackups = async () => {
+    const loadRecords = async () => {
       const projectPath = getActiveProjectPath()
       if (!projectPath) {
         setPendingBackups([])
@@ -39,34 +40,96 @@ export const VoicePanelContainer: React.FC = () => {
       lastLoadedProjectRef.current = projectPath
 
       try {
-        const result = await window.api.voiceBackup.list(projectPath)
-        if (result.success && result.backups) {
-          setPendingBackups(result.backups)
+        // Load unified records
+        const result = await window.api.voiceRecords.list(projectPath)
+        if (result.success && result.records) {
+          // Separate transcribed records from pending backups
+          const transcriptions: VoiceTranscription[] = []
+          const backups: VoiceBackup[] = []
+
+          for (const record of result.records) {
+            if (record.status === 'transcribed' && record.text) {
+              transcriptions.push({
+                id: record.id,
+                text: record.text,
+                timestamp: record.timestamp,
+                source: record.source,
+                projectId: record.projectId,
+                insertedTo: record.insertedTo
+              })
+            } else if (record.status !== 'transcribed') {
+              backups.push({
+                id: record.id,
+                timestamp: record.timestamp,
+                source: record.source,
+                projectId: record.projectId,
+                duration: record.duration || 0,
+                sampleRate: record.sampleRate || 16000,
+                status: record.status as 'pending' | 'retrying' | 'failed' | 'recording' | 'completed',
+                retryCount: record.retryCount || 0,
+                lastError: record.lastError
+              })
+            }
+          }
+
+          // Update global transcriptions state
+          dispatch({ type: 'SET_VOICE_TRANSCRIPTIONS', payload: transcriptions })
+          setPendingBackups(backups)
         }
       } catch (error) {
-        console.error('Failed to load voice backups:', error)
+        console.error('Failed to load voice records:', error)
       }
     }
 
     if (state.showVoicePanel) {
-      loadBackups()
+      loadRecords()
     }
-  }, [state.showVoicePanel, getActiveProjectPath])
+  }, [state.showVoicePanel, getActiveProjectPath, dispatch])
 
-  // Reload backups after successfully adding one
-  const reloadBackups = useCallback(async () => {
+  // Reload records after changes
+  const reloadRecords = useCallback(async () => {
     const projectPath = getActiveProjectPath()
     if (!projectPath) return
 
     try {
-      const result = await window.api.voiceBackup.list(projectPath)
-      if (result.success && result.backups) {
-        setPendingBackups(result.backups)
+      const result = await window.api.voiceRecords.list(projectPath)
+      if (result.success && result.records) {
+        // Separate transcribed records from pending backups
+        const transcriptions: VoiceTranscription[] = []
+        const backups: VoiceBackup[] = []
+
+        for (const record of result.records) {
+          if (record.status === 'transcribed' && record.text) {
+            transcriptions.push({
+              id: record.id,
+              text: record.text,
+              timestamp: record.timestamp,
+              source: record.source,
+              projectId: record.projectId,
+              insertedTo: record.insertedTo
+            })
+          } else if (record.status !== 'transcribed') {
+            backups.push({
+              id: record.id,
+              timestamp: record.timestamp,
+              source: record.source,
+              projectId: record.projectId,
+              duration: record.duration || 0,
+              sampleRate: record.sampleRate || 16000,
+              status: record.status as 'pending' | 'retrying' | 'failed' | 'recording' | 'completed',
+              retryCount: record.retryCount || 0,
+              lastError: record.lastError
+            })
+          }
+        }
+
+        dispatch({ type: 'SET_VOICE_TRANSCRIPTIONS', payload: transcriptions })
+        setPendingBackups(backups)
       }
     } catch (error) {
-      console.error('Failed to reload voice backups:', error)
+      console.error('Failed to reload voice records:', error)
     }
-  }, [getActiveProjectPath])
+  }, [getActiveProjectPath, dispatch])
 
   // Track previous error to detect new errors
   const prevErrorRef = useRef<string | null>(null)
@@ -167,7 +230,7 @@ export const VoicePanelContainer: React.FC = () => {
         const backupId = await voiceInput.saveBackup(projectPath, pendingOfflineError)
         if (backupId) {
           console.log('[VoicePanelContainer] Offline backup saved:', backupId)
-          await reloadBackups()
+          await reloadRecords()
         }
       } else {
         console.log('[VoicePanelContainer] Recording too short for backup:', duration.toFixed(1), 's')
@@ -178,7 +241,7 @@ export const VoicePanelContainer: React.FC = () => {
     }
 
     saveOfflineBackup()
-  }, [pendingOfflineError, getActiveProjectPath, voiceInput, reloadBackups])
+  }, [pendingOfflineError, getActiveProjectPath, voiceInput, reloadRecords])
 
   // Auto-save backup when transcription fails (error occurs)
   // This effect runs when voiceInput.error changes
@@ -199,7 +262,7 @@ export const VoicePanelContainer: React.FC = () => {
           if (backupId) {
             console.log('[VoicePanelContainer] Backup saved:', backupId)
             // Reload backups to show the new one
-            await reloadBackups()
+            await reloadRecords()
           }
         }
       }
@@ -207,7 +270,7 @@ export const VoicePanelContainer: React.FC = () => {
     }
 
     saveBackupOnError()
-  }, [voiceInput.error, voiceInput, getActiveProjectPath, reloadBackups])
+  }, [voiceInput.error, voiceInput, getActiveProjectPath, reloadRecords])
 
   // Handle closing the panel
   const handleClose = useCallback(() => {
@@ -215,22 +278,57 @@ export const VoicePanelContainer: React.FC = () => {
     dispatch({ type: 'SET_VOICE_PANEL', payload: false })
   }, [voiceInput, dispatch])
 
-  // Voice transcription handlers (connected to global state)
-  const handleAddTranscription = useCallback((transcription: VoiceTranscription) => {
+  // Voice transcription handlers - now using unified voiceRecords API
+  const handleAddTranscription = useCallback(async (transcription: VoiceTranscription) => {
+    // Update local state first for responsiveness
     dispatch({ type: 'ADD_VOICE_TRANSCRIPTION', payload: transcription })
-  }, [dispatch])
 
-  const handleUpdateTranscription = useCallback((id: string, text: string) => {
+    // Persist to disk using unified records API
+    const projectPath = getActiveProjectPath()
+    if (projectPath) {
+      const record: VoiceRecord = {
+        id: transcription.id,
+        timestamp: transcription.timestamp,
+        source: transcription.source,
+        projectId: transcription.projectId,
+        status: 'transcribed',
+        text: transcription.text,
+        insertedTo: transcription.insertedTo
+      }
+      await window.api.voiceRecords.add(projectPath, record)
+    }
+  }, [dispatch, getActiveProjectPath])
+
+  const handleUpdateTranscription = useCallback(async (id: string, text: string) => {
     dispatch({ type: 'UPDATE_VOICE_TRANSCRIPTION', payload: { id, text } })
-  }, [dispatch])
 
-  const handleDeleteTranscription = useCallback((id: string) => {
+    // Persist to disk
+    const projectPath = getActiveProjectPath()
+    if (projectPath) {
+      await window.api.voiceRecords.update(projectPath, id, { text })
+    }
+  }, [dispatch, getActiveProjectPath])
+
+  const handleDeleteTranscription = useCallback(async (id: string) => {
     dispatch({ type: 'DELETE_VOICE_TRANSCRIPTION', payload: id })
-  }, [dispatch])
 
-  const handleClearTranscriptions = useCallback(() => {
+    // Persist to disk
+    const projectPath = getActiveProjectPath()
+    if (projectPath) {
+      await window.api.voiceRecords.delete(projectPath, id)
+    }
+  }, [dispatch, getActiveProjectPath])
+
+  const handleClearTranscriptions = useCallback(async () => {
     dispatch({ type: 'CLEAR_VOICE_TRANSCRIPTIONS' })
-  }, [dispatch])
+
+    // Clear all records from disk
+    const projectPath = getActiveProjectPath()
+    if (projectPath) {
+      await window.api.voiceRecords.clear(projectPath)
+    }
+    setPendingBackups([])
+  }, [dispatch, getActiveProjectPath])
 
   // Handle retry backup transcription
   const handleRetryBackup = useCallback(async (backupId: string) => {
@@ -241,8 +339,8 @@ export const VoicePanelContainer: React.FC = () => {
     setRetryInterimText('') // Clear previous interim text
 
     try {
-      // Update backup status
-      await window.api.voiceBackup.update(projectPath, backupId, { status: 'retrying' })
+      // Update record status to retrying
+      await window.api.voiceRecords.update(projectPath, backupId, { status: 'retrying' })
       setPendingBackups(prev => prev.map(b =>
         b.id === backupId ? { ...b, status: 'retrying' as const } : b
       ))
@@ -268,17 +366,17 @@ export const VoicePanelContainer: React.FC = () => {
       )
 
       if (transcribedText) {
-        // Success! Add transcription and delete backup
-        handleAddTranscription({
-          id: Date.now().toString(),
-          text: transcribedText,
-          timestamp: Date.now(),
-          source: backup.source,
-          projectId: state.activeProjectId || undefined
+        // Success! Update the record to transcribed status
+        await window.api.voiceRecords.update(projectPath, backupId, {
+          status: 'transcribed',
+          text: transcribedText
         })
 
+        // Delete the audio file (no longer needed)
         await window.api.voiceBackup.delete(projectPath, backupId)
-        setPendingBackups(prev => prev.filter(b => b.id !== backupId))
+
+        // Reload to get updated records
+        await reloadRecords()
       } else {
         throw new Error('Transcription returned empty result')
       }
@@ -286,9 +384,9 @@ export const VoicePanelContainer: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       console.error('Retry transcription failed:', errorMessage)
 
-      // Update backup with error info
+      // Update record with error info
       const backup = pendingBackups.find(b => b.id === backupId)
-      await window.api.voiceBackup.update(projectPath, backupId, {
+      await window.api.voiceRecords.update(projectPath, backupId, {
         status: 'failed',
         retryCount: (backup?.retryCount || 0) + 1,
         lastError: errorMessage
@@ -306,7 +404,7 @@ export const VoicePanelContainer: React.FC = () => {
       setRetryingBackupId(null)
       setRetryInterimText('') // Clear interim text when done
     }
-  }, [getActiveProjectPath, pendingBackups, voiceInput, handleAddTranscription, state.activeProjectId])
+  }, [getActiveProjectPath, pendingBackups, voiceInput, reloadRecords])
 
   // Handle delete backup
   const handleDeleteBackup = useCallback(async (backupId: string) => {
@@ -314,7 +412,8 @@ export const VoicePanelContainer: React.FC = () => {
     if (!projectPath) return
 
     try {
-      await window.api.voiceBackup.delete(projectPath, backupId)
+      // Delete from unified records (also deletes audio file)
+      await window.api.voiceRecords.delete(projectPath, backupId)
       setPendingBackups(prev => prev.filter(b => b.id !== backupId))
     } catch (error) {
       console.error('Failed to delete backup:', error)

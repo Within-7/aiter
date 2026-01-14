@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import * as fs from 'fs/promises'
 import { createWriteStream, WriteStream } from 'fs'
 import * as path from 'path'
@@ -7,8 +7,7 @@ import type {
   VoiceBackupsIndex,
   VoiceRecord,
   VoiceRecordsFile,
-  VoiceNotesFile,
-  VoiceTranscription
+  VoiceNotesFile
 } from '../../types/voiceInput'
 import {
   VOICE_NOTES_DIR,
@@ -16,9 +15,6 @@ import {
   VOICE_NOTES_FILENAME,
   VOICE_RECORDS_FILENAME
 } from '../../types/voiceInput'
-
-// Reference to main window for sending events
-let mainWindow: BrowserWindow | null = null
 
 const INDEX_FILENAME = 'index.json' // Legacy backup index
 
