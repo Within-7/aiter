@@ -243,13 +243,16 @@ export class QwenASRService implements VoiceRecognitionService {
           console.log('[QwenASR] User stopped, final combined result:', allText)
           this.finalCallback?.(allText)
 
+          // Save backup ID before endStreamingBackup clears it
+          const currentBackupId = this.streamingBackupId
+
           // End streaming backup - mark as completed if we got text, pending if empty
           const transcriptionSucceeded = allText.trim().length > 0
           this.endStreamingBackup(transcriptionSucceeded, transcriptionSucceeded ? undefined : 'Empty transcription')
 
-          // Resolve the stop() Promise with the result
+          // Resolve the stop() Promise with the result (include backupId for record update)
           if (this.stopResolve) {
-            const result: StopResult = { text: allText, segments }
+            const result: StopResult = { text: allText, segments, backupId: currentBackupId || undefined }
             this.stopResolve(result)
             this.stopResolve = null
           }
@@ -401,9 +404,14 @@ export class QwenASRService implements VoiceRecognitionService {
           // Combine all segments with current accumulated text
           const allText = [...this.allSegments, this.accumulatedText].filter(s => s.trim()).join('\n')
           console.log('[QwenASR] Timeout final result:', allText || '(empty)')
+
+          // Save backup ID before endStreamingBackup clears it
+          const currentBackupId = this.streamingBackupId
+
           const result: StopResult = {
             text: allText,
-            segments: [...this.allSegments, this.accumulatedText].filter(s => s.trim())
+            segments: [...this.allSegments, this.accumulatedText].filter(s => s.trim()),
+            backupId: currentBackupId || undefined
           }
           this.finalCallback?.(allText)
           this.stopResolve = null

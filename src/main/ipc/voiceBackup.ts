@@ -597,15 +597,13 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
         await writeRecords(projectPath, recordsFile)
       }
 
-      // If completed successfully, delete the audio file and remove from records
+      // If completed successfully, delete the audio file only (keep record for text update)
+      // The record will be updated with transcription text by the renderer
       if (finalStatus === 'completed') {
         const audioPath = path.join(getBackupsDir(projectPath), `${backupId}.pcm`)
         try {
           await fs.unlink(audioPath)
-          // Also remove from records
-          recordsFile.records = recordsFile.records.filter(r => r.id !== backupId)
-          await writeRecords(projectPath, recordsFile)
-          console.log('[voiceBackup:endStream] Completed backup deleted:', backupId)
+          console.log('[voiceBackup:endStream] Audio file deleted:', backupId)
         } catch (e) {
           // Ignore if file doesn't exist
           if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e

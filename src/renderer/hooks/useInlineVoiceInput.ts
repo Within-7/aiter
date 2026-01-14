@@ -5,7 +5,8 @@ import type { VoiceInputSettings, VoiceInputState } from '../../types/voiceInput
 
 interface UseInlineVoiceInputOptions {
   settings: VoiceInputSettings
-  onTextInsert: (text: string) => void
+  /** Called when text should be inserted. backupId is the streaming backup ID for record update. */
+  onTextInsert: (text: string, backupId?: string) => void
   /** Called when inline mode starts (push-to-talk triggered) */
   onStart?: () => void
   /** Called when inline mode ends */
@@ -138,8 +139,8 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
       const textToInsert = result?.text || finalTextRef.current || interimTextRef.current
 
       if (textToInsert.trim()) {
-        console.log('[useInlineVoiceInput] Auto-inserting:', textToInsert)
-        onTextInsertRef.current(textToInsert)
+        console.log('[useInlineVoiceInput] Auto-inserting:', textToInsert, 'backupId:', result?.backupId)
+        onTextInsertRef.current(textToInsert, result?.backupId)
       }
     }
 

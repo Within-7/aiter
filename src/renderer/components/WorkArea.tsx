@@ -69,7 +69,8 @@ export const WorkArea: React.FC = () => {
   }, [dispatch])
 
   // Handle inline voice text insertion (for Push-to-Talk)
-  const handleInlineVoiceInsert = useCallback((text: string) => {
+  // backupId is the streaming backup ID - if provided, update existing record instead of creating new one
+  const handleInlineVoiceInsert = useCallback((text: string, backupId?: string) => {
     // Sanitize text for terminal: replace newlines with spaces
     const sanitizeForTerminal = (t: string) => t
       .replace(/\r\n/g, ' ')
@@ -102,11 +103,15 @@ export const WorkArea: React.FC = () => {
       console.log('[WorkArea] No active target for inline voice input')
     }
 
+    // Use backupId if available (streaming backup created record), otherwise generate new ID
+    const recordId = backupId || Date.now().toString()
+    const timestamp = backupId ? parseInt(backupId, 10) : Date.now()
+
     // Add to voice transcription history (shared with voice panel)
     const transcription: VoiceTranscription = {
-      id: Date.now().toString(),
+      id: recordId,
       text: text.trim(),
-      timestamp: Date.now(),
+      timestamp,
       source: 'inline',
       projectId: state.activeProjectId,
       insertedTo
@@ -115,18 +120,30 @@ export const WorkArea: React.FC = () => {
 
     // Persist to disk using unified records API
     if (activeProjectPath) {
-      const record: VoiceRecord = {
-        id: transcription.id,
-        timestamp: transcription.timestamp,
-        source: transcription.source,
-        projectId: transcription.projectId,
-        status: 'transcribed',
-        text: transcription.text,
-        insertedTo: transcription.insertedTo
+      if (backupId) {
+        // Update existing record created by streaming backup
+        window.api.voiceRecords.update(activeProjectPath, backupId, {
+          status: 'transcribed',
+          text: transcription.text,
+          insertedTo: transcription.insertedTo
+        }).catch(err => {
+          console.error('[WorkArea] Failed to update voice record:', err)
+        })
+      } else {
+        // Create new record (fallback if no streaming backup)
+        const record: VoiceRecord = {
+          id: transcription.id,
+          timestamp: transcription.timestamp,
+          source: transcription.source,
+          projectId: transcription.projectId,
+          status: 'transcribed',
+          text: transcription.text,
+          insertedTo: transcription.insertedTo
+        }
+        window.api.voiceRecords.add(activeProjectPath, record).catch(err => {
+          console.error('[WorkArea] Failed to persist voice transcription:', err)
+        })
       }
-      window.api.voiceRecords.add(activeProjectPath, record).catch(err => {
-        console.error('[WorkArea] Failed to persist voice transcription:', err)
-      })
     }
   }, [state.activeTerminalId, state.activeEditorTabId, state.activeProjectId, voiceSettings.autoExecuteInTerminal, dispatch, activeProjectPath])
 
