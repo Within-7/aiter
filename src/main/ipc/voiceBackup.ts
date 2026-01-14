@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import * as fs from 'fs/promises'
 import { createWriteStream, WriteStream } from 'fs'
 import * as path from 'path'
@@ -189,9 +189,7 @@ async function writeIndex(projectPath: string, index: VoiceBackupsIndex): Promis
   await fs.writeFile(indexPath, JSON.stringify(index, null, 2), 'utf-8')
 }
 
-export function registerVoiceBackupHandlers(window: BrowserWindow) {
-  mainWindow = window
-
+export function registerVoiceBackupHandlers(_window: BrowserWindow) {
   // ============== Unified Records API ==============
 
   // List all voice records (transcriptions + pending backups)
