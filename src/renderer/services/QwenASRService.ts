@@ -304,6 +304,13 @@ export class QwenASRService implements VoiceRecognitionService {
       }
       console.log('[QwenASR] Connection closed for session:', this.mainSessionId, data.code, data.reason)
 
+      // Ignore close events during connection phase or in offline mode
+      // Connection failures during connecting are handled in start() which enters offline mode
+      if (this.isConnecting || this.isOfflineMode) {
+        console.log('[QwenASR] Ignoring close event (connecting:', this.isConnecting, 'offline:', this.isOfflineMode, ')')
+        return
+      }
+
       // Only cleanup if we're still running (unexpected closure)
       // If user stopped, cleanup will be handled by stop()
       if (this.isRunning && !this.userStopped) {
