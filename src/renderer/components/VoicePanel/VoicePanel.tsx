@@ -79,6 +79,26 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
     }))
   }, [transcriptions])
 
+  // Create a unified timeline of messages and pending backups, sorted by timestamp
+  type TimelineItem =
+    | { type: 'message'; data: VoiceMessage }
+    | { type: 'backup'; data: VoiceBackup }
+
+  const timeline = useMemo<TimelineItem[]>(() => {
+    const items: TimelineItem[] = [
+      ...messages.map(m => ({ type: 'message' as const, data: m })),
+      ...pendingBackups
+        .filter(b => b.status !== 'recording') // Don't show actively recording backups
+        .map(b => ({ type: 'backup' as const, data: b }))
+    ]
+    // Sort by timestamp, oldest first (newest at bottom)
+    return items.sort((a, b) => {
+      const timestampA = a.type === 'message' ? a.data.timestamp.getTime() : a.data.timestamp
+      const timestampB = b.type === 'message' ? b.data.timestamp.getTime() : b.data.timestamp
+      return timestampA - timestampB
+    })
+  }, [messages, pendingBackups])
+
   // Track previous recording state to detect when recording stops
   const prevIsRecordingRef = useRef(isRecording)
   const lastAddedTextRef = useRef('')
@@ -214,18 +234,19 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
 
       {/* Messages list */}
       <div className="voice-panel-messages">
-        {messages.length === 0 && pendingBackups.length === 0 && !isRecording && !interimText ? (
+        {timeline.length === 0 && !isRecording && !interimText ? (
           <div className="voice-panel-empty">
             <p>{t('messages.emptyHint')}</p>
           </div>
         ) : (
           <>
-            {/* Pending backups (failed transcriptions) */}
-            {pendingBackups.map(backup => (
-              <div key={`backup-${backup.id}`} className={`voice-message voice-backup-pending ${backup.status === 'retrying' || retryingBackupId === backup.id ? 'voice-backup-retrying' : ''}`}>
+            {/* Timeline: messages and backups sorted by timestamp */}
+            {timeline.map(item => item.type === 'backup' ? (
+              // Pending backup item
+              <div key={`backup-${item.data.id}`} className={`voice-message voice-backup-pending ${item.data.status === 'retrying' || retryingBackupId === item.data.id ? 'voice-backup-retrying' : ''}`}>
                 <div className="voice-backup-content">
                   <div className="voice-backup-icon">
-                    {backup.status === 'retrying' || retryingBackupId === backup.id ? (
+                    {item.data.status === 'retrying' || retryingBackupId === item.data.id ? (
                       <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" className="spinning">
                         <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
                       </svg>
@@ -237,30 +258,30 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
                   </div>
                   <div className="voice-backup-info">
                     <div className="voice-backup-title">
-                      {backup.status === 'retrying' || retryingBackupId === backup.id
+                      {item.data.status === 'retrying' || retryingBackupId === item.data.id
                         ? t('backup.retrying', { defaultValue: '重试中...' })
                         : t('backup.pending', { defaultValue: '待转录' })}
-                      <span className="voice-backup-duration">({formatDuration(backup.duration)})</span>
+                      <span className="voice-backup-duration">({formatDuration(item.data.duration)})</span>
                     </div>
                     <div className="voice-backup-meta">
-                      {t('backup.recordedAt', { defaultValue: '录制于' })} {formatTime(backup.timestamp)}
-                      {backup.retryCount > 0 && (
+                      {t('backup.recordedAt', { defaultValue: '录制于' })} {formatTime(item.data.timestamp)}
+                      {item.data.retryCount > 0 && (
                         <span className="voice-backup-retry-count">
-                          · {t('backup.retryCount', { count: backup.retryCount, defaultValue: `已重试 ${backup.retryCount} 次` })}
+                          · {t('backup.retryCount', { count: item.data.retryCount, defaultValue: `已重试 ${item.data.retryCount} 次` })}
                         </span>
                       )}
                     </div>
-                    {backup.lastError && (
-                      <div className="voice-backup-error" title={backup.lastError}>
-                        {backup.lastError.length > 50 ? backup.lastError.slice(0, 50) + '...' : backup.lastError}
+                    {item.data.lastError && (
+                      <div className="voice-backup-error" title={item.data.lastError}>
+                        {item.data.lastError.length > 50 ? item.data.lastError.slice(0, 50) + '...' : item.data.lastError}
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="voice-backup-actions">
                   <button
-                    onClick={() => onRetryBackup(backup.id)}
-                    disabled={backup.status === 'retrying' || retryingBackupId === backup.id}
+                    onClick={() => onRetryBackup(item.data.id)}
+                    disabled={item.data.status === 'retrying' || retryingBackupId === item.data.id}
                     title={t('backup.retry', { defaultValue: '重试' })}
                     className="btn-retry"
                   >
@@ -269,8 +290,8 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
                     </svg>
                   </button>
                   <button
-                    onClick={() => onDeleteBackup(backup.id)}
-                    disabled={backup.status === 'retrying' || retryingBackupId === backup.id}
+                    onClick={() => onDeleteBackup(item.data.id)}
+                    disabled={item.data.status === 'retrying' || retryingBackupId === item.data.id}
                     title={t('actions.delete')}
                     className="btn-delete"
                   >
@@ -280,12 +301,10 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
                   </button>
                 </div>
               </div>
-            ))}
-
-            {/* Transcribed messages */}
-            {messages.map(message => (
-              <div key={message.id} className={`voice-message ${message.source === 'inline' ? 'voice-message-inline' : ''}`}>
-                {editingId === message.id ? (
+            ) : (
+              // Transcribed message item
+              <div key={item.data.id} className={`voice-message ${item.data.source === 'inline' ? 'voice-message-inline' : ''}`}>
+                {editingId === item.data.id ? (
                   <div className="voice-message-edit">
                     <textarea
                       ref={textareaRef}
@@ -300,24 +319,24 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
                   </div>
                 ) : (
                   <>
-                    <div className="voice-message-text">{message.text}</div>
+                    <div className="voice-message-text">{item.data.text}</div>
                     <div className="voice-message-actions">
-                      <button onClick={() => handleInsert(message.text)} title={t('actions.insert')} disabled={!activeTarget}>
+                      <button onClick={() => handleInsert(item.data.text)} title={t('actions.insert')} disabled={!activeTarget}>
                         <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
                           <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                         </svg>
                       </button>
-                      <button onClick={() => handleCopy(message.text)} title={t('actions.copy')}>
+                      <button onClick={() => handleCopy(item.data.text)} title={t('actions.copy')}>
                         <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
                           <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                         </svg>
                       </button>
-                      <button onClick={() => handleEdit(message)} title={t('actions.edit')}>
+                      <button onClick={() => handleEdit(item.data)} title={t('actions.edit')}>
                         <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
                           <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                         </svg>
                       </button>
-                      <button onClick={() => handleDelete(message.id)} title={t('actions.delete')}>
+                      <button onClick={() => handleDelete(item.data.id)} title={t('actions.delete')}>
                         <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12">
                           <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
                         </svg>

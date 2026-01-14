@@ -549,25 +549,26 @@ export class QwenASRService implements VoiceRecognitionService {
         }
       }
 
+      // Start streaming backup BEFORE connecting audio nodes
+      // This ensures the file stream is ready before any audio chunks arrive
+      await this.startStreamingBackup()
+
       // Connect nodes
       console.log('[QwenASR] Connecting audio nodes...')
       this.sourceNode.connect(this.workletNode)
       // Don't connect to destination - we don't need audio output
 
       console.log('[QwenASR] Audio capture started with AudioWorklet')
-
-      // Start streaming backup to disk
-      this.startStreamingBackup()
     } catch (error) {
       console.error('[QwenASR] Audio capture error:', error)
 
       // Fallback to ScriptProcessor if AudioWorklet fails
       console.log('[QwenASR] Falling back to ScriptProcessor...')
-      this.startAudioCaptureWithScriptProcessor()
+      await this.startAudioCaptureWithScriptProcessor()
     }
   }
 
-  private startAudioCaptureWithScriptProcessor(): void {
+  private async startAudioCaptureWithScriptProcessor(): Promise<void> {
     if (!this.mediaStream || !this.audioContext) return
 
     try {
@@ -606,13 +607,14 @@ export class QwenASRService implements VoiceRecognitionService {
         }
       }
 
+      // Start streaming backup BEFORE connecting audio nodes
+      // This ensures the file stream is ready before any audio chunks arrive
+      await this.startStreamingBackup()
+
       source.connect(processor)
       processor.connect(this.audioContext.destination)
 
       console.log('[QwenASR] Audio capture started with ScriptProcessor (fallback)')
-
-      // Start streaming backup to disk
-      this.startStreamingBackup()
     } catch (error) {
       console.error('[QwenASR] ScriptProcessor fallback error:', error)
       this.errorCallback?.('音频采集失败')
@@ -935,16 +937,40 @@ export class QwenASRService implements VoiceRecognitionService {
       // Create a promise that resolves when we get a final result
       const transcriptionPromise = new Promise<string>((resolve, reject) => {
         let resultText = ''
+        let interimText = ''
+        let allSegments: string[] = []
         const timeout = setTimeout(() => {
           cleanup()
-          reject(new Error('Transcription timeout'))
+          // If we got some text, don't reject - return what we have
+          const finalText = allSegments.length > 0
+            ? allSegments.join('\n')
+            : (resultText || interimText)
+          if (finalText) {
+            console.log('[QwenASR] Retry timeout, returning accumulated text:', finalText)
+            resolve(finalText)
+          } else {
+            reject(new Error('Transcription timeout - no text received'))
+          }
         }, 30000) // 30 second timeout
 
         // Setup listeners for this retry session
+        // Listen for interim results - these contain the transcription in progress
+        const cleanupInterim = window.api.voice.qwenAsr.onInterim((data) => {
+          if (data?.sessionId !== startResult.sessionId) return
+          interimText = data.text || ''
+          console.log('[QwenASR] Retry interim:', interimText)
+        })
+
         const cleanupFinal = window.api.voice.qwenAsr.onFinal((data) => {
           if (data?.sessionId !== startResult.sessionId) return
-          resultText = data.text || ''
-          console.log('[QwenASR] Retry got final result:', resultText)
+          const text = data.text || interimText
+          console.log('[QwenASR] Retry got final result:', text)
+          if (text.trim()) {
+            allSegments.push(text)
+            resultText = text
+          }
+          // Reset interim for next segment
+          interimText = ''
         })
 
         const cleanupError = window.api.voice.qwenAsr.onError((data) => {
@@ -957,11 +983,16 @@ export class QwenASRService implements VoiceRecognitionService {
           if (data?.sessionId !== startResult.sessionId) return
           console.log('[QwenASR] Retry session closed')
           cleanup()
-          resolve(resultText)
+          // Return all accumulated segments
+          const finalText = allSegments.length > 0
+            ? allSegments.join('\n')
+            : (resultText || interimText)
+          resolve(finalText)
         })
 
         const cleanup = () => {
           clearTimeout(timeout)
+          cleanupInterim()
           cleanupFinal()
           cleanupError()
           cleanupClosed()

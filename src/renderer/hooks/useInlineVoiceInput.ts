@@ -129,12 +129,18 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
     // (or times out after 800ms)
     const result = await managerRef.current?.stop()
 
-    // Use the result from stop() if available, otherwise fall back to refs
-    const textToInsert = result?.text || finalTextRef.current || interimTextRef.current
+    // For offline recordings, don't insert text - the audio is saved for later retry
+    if (result?.needsBackup) {
+      console.log('[useInlineVoiceInput] Offline recording - audio saved, no text to insert')
+      // Don't insert the "⏺ 离线录音中..." placeholder text
+    } else {
+      // Use the result from stop() if available, otherwise fall back to refs
+      const textToInsert = result?.text || finalTextRef.current || interimTextRef.current
 
-    if (textToInsert.trim()) {
-      console.log('[useInlineVoiceInput] Auto-inserting:', textToInsert)
-      onTextInsertRef.current(textToInsert)
+      if (textToInsert.trim()) {
+        console.log('[useInlineVoiceInput] Auto-inserting:', textToInsert)
+        onTextInsertRef.current(textToInsert)
+      }
     }
 
     // Reset state
