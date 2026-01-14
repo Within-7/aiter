@@ -939,6 +939,9 @@ export class QwenASRService implements VoiceRecognitionService {
 
       console.log('[QwenASR] Retry session started, session ID:', startResult.sessionId)
 
+      // External reference to startIdleDetection function (set inside Promise constructor)
+      let startIdleDetection: (() => void) | null = null
+
       // Create a promise that resolves when we get a final result
       const transcriptionPromise = new Promise<string>((resolve, reject) => {
         let resultText = ''
@@ -963,8 +966,8 @@ export class QwenASRService implements VoiceRecognitionService {
           resolve(finalText)
         }
 
-        // Start idle detection after audio is sent
-        const startIdleDetection = () => {
+        // Start idle detection after audio is sent - assign to external variable
+        startIdleDetection = () => {
           audioSentComplete = true
           // Check every 500ms if we've been idle (no new interim) for 1.5 seconds
           const checkIdle = () => {
@@ -1041,13 +1044,7 @@ export class QwenASRService implements VoiceRecognitionService {
           cleanupError()
           cleanupClosed()
         }
-
-        // Export startIdleDetection so we can call it after sending audio
-        ;(transcriptionPromise as Promise<string> & { startIdleDetection?: () => void }).startIdleDetection = startIdleDetection
       })
-
-      // Type assertion to access startIdleDetection
-      const promiseWithDetection = transcriptionPromise as Promise<string> & { startIdleDetection?: () => void }
 
       // Send all the audio data
       // For large audio, we may need to send in chunks
@@ -1080,10 +1077,10 @@ export class QwenASRService implements VoiceRecognitionService {
       await window.api.voice.qwenAsr.commit()
 
       // Start idle detection now that all audio is sent
-      promiseWithDetection.startIdleDetection?.()
+      startIdleDetection?.()
 
       // Wait for result
-      const result = await promiseWithDetection
+      const result = await transcriptionPromise
 
       // Stop the session
       await window.api.voice.qwenAsr.stop()

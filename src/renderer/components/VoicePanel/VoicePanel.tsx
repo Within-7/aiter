@@ -114,7 +114,9 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
     if (wasRecording && !isRecording && interimText.trim()) {
       // Recording just stopped with text - add as new transcription
       const text = interimText.trim()
-      if (text !== lastAddedTextRef.current) {
+      // Skip offline placeholder text - it's not a real transcription
+      const isOfflinePlaceholder = text === '⏺ 离线录音中...'
+      if (text !== lastAddedTextRef.current && !isOfflinePlaceholder) {
         lastAddedTextRef.current = text
         onAddTranscription({
           id: Date.now().toString(),
