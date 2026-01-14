@@ -11,7 +11,7 @@ import { TerminalContainer } from './TerminalContainer'
 import { ConfirmDialog } from './FileTree/ConfirmDialog'
 import { VoiceInputButton, InlineVoiceBubble } from './VoiceInput'
 import { useInlineVoiceInput } from '../hooks/useInlineVoiceInput'
-import { defaultVoiceInputSettings, VoiceTranscription } from '../../types/voiceInput'
+import { defaultVoiceInputSettings, VoiceTranscription, VoiceRecord } from '../../types/voiceInput'
 import { getProjectColor } from '../utils/projectColors'
 import '../styles/WorkArea.css'
 
@@ -112,7 +112,23 @@ export const WorkArea: React.FC = () => {
       insertedTo
     }
     dispatch({ type: 'ADD_VOICE_TRANSCRIPTION', payload: transcription })
-  }, [state.activeTerminalId, state.activeEditorTabId, state.activeProjectId, voiceSettings.autoExecuteInTerminal, dispatch])
+
+    // Persist to disk using unified records API
+    if (activeProjectPath) {
+      const record: VoiceRecord = {
+        id: transcription.id,
+        timestamp: transcription.timestamp,
+        source: transcription.source,
+        projectId: transcription.projectId,
+        status: 'transcribed',
+        text: transcription.text,
+        insertedTo: transcription.insertedTo
+      }
+      window.api.voiceRecords.add(activeProjectPath, record).catch(err => {
+        console.error('[WorkArea] Failed to persist voice transcription:', err)
+      })
+    }
+  }, [state.activeTerminalId, state.activeEditorTabId, state.activeProjectId, voiceSettings.autoExecuteInTerminal, dispatch, activeProjectPath])
 
   // Inline voice input (Push-to-Talk mode)
   // Only enable if voice panel is not open (avoid conflict)
