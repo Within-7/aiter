@@ -248,9 +248,14 @@ export class VoiceInputManager {
    *
    * @param audioBase64 - Base64 encoded audio data
    * @param sampleRate - Sample rate of the audio
+   * @param onInterim - Optional callback for real-time interim results during retry
    * @returns Promise resolving to transcribed text or null
    */
-  async retryTranscription(audioBase64: string, sampleRate: number = 16000): Promise<string | null> {
+  async retryTranscription(
+    audioBase64: string,
+    sampleRate: number = 16000,
+    onInterim?: (text: string) => void
+  ): Promise<string | null> {
     if (this.currentState === 'recording') {
       console.warn('[VoiceInputManager] Cannot retry while recording')
       return null
@@ -261,7 +266,7 @@ export class VoiceInputManager {
       return null
     }
 
-    return this.service.retryTranscription(audioBase64, sampleRate)
+    return this.service.retryTranscription(audioBase64, sampleRate, onInterim)
   }
 
   /**

@@ -11,6 +11,7 @@ export const VoicePanelContainer: React.FC = () => {
   const { state, dispatch } = useContext(AppContext)
   const [pendingBackups, setPendingBackups] = useState<VoiceBackup[]>([])
   const [retryingBackupId, setRetryingBackupId] = useState<string | null>(null)
+  const [retryInterimText, setRetryInterimText] = useState<string>('')
   const lastLoadedProjectRef = useRef<string | null>(null)
 
   // Get voice settings from app settings
@@ -237,6 +238,7 @@ export const VoicePanelContainer: React.FC = () => {
     if (!projectPath) return
 
     setRetryingBackupId(backupId)
+    setRetryInterimText('') // Clear previous interim text
 
     try {
       // Update backup status
@@ -258,8 +260,12 @@ export const VoicePanelContainer: React.FC = () => {
       }
 
       // Try to transcribe using the ASR service
-      // We need to access the ASR service through voiceInput hook's service ref
-      const transcribedText = await voiceInput.retryTranscription(readResult.audioData, backup.sampleRate)
+      // Pass interim callback for real-time display
+      const transcribedText = await voiceInput.retryTranscription(
+        readResult.audioData,
+        backup.sampleRate,
+        (interim) => setRetryInterimText(interim) // Real-time interim text update
+      )
 
       if (transcribedText) {
         // Success! Add transcription and delete backup
@@ -298,6 +304,7 @@ export const VoicePanelContainer: React.FC = () => {
       ))
     } finally {
       setRetryingBackupId(null)
+      setRetryInterimText('') // Clear interim text when done
     }
   }, [getActiveProjectPath, pendingBackups, voiceInput, handleAddTranscription, state.activeProjectId])
 
@@ -343,6 +350,7 @@ export const VoicePanelContainer: React.FC = () => {
       onRetryBackup={handleRetryBackup}
       onDeleteBackup={handleDeleteBackup}
       retryingBackupId={retryingBackupId}
+      retryInterimText={retryInterimText}
     />
   )
 }

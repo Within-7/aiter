@@ -37,6 +37,8 @@ interface VoicePanelProps {
   onRetryBackup: (backupId: string) => void
   onDeleteBackup: (backupId: string) => void
   retryingBackupId?: string | null
+  /** Real-time interim text during retry transcription */
+  retryInterimText?: string
 }
 
 export const VoicePanel: React.FC<VoicePanelProps> = ({
@@ -61,7 +63,8 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
   pendingBackups,
   onRetryBackup,
   onDeleteBackup,
-  retryingBackupId
+  retryingBackupId,
+  retryInterimText
 }) => {
   const { t } = useTranslation('voice')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -263,18 +266,27 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
                         : t('backup.pending', { defaultValue: '待转录' })}
                       <span className="voice-backup-duration">({formatDuration(item.data.duration)})</span>
                     </div>
-                    <div className="voice-backup-meta">
-                      {t('backup.recordedAt', { defaultValue: '录制于' })} {formatTime(item.data.timestamp)}
-                      {item.data.retryCount > 0 && (
-                        <span className="voice-backup-retry-count">
-                          · {t('backup.retryCount', { count: item.data.retryCount, defaultValue: `已重试 ${item.data.retryCount} 次` })}
-                        </span>
-                      )}
-                    </div>
-                    {item.data.lastError && (
-                      <div className="voice-backup-error" title={item.data.lastError}>
-                        {item.data.lastError.length > 50 ? item.data.lastError.slice(0, 50) + '...' : item.data.lastError}
+                    {/* Show real-time transcription during retry */}
+                    {(item.data.status === 'retrying' || retryingBackupId === item.data.id) && retryInterimText ? (
+                      <div className="voice-backup-interim">
+                        {retryInterimText}
                       </div>
+                    ) : (
+                      <>
+                        <div className="voice-backup-meta">
+                          {t('backup.recordedAt', { defaultValue: '录制于' })} {formatTime(item.data.timestamp)}
+                          {item.data.retryCount > 0 && (
+                            <span className="voice-backup-retry-count">
+                              · {t('backup.retryCount', { count: item.data.retryCount, defaultValue: `已重试 ${item.data.retryCount} 次` })}
+                            </span>
+                          )}
+                        </div>
+                        {item.data.lastError && (
+                          <div className="voice-backup-error" title={item.data.lastError}>
+                            {item.data.lastError.length > 50 ? item.data.lastError.slice(0, 50) + '...' : item.data.lastError}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

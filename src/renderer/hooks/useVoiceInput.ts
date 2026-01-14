@@ -184,12 +184,16 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
   }, [isRecording, startRecording, stopRecording])
 
   // Retry transcription with saved audio data
-  const retryTranscription = useCallback(async (audioBase64: string, sampleRate: number = 16000): Promise<string | null> => {
+  const retryTranscription = useCallback(async (
+    audioBase64: string,
+    sampleRate: number = 16000,
+    onInterim?: (text: string) => void
+  ): Promise<string | null> => {
     if (!managerRef.current) {
       console.error('[useVoiceInput] Manager not available for retry')
       return null
     }
-    return managerRef.current.retryTranscription(audioBase64, sampleRate)
+    return managerRef.current.retryTranscription(audioBase64, sampleRate, onInterim)
   }, [])
 
   // Save current audio as backup

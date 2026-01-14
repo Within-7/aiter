@@ -455,6 +455,15 @@
   text-overflow: ellipsis;
 }
 
+/* Real-time interim text during retry */
+.voice-backup-interim {
+  font-size: 12px;
+  color: #ccc;
+  margin-top: 4px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
 /* Backup action buttons */
 .voice-backup-actions {
   display: flex;

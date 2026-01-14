@@ -915,9 +915,14 @@ export class QwenASRService implements VoiceRecognitionService {
    *
    * @param audioBase64 - Base64 encoded 16-bit PCM audio at the specified sample rate
    * @param sampleRate - Sample rate of the audio (default 16000)
+   * @param onInterim - Optional callback for real-time interim results
    * @returns Promise resolving to the transcribed text, or null on failure
    */
-  async retryTranscription(audioBase64: string, sampleRate: number = 16000): Promise<string | null> {
+  async retryTranscription(
+    audioBase64: string,
+    sampleRate: number = 16000,
+    onInterim?: (text: string) => void
+  ): Promise<string | null> {
     console.log('[QwenASR] Starting retry transcription, audio length:', audioBase64.length)
 
     try {
@@ -939,26 +944,64 @@ export class QwenASRService implements VoiceRecognitionService {
         let resultText = ''
         let interimText = ''
         let allSegments: string[] = []
-        const timeout = setTimeout(() => {
-          cleanup()
-          // If we got some text, don't reject - return what we have
-          const finalText = allSegments.length > 0
+        let lastInterimTime = 0
+        let audioSentComplete = false
+        let idleTimeout: NodeJS.Timeout | null = null
+
+        // Helper to get final text
+        const getFinalText = () => {
+          return allSegments.length > 0
             ? allSegments.join('\n')
             : (resultText || interimText)
+        }
+
+        // Helper to resolve with current text
+        const resolveWithText = (reason: string) => {
+          cleanup()
+          const finalText = getFinalText()
+          console.log(`[QwenASR] Retry ${reason}, returning:`, finalText)
+          resolve(finalText)
+        }
+
+        // Start idle detection after audio is sent
+        const startIdleDetection = () => {
+          audioSentComplete = true
+          // Check every 500ms if we've been idle (no new interim) for 1.5 seconds
+          const checkIdle = () => {
+            if (!audioSentComplete) return
+            const idleTime = Date.now() - lastInterimTime
+            if (lastInterimTime > 0 && idleTime >= 1500) {
+              // No new interim for 1.5 seconds after audio sent - transcription likely done
+              resolveWithText('idle timeout (1.5s no new text)')
+            } else {
+              idleTimeout = setTimeout(checkIdle, 500)
+            }
+          }
+          idleTimeout = setTimeout(checkIdle, 500)
+        }
+
+        // Fallback timeout - 30 seconds max
+        const maxTimeout = setTimeout(() => {
+          const finalText = getFinalText()
           if (finalText) {
-            console.log('[QwenASR] Retry timeout, returning accumulated text:', finalText)
-            resolve(finalText)
+            resolveWithText('max timeout')
           } else {
+            cleanup()
             reject(new Error('Transcription timeout - no text received'))
           }
-        }, 30000) // 30 second timeout
+        }, 30000)
 
         // Setup listeners for this retry session
         // Listen for interim results - these contain the transcription in progress
         const cleanupInterim = window.api.voice.qwenAsr.onInterim((data) => {
           if (data?.sessionId !== startResult.sessionId) return
           interimText = data.text || ''
+          lastInterimTime = Date.now()
           console.log('[QwenASR] Retry interim:', interimText)
+          // Call the interim callback for real-time display
+          if (onInterim && interimText) {
+            onInterim(interimText)
+          }
         })
 
         const cleanupFinal = window.api.voice.qwenAsr.onFinal((data) => {
@@ -968,9 +1011,14 @@ export class QwenASRService implements VoiceRecognitionService {
           if (text.trim()) {
             allSegments.push(text)
             resultText = text
+            // Call interim callback with accumulated text
+            if (onInterim) {
+              onInterim(allSegments.join('\n'))
+            }
           }
           // Reset interim for next segment
           interimText = ''
+          lastInterimTime = Date.now()
         })
 
         const cleanupError = window.api.voice.qwenAsr.onError((data) => {
@@ -982,22 +1030,24 @@ export class QwenASRService implements VoiceRecognitionService {
         const cleanupClosed = window.api.voice.qwenAsr.onClosed((data) => {
           if (data?.sessionId !== startResult.sessionId) return
           console.log('[QwenASR] Retry session closed')
-          cleanup()
-          // Return all accumulated segments
-          const finalText = allSegments.length > 0
-            ? allSegments.join('\n')
-            : (resultText || interimText)
-          resolve(finalText)
+          resolveWithText('session closed')
         })
 
         const cleanup = () => {
-          clearTimeout(timeout)
+          clearTimeout(maxTimeout)
+          if (idleTimeout) clearTimeout(idleTimeout)
           cleanupInterim()
           cleanupFinal()
           cleanupError()
           cleanupClosed()
         }
+
+        // Export startIdleDetection so we can call it after sending audio
+        ;(transcriptionPromise as Promise<string> & { startIdleDetection?: () => void }).startIdleDetection = startIdleDetection
       })
+
+      // Type assertion to access startIdleDetection
+      const promiseWithDetection = transcriptionPromise as Promise<string> & { startIdleDetection?: () => void }
 
       // Send all the audio data
       // For large audio, we may need to send in chunks
@@ -1029,8 +1079,11 @@ export class QwenASRService implements VoiceRecognitionService {
       // Commit to signal end of audio
       await window.api.voice.qwenAsr.commit()
 
+      // Start idle detection now that all audio is sent
+      promiseWithDetection.startIdleDetection?.()
+
       // Wait for result
-      const result = await transcriptionPromise
+      const result = await promiseWithDetection
 
       // Stop the session
       await window.api.voice.qwenAsr.stop()
