@@ -4,7 +4,6 @@ import { SessionState } from '../types'
 import { Sidebar } from './components/Sidebar'
 import { WorkArea } from './components/WorkArea'
 import { VoicePanelContainer } from './components/VoicePanel/VoicePanelContainer'
-import { VoiceNotesPersistence } from './components/VoiceNotesPersistence'
 import { StatusBar } from './components/StatusBar'
 import { PluginPanel } from './components/Plugins/PluginPanel'
 import { AboutPanel } from './components/About/AboutPanel'
@@ -333,7 +332,6 @@ function App() {
           />
           <UpdateNotification />
           <KeyboardShortcutsHandler />
-          <VoiceNotesPersistence />
         </div>
       </AppContext.Provider>
     </ErrorBoundary>

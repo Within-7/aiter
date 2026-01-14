@@ -338,9 +338,9 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
     }
   })
 
-  // ============== Legacy Backup API (for audio file operations) ==============
+  // ============== Audio File Operations ==============
 
-  // Save audio backup (audio data as base64)
+  // Save audio backup (audio data as base64) - uses unified records
   ipcMain.handle('voiceBackup:save', async (_, {
     projectPath,
     backup,
@@ -360,12 +360,23 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
       await fs.writeFile(audioPath, audioBuffer)
       console.log('[voiceBackup:save] Audio saved:', audioPath, 'size:', audioBuffer.length)
 
-      // Update index
-      const index = await readIndex(projectPath)
-      // Remove existing backup with same id if any
-      index.backups = index.backups.filter(b => b.id !== backup.id)
-      index.backups.push(backup)
-      await writeIndex(projectPath, index)
+      // Update unified records (not legacy index.json)
+      const recordsFile = await readRecords(projectPath)
+      // Remove existing record with same id if any
+      recordsFile.records = recordsFile.records.filter(r => r.id !== backup.id)
+      // Add as a VoiceRecord
+      recordsFile.records.push({
+        id: backup.id,
+        timestamp: backup.timestamp,
+        source: backup.source,
+        projectId: backup.projectId,
+        status: backup.status as 'pending' | 'retrying' | 'failed',
+        duration: backup.duration,
+        sampleRate: backup.sampleRate,
+        retryCount: backup.retryCount,
+        lastError: backup.lastError
+      })
+      await writeRecords(projectPath, recordsFile)
 
       return { success: true }
     } catch (error) {
@@ -433,6 +444,8 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
   })
 
   // Delete a backup (after successful transcription or manual delete)
+  // Note: This only deletes the audio file, not the record in voice-records.json
+  // Use voiceRecords:delete to remove from records
   ipcMain.handle('voiceBackup:delete', async (_, {
     projectPath,
     backupId
@@ -440,9 +453,9 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
     projectPath: string
     backupId: string
   }) => {
-    console.log('[voiceBackup:delete] Deleting backup:', backupId)
+    console.log('[voiceBackup:delete] Deleting backup audio:', backupId)
     try {
-      // Delete audio file
+      // Delete audio file only
       const audioPath = path.join(getBackupsDir(projectPath), `${backupId}.pcm`)
       try {
         await fs.unlink(audioPath)
@@ -450,11 +463,6 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
         // Ignore if file doesn't exist
         if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
       }
-
-      // Update index
-      const index = await readIndex(projectPath)
-      index.backups = index.backups.filter(b => b.id !== backupId)
-      await writeIndex(projectPath, index)
 
       return { success: true }
     } catch (error) {
@@ -480,7 +488,7 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
 
   // === Streaming backup API ===
 
-  // Start a streaming backup session - creates file and registers in index
+  // Start a streaming backup session - creates file and registers in unified records
   ipcMain.handle('voiceBackup:startStream', async (_, {
     projectPath,
     backup
@@ -499,11 +507,20 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
       // Store stream reference
       activeStreams.set(backup.id, stream)
 
-      // Add to index with 'recording' status
-      const index = await readIndex(projectPath)
-      index.backups = index.backups.filter(b => b.id !== backup.id)
-      index.backups.push({ ...backup, status: 'recording' as const })
-      await writeIndex(projectPath, index)
+      // Add to unified records with 'recording' status
+      const recordsFile = await readRecords(projectPath)
+      recordsFile.records = recordsFile.records.filter(r => r.id !== backup.id)
+      recordsFile.records.push({
+        id: backup.id,
+        timestamp: backup.timestamp,
+        source: backup.source,
+        projectId: backup.projectId,
+        status: 'recording',
+        duration: backup.duration,
+        sampleRate: backup.sampleRate,
+        retryCount: backup.retryCount
+      })
+      await writeRecords(projectPath, recordsFile)
 
       console.log('[voiceBackup:startStream] Stream started:', audioPath)
       return { success: true }
@@ -540,7 +557,7 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
     }
   })
 
-  // End streaming backup - close file and update index
+  // End streaming backup - close file and update unified records
   ipcMain.handle('voiceBackup:endStream', async (_, {
     projectPath,
     backupId,
@@ -568,26 +585,26 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
         activeStreams.delete(backupId)
       }
 
-      // Update index with final status
-      const index = await readIndex(projectPath)
-      const backup = index.backups.find(b => b.id === backupId)
-      if (backup) {
-        backup.status = finalStatus
-        backup.duration = duration
+      // Update unified records with final status
+      const recordsFile = await readRecords(projectPath)
+      const record = recordsFile.records.find(r => r.id === backupId)
+      if (record) {
+        record.status = finalStatus === 'completed' ? 'transcribed' : finalStatus
+        record.duration = duration
         if (errorMsg) {
-          backup.lastError = errorMsg
+          record.lastError = errorMsg
         }
-        await writeIndex(projectPath, index)
+        await writeRecords(projectPath, recordsFile)
       }
 
-      // If completed successfully, delete the audio file
+      // If completed successfully, delete the audio file and remove from records
       if (finalStatus === 'completed') {
         const audioPath = path.join(getBackupsDir(projectPath), `${backupId}.pcm`)
         try {
           await fs.unlink(audioPath)
-          // Also remove from index
-          index.backups = index.backups.filter(b => b.id !== backupId)
-          await writeIndex(projectPath, index)
+          // Also remove from records
+          recordsFile.records = recordsFile.records.filter(r => r.id !== backupId)
+          await writeRecords(projectPath, recordsFile)
           console.log('[voiceBackup:endStream] Completed backup deleted:', backupId)
         } catch (e) {
           // Ignore if file doesn't exist
@@ -628,10 +645,10 @@ export function registerVoiceBackupHandlers(_window: BrowserWindow) {
         if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
       }
 
-      // Remove from index
-      const index = await readIndex(projectPath)
-      index.backups = index.backups.filter(b => b.id !== backupId)
-      await writeIndex(projectPath, index)
+      // Remove from unified records
+      const recordsFile = await readRecords(projectPath)
+      recordsFile.records = recordsFile.records.filter(r => r.id !== backupId)
+      await writeRecords(projectPath, recordsFile)
 
       return { success: true }
     } catch (error) {
