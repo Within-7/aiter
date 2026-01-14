@@ -69,7 +69,7 @@ export interface VoiceInputSettings {
   silenceTimeout: number
 }
 
-// 语音转录消息
+// 语音转录消息 (旧格式，保留用于向后兼容迁移)
 export interface VoiceTranscription {
   id: string
   text: string
@@ -79,7 +79,7 @@ export interface VoiceTranscription {
   insertedTo?: 'terminal' | 'editor'  // 插入到哪里
 }
 
-// 语音记录文件格式 (存储在项目的 .aiter/voice-notes.json)
+// 语音记录文件格式 (旧格式，保留用于向后兼容迁移)
 export interface VoiceNotesFile {
   version: 1
   projectPath: string
@@ -89,13 +89,44 @@ export interface VoiceNotesFile {
 
 // 语音记录存储路径常量
 export const VOICE_NOTES_DIR = '.aiter'
-export const VOICE_NOTES_FILENAME = 'voice-notes.json'
+export const VOICE_NOTES_FILENAME = 'voice-notes.json'  // 旧文件名，用于迁移
+export const VOICE_RECORDS_FILENAME = 'voice-records.json'  // 新的统一文件名
 export const AUDIO_BACKUPS_DIR = 'audio-backups'
 
-// 音频备份状态
+// 语音记录状态
+export type VoiceRecordStatus = 'transcribed' | 'recording' | 'pending' | 'retrying' | 'failed'
+
+// 统一的语音记录类型 (合并 VoiceTranscription 和 VoiceBackup)
+export interface VoiceRecord {
+  id: string                    // 唯一 ID (通常是时间戳)
+  timestamp: number             // 创建时间
+  source: 'inline' | 'panel'    // 来源：内联录音或面板录音
+  projectId?: string            // 关联项目 ID
+  status: VoiceRecordStatus     // 状态
+
+  // 已转录的字段
+  text?: string                 // 转录文本 (status === 'transcribed' 时有值)
+  insertedTo?: 'terminal' | 'editor'  // 插入到哪里
+
+  // 待转录的字段 (status !== 'transcribed' 时有值)
+  duration?: number             // 录音时长(秒)
+  sampleRate?: number           // 采样率 (16000)
+  retryCount?: number           // 重试次数
+  lastError?: string            // 最后一次错误信息
+}
+
+// 统一的语音记录文件格式 (存储在 .aiter/voice-records.json)
+export interface VoiceRecordsFile {
+  version: 2                    // 版本 2 表示统一格式
+  projectPath: string
+  records: VoiceRecord[]
+  lastUpdated: number
+}
+
+// 音频备份状态 (旧格式，保留用于向后兼容)
 export type VoiceBackupStatus = 'recording' | 'pending' | 'retrying' | 'failed' | 'completed'
 
-// 音频备份元数据
+// 音频备份元数据 (旧格式，保留用于向后兼容)
 export interface VoiceBackup {
   id: string                    // 时间戳 ID
   timestamp: number             // 创建时间
@@ -108,7 +139,7 @@ export interface VoiceBackup {
   lastError?: string            // 最后一次错误信息
 }
 
-// 音频备份文件 (存储在 .aiter/audio-backups/)
+// 音频备份文件 (旧格式，保留用于向后兼容迁移)
 export interface VoiceBackupsIndex {
   version: 1
   backups: VoiceBackup[]

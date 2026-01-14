@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { Project, Terminal, AppSettings, FileNode, Plugin, PluginInstallProgress, PluginUpdateProgress, GitStatus, GitCommit, FileChange, DetectedShell, VersionManagerInfo, ShellType, Workspace, SessionState, VoiceTranscription, VoiceNotesFile } from '../types'
-import type { VoiceBackup } from '../types/voiceInput'
+import type { VoiceBackup, VoiceRecord } from '../types/voiceInput'
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -479,7 +479,21 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('voiceNotes:clear', { projectPath })
   },
 
-  // Voice Backup APIs (backup audio for failed transcriptions)
+  // Unified Voice Records API (transcriptions + pending backups in one file)
+  voiceRecords: {
+    list: (projectPath: string) =>
+      ipcRenderer.invoke('voiceRecords:list', { projectPath }),
+    add: (projectPath: string, record: VoiceRecord) =>
+      ipcRenderer.invoke('voiceRecords:add', { projectPath, record }),
+    update: (projectPath: string, recordId: string, updates: Partial<VoiceRecord>) =>
+      ipcRenderer.invoke('voiceRecords:update', { projectPath, recordId, updates }),
+    delete: (projectPath: string, recordId: string) =>
+      ipcRenderer.invoke('voiceRecords:delete', { projectPath, recordId }),
+    clear: (projectPath: string) =>
+      ipcRenderer.invoke('voiceRecords:clear', { projectPath })
+  },
+
+  // Voice Backup APIs (for audio file operations only - use voiceRecords for metadata)
   voiceBackup: {
     save: (projectPath: string, backup: VoiceBackup, audioData: string) =>
       ipcRenderer.invoke('voiceBackup:save', { projectPath, backup, audioData }),
@@ -1010,6 +1024,29 @@ export interface API {
     delete(projectPath: string, noteId: string): Promise<{
       success: boolean;
       data?: VoiceNotesFile;
+      error?: string;
+    }>
+    clear(projectPath: string): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+  }
+  voiceRecords: {
+    list(projectPath: string): Promise<{
+      success: boolean;
+      records?: VoiceRecord[];
+      error?: string;
+    }>
+    add(projectPath: string, record: VoiceRecord): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+    update(projectPath: string, recordId: string, updates: Partial<VoiceRecord>): Promise<{
+      success: boolean;
+      error?: string;
+    }>
+    delete(projectPath: string, recordId: string): Promise<{
+      success: boolean;
       error?: string;
     }>
     clear(projectPath: string): Promise<{

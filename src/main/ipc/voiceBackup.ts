@@ -2,16 +2,148 @@ import { BrowserWindow, ipcMain } from 'electron'
 import * as fs from 'fs/promises'
 import { createWriteStream, WriteStream } from 'fs'
 import * as path from 'path'
-import type { VoiceBackup, VoiceBackupsIndex } from '../../types/voiceInput'
-import { VOICE_NOTES_DIR, AUDIO_BACKUPS_DIR } from '../../types/voiceInput'
+import type {
+  VoiceBackup,
+  VoiceBackupsIndex,
+  VoiceRecord,
+  VoiceRecordsFile,
+  VoiceNotesFile,
+  VoiceTranscription
+} from '../../types/voiceInput'
+import {
+  VOICE_NOTES_DIR,
+  AUDIO_BACKUPS_DIR,
+  VOICE_NOTES_FILENAME,
+  VOICE_RECORDS_FILENAME
+} from '../../types/voiceInput'
 
 // Reference to main window for sending events
 let mainWindow: BrowserWindow | null = null
 
-const INDEX_FILENAME = 'index.json'
+const INDEX_FILENAME = 'index.json' // Legacy backup index
 
 // Active streaming sessions - maps backupId to write stream
 const activeStreams = new Map<string, WriteStream>()
+
+// ============== Unified Records API ==============
+
+/**
+ * Get the unified records file path
+ */
+function getRecordsPath(projectPath: string): string {
+  return path.join(projectPath, VOICE_NOTES_DIR, VOICE_RECORDS_FILENAME)
+}
+
+/**
+ * Get the legacy voice-notes.json path (for migration)
+ */
+function getLegacyNotesPath(projectPath: string): string {
+  return path.join(projectPath, VOICE_NOTES_DIR, VOICE_NOTES_FILENAME)
+}
+
+/**
+ * Read unified records file, with automatic migration from legacy formats
+ */
+async function readRecords(projectPath: string): Promise<VoiceRecordsFile> {
+  const recordsPath = getRecordsPath(projectPath)
+
+  try {
+    const content = await fs.readFile(recordsPath, 'utf-8')
+    return JSON.parse(content) as VoiceRecordsFile
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      // File doesn't exist - try to migrate from legacy formats
+      return await migrateFromLegacy(projectPath)
+    }
+    throw error
+  }
+}
+
+/**
+ * Write unified records file
+ */
+async function writeRecords(projectPath: string, records: VoiceRecordsFile): Promise<void> {
+  const dirPath = path.join(projectPath, VOICE_NOTES_DIR)
+  await fs.mkdir(dirPath, { recursive: true })
+  const recordsPath = getRecordsPath(projectPath)
+  records.lastUpdated = Date.now()
+  await fs.writeFile(recordsPath, JSON.stringify(records, null, 2), 'utf-8')
+}
+
+/**
+ * Migrate from legacy voice-notes.json and audio-backups/index.json
+ */
+async function migrateFromLegacy(projectPath: string): Promise<VoiceRecordsFile> {
+  const records: VoiceRecord[] = []
+
+  // 1. Migrate from legacy voice-notes.json
+  try {
+    const notesPath = getLegacyNotesPath(projectPath)
+    const notesContent = await fs.readFile(notesPath, 'utf-8')
+    const notesFile = JSON.parse(notesContent) as VoiceNotesFile
+
+    for (const note of notesFile.notes) {
+      records.push({
+        id: note.id,
+        timestamp: note.timestamp,
+        source: note.source,
+        projectId: note.projectId,
+        status: 'transcribed',
+        text: note.text,
+        insertedTo: note.insertedTo
+      })
+    }
+    console.log(`[voiceBackup] Migrated ${notesFile.notes.length} notes from legacy voice-notes.json`)
+  } catch (e) {
+    // Legacy file doesn't exist or invalid - that's fine
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.warn('[voiceBackup] Error reading legacy voice-notes.json:', e)
+    }
+  }
+
+  // 2. Migrate from legacy audio-backups/index.json
+  try {
+    const indexPath = getIndexPath(projectPath)
+    const indexContent = await fs.readFile(indexPath, 'utf-8')
+    const indexFile = JSON.parse(indexContent) as VoiceBackupsIndex
+
+    for (const backup of indexFile.backups) {
+      // Skip completed or recording status (completed means already transcribed)
+      if (backup.status === 'completed' || backup.status === 'recording') continue
+
+      // Map legacy status to new status
+      const newStatus = backup.status as 'pending' | 'retrying' | 'failed'
+
+      records.push({
+        id: backup.id,
+        timestamp: backup.timestamp,
+        source: backup.source,
+        projectId: backup.projectId,
+        status: newStatus,
+        duration: backup.duration,
+        sampleRate: backup.sampleRate,
+        retryCount: backup.retryCount,
+        lastError: backup.lastError
+      })
+    }
+    console.log(`[voiceBackup] Migrated ${indexFile.backups.length} backups from legacy index.json`)
+  } catch (e) {
+    // Legacy file doesn't exist or invalid - that's fine
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.warn('[voiceBackup] Error reading legacy index.json:', e)
+    }
+  }
+
+  // Sort by timestamp
+  records.sort((a, b) => a.timestamp - b.timestamp)
+
+  return {
+    version: 2,
+    projectPath,
+    records,
+    lastUpdated: Date.now()
+  }
+}
 
 /**
  * Get the audio backups directory path for a project
@@ -63,6 +195,127 @@ async function writeIndex(projectPath: string, index: VoiceBackupsIndex): Promis
 
 export function registerVoiceBackupHandlers(window: BrowserWindow) {
   mainWindow = window
+
+  // ============== Unified Records API ==============
+
+  // List all voice records (transcriptions + pending backups)
+  ipcMain.handle('voiceRecords:list', async (_, { projectPath }: { projectPath: string }) => {
+    try {
+      const recordsFile = await readRecords(projectPath)
+      return { success: true, records: recordsFile.records }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[voiceRecords:list] Error:', message)
+      return { success: false, error: message, records: [] }
+    }
+  })
+
+  // Add a new voice record (either transcribed or pending)
+  ipcMain.handle('voiceRecords:add', async (_, {
+    projectPath,
+    record
+  }: {
+    projectPath: string
+    record: VoiceRecord
+  }) => {
+    try {
+      const recordsFile = await readRecords(projectPath)
+      // Remove existing record with same id if any
+      recordsFile.records = recordsFile.records.filter(r => r.id !== record.id)
+      recordsFile.records.push(record)
+      // Sort by timestamp
+      recordsFile.records.sort((a, b) => a.timestamp - b.timestamp)
+      await writeRecords(projectPath, recordsFile)
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[voiceRecords:add] Error:', message)
+      return { success: false, error: message }
+    }
+  })
+
+  // Update a voice record
+  ipcMain.handle('voiceRecords:update', async (_, {
+    projectPath,
+    recordId,
+    updates
+  }: {
+    projectPath: string
+    recordId: string
+    updates: Partial<VoiceRecord>
+  }) => {
+    try {
+      const recordsFile = await readRecords(projectPath)
+      const record = recordsFile.records.find(r => r.id === recordId)
+      if (record) {
+        Object.assign(record, updates)
+        await writeRecords(projectPath, recordsFile)
+      }
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[voiceRecords:update] Error:', message)
+      return { success: false, error: message }
+    }
+  })
+
+  // Delete a voice record
+  ipcMain.handle('voiceRecords:delete', async (_, {
+    projectPath,
+    recordId
+  }: {
+    projectPath: string
+    recordId: string
+  }) => {
+    try {
+      const recordsFile = await readRecords(projectPath)
+      recordsFile.records = recordsFile.records.filter(r => r.id !== recordId)
+      await writeRecords(projectPath, recordsFile)
+
+      // Also delete audio file if it exists
+      const audioPath = path.join(getBackupsDir(projectPath), `${recordId}.pcm`)
+      try {
+        await fs.unlink(audioPath)
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
+      }
+
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[voiceRecords:delete] Error:', message)
+      return { success: false, error: message }
+    }
+  })
+
+  // Clear all voice records
+  ipcMain.handle('voiceRecords:clear', async (_, { projectPath }: { projectPath: string }) => {
+    try {
+      // Remove unified records file
+      const recordsPath = getRecordsPath(projectPath)
+      try {
+        await fs.unlink(recordsPath)
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e
+      }
+
+      // Remove audio backups directory
+      const backupsDir = getBackupsDir(projectPath)
+      try {
+        await fs.rm(backupsDir, { recursive: true, force: true })
+      } catch (e) {
+        // Ignore errors
+      }
+
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      console.error('[voiceRecords:clear] Error:', message)
+      return { success: false, error: message }
+    }
+  })
+
+  // ============== Legacy Backup API (for audio file operations) ==============
 
   // Save audio backup (audio data as base64)
   ipcMain.handle('voiceBackup:save', async (_, {
