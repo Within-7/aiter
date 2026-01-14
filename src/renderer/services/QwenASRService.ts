@@ -74,6 +74,10 @@ export class QwenASRService implements VoiceRecognitionService {
   private isOfflineMode = false
   private offlineError: string | null = null
 
+  // Flag to indicate we're waiting for WebSocket connection
+  // During this time, ignore IPC error events (we handle them in start())
+  private isConnecting = false
+
   constructor(options: QwenASROptions) {
     this.options = options
     this.interimCallback = options.onInterimResult
@@ -105,6 +109,7 @@ export class QwenASRService implements VoiceRecognitionService {
     this.streamingBackupStarted = false
     this.isOfflineMode = false
     this.offlineError = null
+    this.isConnecting = false
 
     try {
       // 1. Get microphone permission FIRST - this is required for recording
@@ -136,12 +141,14 @@ export class QwenASRService implements VoiceRecognitionService {
       // 4. Try to start WebSocket connection via main process
       // If this fails, we continue in offline mode
       console.log('[QwenASR] Starting WebSocket via IPC...')
+      this.isConnecting = true  // Mark as connecting - ignore IPC errors during this time
       try {
         const result = await window.api.voice.qwenAsr.start({
           apiKey: this.options.apiKey,
           region: this.options.region,
           language: options?.language || this.options.language || 'zh'
         })
+        this.isConnecting = false  // Connection attempt complete
 
         // Check if stopped while waiting for WebSocket connection
         if (!this.isRunning) {
@@ -164,6 +171,7 @@ export class QwenASRService implements VoiceRecognitionService {
           console.log('[QwenASR] Started via IPC proxy, main session ID:', this.mainSessionId)
         }
       } catch (wsError) {
+        this.isConnecting = false  // Connection attempt complete
         // Network error or other WebSocket connection failure - enter offline mode
         this.isOfflineMode = true
         this.offlineError = wsError instanceof Error ? wsError.message : 'Network error'
@@ -269,6 +277,14 @@ export class QwenASRService implements VoiceRecognitionService {
         console.log('[QwenASR] Ignoring error event for session:', data?.sessionId, 'expected:', this.mainSessionId)
         return
       }
+
+      // Ignore errors during connection phase - they're handled in start()
+      // This prevents race condition where IPC error arrives before start() can handle it
+      if (this.isConnecting) {
+        console.log('[QwenASR] Ignoring error during connection phase (handled in start()):', data.error)
+        return
+      }
+
       console.error('[QwenASR] Error from proxy:', data.error)
 
       // End streaming backup with error status (pending for retry)
@@ -786,6 +802,7 @@ export class QwenASRService implements VoiceRecognitionService {
     }
 
     this.isRunning = false
+    this.isConnecting = false
     this.accumulatedText = ''
     this.allSegments = []
     this.userStopped = false
