@@ -19,8 +19,8 @@ export class FileWatcherManager {
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map()
   private pendingChanges: Map<string, Set<string>> = new Map()
 
-  // Debounce delay in milliseconds
-  private readonly DEBOUNCE_DELAY = 300
+  // Debounce delay in milliseconds - reduced for faster response
+  private readonly DEBOUNCE_DELAY = 150
 
   // Directories to ignore
   private readonly IGNORED_PATTERNS = [

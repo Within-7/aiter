@@ -557,8 +557,8 @@ export class AutoUpdateManager {
 
       const release = await this.fetchLatestRelease()
       if (!release) {
-        log.error('[AutoUpdater] Failed to fetch release info')
-        this.sendToRenderer({ status: 'error', error: 'Failed to fetch release info' })
+        // Treat fetch failure as network error - silently ignore
+        log.warn('[AutoUpdater] Failed to fetch release info, will retry later')
         return
       }
 
@@ -580,11 +580,9 @@ export class AutoUpdateManager {
           }
         })
       } else {
-        log.info('[AutoUpdater] No update available')
-        this.sendToRenderer({
-          status: 'not-available',
-          info: { version: currentVersion }
-        })
+        // Same version - no need to notify user, just log
+        log.info('[AutoUpdater] No update available, current version is latest')
+        // Don't send not-available status to avoid showing unnecessary notifications
       }
     } catch (error) {
       log.error('[AutoUpdater] Check for updates failed:', error)

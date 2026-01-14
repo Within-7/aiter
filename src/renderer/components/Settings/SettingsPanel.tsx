@@ -562,6 +562,47 @@ export const SettingsPanel: React.FC = () => {
           onChange={(e) => handleSettingChange('scrollbackLines', parseInt(e.target.value, 10))}
         />
       </div>
+
+      <h3>{t('appearance.editor.title')}</h3>
+
+      <div className="setting-item setting-item-checkbox">
+        <label htmlFor="editor-word-wrap">{t('appearance.editor.wordWrap')}</label>
+        <input
+          id="editor-word-wrap"
+          type="checkbox"
+          checked={settings.editorWordWrap ?? true}
+          onChange={(e) => handleSettingChange('editorWordWrap', e.target.checked)}
+        />
+        <span className="setting-hint">
+          {t('appearance.editor.wordWrapHint')}
+        </span>
+      </div>
+
+      <div className="setting-item setting-item-checkbox">
+        <label htmlFor="editor-minimap">{t('appearance.editor.minimap')}</label>
+        <input
+          id="editor-minimap"
+          type="checkbox"
+          checked={settings.editorMinimap ?? false}
+          onChange={(e) => handleSettingChange('editorMinimap', e.target.checked)}
+        />
+        <span className="setting-hint">
+          {t('appearance.editor.minimapHint')}
+        </span>
+      </div>
+
+      <div className="setting-item setting-item-checkbox">
+        <label htmlFor="editor-line-numbers">{t('appearance.editor.lineNumbers')}</label>
+        <input
+          id="editor-line-numbers"
+          type="checkbox"
+          checked={settings.editorLineNumbers ?? true}
+          onChange={(e) => handleSettingChange('editorLineNumbers', e.target.checked)}
+        />
+        <span className="setting-hint">
+          {t('appearance.editor.lineNumbersHint')}
+        </span>
+      </div>
     </section>
   )
 

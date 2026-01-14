@@ -277,6 +277,36 @@ export const WorkArea: React.FC = () => {
     setCloseTerminalDialog({ show: false, terminalId: null, terminalName: '' })
   }, [])
 
+  // Handle terminal close request from keyboard shortcut (Ctrl/Cmd+W)
+  const handleCloseTerminalRequest = useCallback((event: CustomEvent<{ terminalId: string }>) => {
+    const { terminalId } = event.detail
+    if (!terminalId) return
+
+    // Check if confirmation is enabled in settings
+    if (state.settings.confirmTerminalClose ?? true) {
+      // Find terminal name for confirmation dialog
+      const terminal = state.terminals.find(t => t.id === terminalId)
+      const terminalName = terminal?.name || 'Terminal'
+      // Show confirmation dialog for terminal close
+      setCloseTerminalDialog({
+        show: true,
+        terminalId,
+        terminalName
+      })
+    } else {
+      // Close immediately without confirmation
+      dispatch({ type: 'REMOVE_TERMINAL', payload: terminalId })
+    }
+  }, [dispatch, state.terminals, state.settings.confirmTerminalClose])
+
+  // Listen for terminal close request events
+  React.useEffect(() => {
+    window.addEventListener('close-terminal-request', handleCloseTerminalRequest as EventListener)
+    return () => {
+      window.removeEventListener('close-terminal-request', handleCloseTerminalRequest as EventListener)
+    }
+  }, [handleCloseTerminalRequest])
+
   const handleDragStart = useCallback((e: React.DragEvent, tabId: string) => {
     // If the dragged tab is not in selection, make it the only selected tab
     if (!state.selectedTabIds.has(tabId)) {

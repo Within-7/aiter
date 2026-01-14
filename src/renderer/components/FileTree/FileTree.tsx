@@ -677,9 +677,9 @@ export const FileTree: React.FC<FileTreeProps> = ({
       {/* Confirm Dialog */}
       {dialog.type === 'delete' && (
         <ConfirmDialog
-          title="Delete"
-          message={`Are you sure you want to delete "${dialog.targetName}"? This action cannot be undone.`}
-          confirmLabel="Delete"
+          title="Move to Trash"
+          message={`Are you sure you want to move "${dialog.targetName}" to the trash?`}
+          confirmLabel="Move to Trash"
           variant="danger"
           onConfirm={handleDelete}
           onCancel={() => setDialog({ type: null, targetPath: '' })}

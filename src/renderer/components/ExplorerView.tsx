@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { VscTerminal, VscFiles, VscNewFile, VscNewFolder, VscCloudUpload, VscGripper } from 'react-icons/vsc'
+import { VscTerminal, VscFiles, VscNewFile, VscNewFolder, VscCloudUpload, VscGripper, VscRefresh } from 'react-icons/vsc'
 import { AppContext } from '../context/AppContext'
 import { FileTree } from './FileTree/FileTree'
 import { InputDialog } from './FileTree/InputDialog'
@@ -172,6 +172,12 @@ export function ExplorerView() {
     } catch (err) {
       console.error('Error uploading files:', err)
     }
+  }, [])
+
+  // Refresh file tree for a specific project
+  const handleRefreshFileTree = useCallback((projectId: string) => {
+    console.log(`[ExplorerView] Manually refreshing file tree for project ${projectId}`)
+    setFileTreeRefreshKey(k => k + 1)
   }, [])
 
   const validateName = useCallback((name: string): string | null => {
@@ -417,6 +423,16 @@ export function ExplorerView() {
                       title="Upload Files"
                     >
                       <VscCloudUpload />
+                    </button>
+                    <button
+                      className="btn-icon btn-file-op"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRefreshFileTree(project.id)
+                      }}
+                      title="Refresh"
+                    >
+                      <VscRefresh />
                     </button>
                   </div>
                 )}

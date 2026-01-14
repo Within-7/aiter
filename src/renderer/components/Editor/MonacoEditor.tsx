@@ -1,6 +1,7 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useContext } from 'react'
 import Editor, { OnMount } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
+import { AppContext } from '../../context/AppContext'
 
 interface MonacoEditorProps {
   value: string
@@ -43,8 +44,14 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   onChange,
   onSave
 }) => {
+  const { state } = useContext(AppContext)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const onSaveRef = useRef(onSave)
+
+  // Get editor settings with defaults
+  const wordWrap = state.settings.editorWordWrap ?? true
+  const minimap = state.settings.editorMinimap ?? false
+  const lineNumbers = state.settings.editorLineNumbers ?? true
 
   // Keep onSave ref updated
   useEffect(() => {
@@ -102,6 +109,17 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
   const monacoLanguage = languageMap[language] || 'plaintext'
 
+  // Update editor options when settings change
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.updateOptions({
+        wordWrap: wordWrap ? 'on' : 'off',
+        minimap: { enabled: minimap },
+        lineNumbers: lineNumbers ? 'on' : 'off'
+      })
+    }
+  }, [wordWrap, minimap, lineNumbers])
+
   return (
     <Editor
       height="100%"
@@ -111,13 +129,13 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
       onChange={handleEditorChange}
       onMount={handleEditorDidMount}
       options={{
-        minimap: { enabled: false },
+        minimap: { enabled: minimap },
         fontSize: 14,
-        lineNumbers: 'on',
+        lineNumbers: lineNumbers ? 'on' : 'off',
         scrollBeyondLastLine: false,
         automaticLayout: true,
         tabSize: 2,
-        wordWrap: 'on',
+        wordWrap: wordWrap ? 'on' : 'off',
         renderWhitespace: 'selection'
       }}
     />

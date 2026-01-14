@@ -30,8 +30,10 @@ export const KeyboardShortcutsHandler: React.FC = () => {
         if (state.activeEditorTabId) {
           dispatch({ type: 'REMOVE_EDITOR_TAB', payload: state.activeEditorTabId })
         } else if (state.activeTerminalId) {
-          await window.api.terminal.kill(state.activeTerminalId)
-          dispatch({ type: 'REMOVE_TERMINAL', payload: state.activeTerminalId })
+          // Dispatch event to let WorkArea handle terminal close with confirmation
+          window.dispatchEvent(new CustomEvent('close-terminal-request', {
+            detail: { terminalId: state.activeTerminalId }
+          }))
         }
         break
       }

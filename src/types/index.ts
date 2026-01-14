@@ -139,6 +139,11 @@ export interface AppSettings {
 
   // Voice input settings
   voiceInput?: VoiceInputSettings         // Voice input configuration
+
+  // Editor settings
+  editorWordWrap: boolean                 // Enable word wrap in code editor
+  editorMinimap: boolean                  // Show minimap in code editor
+  editorLineNumbers: boolean              // Show line numbers in code editor
 }
 
 // Configuration for opening files with external applications

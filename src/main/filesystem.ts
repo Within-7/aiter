@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import { shell } from 'electron'
 import { FileNode } from '../types'
 import { v4 as uuidv4 } from 'uuid'
 import ignore, { Ignore } from 'ignore'
@@ -430,25 +431,22 @@ export class SecureFileSystemManager {
   }
 
   /**
-   * Delete a file or directory
+   * Delete a file or directory by moving to trash
+   * Uses Electron's shell.trashItem for safe deletion with recovery option
    */
   async delete(targetPath: string): Promise<boolean> {
     try {
       const validPath = this.validatePath(targetPath)
 
-      const stats = await fs.promises.stat(validPath)
+      // Verify the path exists before attempting to trash
+      await fs.promises.access(validPath)
 
-      if (stats.isDirectory()) {
-        // Recursively delete directory
-        await fs.promises.rm(validPath, { recursive: true, force: true })
-      } else {
-        // Delete file
-        await fs.promises.unlink(validPath)
-      }
+      // Move to trash instead of permanent deletion
+      await shell.trashItem(validPath)
 
       return true
     } catch (error) {
-      console.error('Error deleting:', error)
+      console.error('Error moving to trash:', error)
       throw error
     }
   }

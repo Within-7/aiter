@@ -123,7 +123,11 @@ export const initialState: AppState = {
     proxyPort: 1087,
     proxyProtocol: 'http',
     // Terminal behavior
-    confirmTerminalClose: true
+    confirmTerminalClose: true,
+    // Editor settings
+    editorWordWrap: true,
+    editorMinimap: false,
+    editorLineNumbers: true
   },
   terminalDataBuffer: new Map(),
   showPluginPanel: false,

@@ -96,6 +96,15 @@
       },
       "cursorBlink": "Cursor Blink",
       "scrollback": "Scrollback Lines"
+    },
+    "editor": {
+      "title": "Code Editor",
+      "wordWrap": "Word Wrap",
+      "wordWrapHint": "Wrap long lines to fit in the editor width",
+      "minimap": "Show Minimap",
+      "minimapHint": "Display code overview on the right side",
+      "lineNumbers": "Show Line Numbers",
+      "lineNumbersHint": "Display line numbers in the gutter"
     }
   },
   "shortcuts": {

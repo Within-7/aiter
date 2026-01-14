@@ -97,20 +97,19 @@ export const VoiceInputSettings: React.FC<VoiceInputSettingsProps> = ({
 
               <div className="setting-item">
                 <label htmlFor="qwen-api-key">{t('voice.qwenSettings.apiKey')}</label>
-                <div className="setting-input-group">
+                <div className="setting-input-group api-key-input-group">
                   <input
                     id="qwen-api-key"
                     type={showApiKey ? 'text' : 'password'}
+                    className="api-key-input"
                     value={currentSettings.qwenApiKey || ''}
                     onChange={(e) => handleChange('qwenApiKey', e.target.value)}
                     placeholder={t('voice.qwenSettings.apiKeyPlaceholder')}
-                    style={{ minWidth: '140px' }}
                   />
                   <button
                     type="button"
-                    className="reset-shortcuts-button"
+                    className="api-key-toggle-button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    style={{ marginTop: 0, padding: '6px 10px' }}
                   >
                     {showApiKey ? t('voice.hide') : t('voice.show')}
                   </button>

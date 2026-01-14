@@ -65,7 +65,12 @@ const defaultSettings: AppSettings = {
   confirmTerminalClose: true,        // Show confirmation dialog when closing terminal tabs
 
   // Voice input
-  voiceInput: defaultVoiceInputSettings
+  voiceInput: defaultVoiceInputSettings,
+
+  // Editor settings
+  editorWordWrap: true,              // Enable word wrap by default
+  editorMinimap: false,              // Disable minimap by default
+  editorLineNumbers: true            // Show line numbers by default
 }
 
 export class StoreManager {

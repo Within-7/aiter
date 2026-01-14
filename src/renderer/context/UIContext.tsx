@@ -70,7 +70,11 @@ export const initialUIState: UIState = {
     proxyPort: 1087,
     proxyProtocol: 'http',
     // Terminal behavior
-    confirmTerminalClose: true
+    confirmTerminalClose: true,
+    // Editor settings
+    editorWordWrap: true,
+    editorMinimap: false,
+    editorLineNumbers: true
   },
   showPluginPanel: false,
   showAboutPanel: false,
