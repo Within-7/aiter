@@ -143,7 +143,9 @@ export const VoicePanelContainer: React.FC = () => {
     },
     onTextInsert: undefined, // Panel handles insertion manually
     useEditableOverlay: true, // Keep editable behavior for interim text tracking
-    onOfflineBackupNeeded: handleOfflineBackupNeeded
+    onOfflineBackupNeeded: handleOfflineBackupNeeded,
+    projectPath: getActiveProjectPath() || undefined,
+    source: 'panel'
   })
 
   // Save offline backup when pendingOfflineError is set

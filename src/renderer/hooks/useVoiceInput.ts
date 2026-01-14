@@ -10,10 +10,14 @@ interface UseVoiceInputOptions {
   useEditableOverlay?: boolean
   /** Called when offline recording is stopped and needs backup */
   onOfflineBackupNeeded?: (error: string) => void
+  /** Project path for audio backup */
+  projectPath?: string
+  /** Source of the recording */
+  source?: 'inline' | 'panel'
 }
 
 export function useVoiceInput(options: UseVoiceInputOptions) {
-  const { settings, onTextInsert, useEditableOverlay = true, onOfflineBackupNeeded } = options
+  const { settings, onTextInsert, useEditableOverlay = true, onOfflineBackupNeeded, projectPath, source } = options
 
   const [isRecording, setIsRecording] = useState(false)
   const [interimText, setInterimText] = useState('')
@@ -39,6 +43,8 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
 
     managerRef.current = new VoiceInputManager({
       settings,
+      projectPath,
+      source,
       onInterimResult: (text) => {
         setInterimText(text)
         setError(null)
@@ -100,7 +106,9 @@ export function useVoiceInput(options: UseVoiceInputOptions) {
     settings.qwenApiKey,
     settings.qwenRegion,
     settings.language,
-    useEditableOverlay
+    useEditableOverlay,
+    projectPath,
+    source
   ])
 
   const startRecording = useCallback(async () => {

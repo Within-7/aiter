@@ -15,6 +15,10 @@ interface VoiceInputManagerOptions {
   onStateChange: (state: VoiceInputState) => void
   /** Called when offline recording needs backup (e.g., network unavailable) */
   onOfflineBackupNeeded?: (error: string) => void
+  /** Project path for audio backup */
+  projectPath?: string
+  /** Source of the recording */
+  source?: 'inline' | 'panel'
 }
 
 export class VoiceInputManager {
@@ -49,6 +53,8 @@ export class VoiceInputManager {
           apiKey: settings.qwenApiKey,
           region: settings.qwenRegion || 'cn',
           language: settings.language,
+          projectPath: this.options.projectPath,
+          source: this.options.source || 'panel',
           onInterimResult: (text) => {
             this.options.onInterimResult(text)
           },
