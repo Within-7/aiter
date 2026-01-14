@@ -10,6 +10,8 @@ interface UseInlineVoiceInputOptions {
   onStart?: () => void
   /** Called when inline mode ends */
   onEnd?: () => void
+  /** Project path for audio backup */
+  projectPath?: string
 }
 
 /**
@@ -19,7 +21,7 @@ interface UseInlineVoiceInputOptions {
  * - No confirmation step required
  */
 export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
-  const { settings, onTextInsert, onStart, onEnd } = options
+  const { settings, onTextInsert, onStart, onEnd, projectPath } = options
 
   const [isActive, setIsActive] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
@@ -44,6 +46,8 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
 
     managerRef.current = new VoiceInputManager({
       settings,
+      projectPath,
+      source: 'inline',
       onInterimResult: (text) => {
         interimTextRef.current = text  // Update ref for stopRecording to use
         setInterimText(text)
@@ -84,7 +88,8 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
     settings.provider,
     settings.qwenApiKey,
     settings.qwenRegion,
-    settings.language
+    settings.language,
+    projectPath
   ])
 
   // Start recording (called by Push-to-Talk)

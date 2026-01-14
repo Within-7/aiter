@@ -56,6 +56,13 @@ export const WorkArea: React.FC = () => {
   // Get voice input settings
   const voiceSettings = state.settings.voiceInput || defaultVoiceInputSettings
 
+  // Get active project path for voice backup
+  const activeProjectPath = useMemo(() => {
+    if (!state.activeProjectId) return undefined
+    const project = state.projects.find(p => p.id === state.activeProjectId)
+    return project?.path
+  }, [state.activeProjectId, state.projects])
+
   // Toggle voice panel
   const handleVoicePanelToggle = useCallback(() => {
     dispatch({ type: 'TOGGLE_VOICE_PANEL' })
@@ -118,7 +125,8 @@ export const WorkArea: React.FC = () => {
         enabled: voiceSettings.pushToTalk.enabled && !state.showVoicePanel
       }
     },
-    onTextInsert: handleInlineVoiceInsert
+    onTextInsert: handleInlineVoiceInsert,
+    projectPath: activeProjectPath
   })
 
   // Voice button shows active state when panel is open or inline recording
