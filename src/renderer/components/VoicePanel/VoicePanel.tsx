@@ -29,7 +29,6 @@ interface VoicePanelProps {
   onAddTranscription: (transcription: VoiceTranscription) => void
   onUpdateTranscription: (id: string, text: string) => void
   onDeleteTranscription: (id: string) => void
-  onClearTranscriptions: () => void
   // Active project ID for persistence
   activeProjectId: string | null
   // Pending audio backups (failed transcriptions)
@@ -58,7 +57,6 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
   onAddTranscription,
   onUpdateTranscription,
   onDeleteTranscription,
-  onClearTranscriptions,
   activeProjectId,
   pendingBackups,
   onRetryBackup,
@@ -167,16 +165,6 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
     navigator.clipboard.writeText(text)
   }, [])
 
-  const handleCopyAll = useCallback(() => {
-    const allText = messages.map(m => m.text).join('\n\n')
-    navigator.clipboard.writeText(allText)
-  }, [messages])
-
-  const handleClearAll = useCallback(() => {
-    onClearTranscriptions()
-    lastAddedTextRef.current = ''
-  }, [onClearTranscriptions])
-
   const handleInsert = useCallback((text: string) => {
     if (activeTarget === 'terminal') {
       onInsertToTerminal(text)
@@ -184,15 +172,6 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
       onInsertToEditor(text)
     }
   }, [activeTarget, onInsertToTerminal, onInsertToEditor])
-
-  const handleInsertAll = useCallback(() => {
-    // Use appropriate separator based on target
-    // Terminal: space (newlines would execute as separate commands)
-    // Editor: newline (preserve paragraph structure)
-    const separator = activeTarget === 'terminal' ? ' ' : '\n\n'
-    const allText = messages.map(m => m.text).join(separator)
-    handleInsert(allText)
-  }, [messages, handleInsert, activeTarget])
 
   const getStatusText = () => {
     if (isRecording) return t('status.recording')
@@ -399,27 +378,6 @@ export const VoicePanel: React.FC<VoicePanelProps> = ({
               </svg>
               <span>{t('actions.startRecording')}</span>
             </button>
-          )}
-
-          {/* Secondary actions */}
-          {messages.length > 0 && (
-            <div className="voice-panel-secondary">
-              <button className="btn-secondary" onClick={handleInsertAll} disabled={!activeTarget} title={t('actions.insert')}>
-                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                </svg>
-              </button>
-              <button className="btn-secondary" onClick={handleCopyAll} title={t('actions.copy')}>
-                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                  <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                </svg>
-              </button>
-              <button className="btn-secondary" onClick={handleClearAll} title={t('actions.clearAll')}>
-                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                </svg>
-              </button>
-            </div>
           )}
         </div>
       </div>

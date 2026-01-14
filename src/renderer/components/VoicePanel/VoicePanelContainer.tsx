@@ -318,17 +318,6 @@ export const VoicePanelContainer: React.FC = () => {
     }
   }, [dispatch, getActiveProjectPath])
 
-  const handleClearTranscriptions = useCallback(async () => {
-    dispatch({ type: 'CLEAR_VOICE_TRANSCRIPTIONS' })
-
-    // Clear all records from disk
-    const projectPath = getActiveProjectPath()
-    if (projectPath) {
-      await window.api.voiceRecords.clear(projectPath)
-    }
-    setPendingBackups([])
-  }, [dispatch, getActiveProjectPath])
-
   // Handle retry backup transcription
   const handleRetryBackup = useCallback(async (backupId: string) => {
     const projectPath = getActiveProjectPath()
@@ -442,7 +431,6 @@ export const VoicePanelContainer: React.FC = () => {
       onAddTranscription={handleAddTranscription}
       onUpdateTranscription={handleUpdateTranscription}
       onDeleteTranscription={handleDeleteTranscription}
-      onClearTranscriptions={handleClearTranscriptions}
       activeProjectId={state.activeProjectId}
       pendingBackups={pendingBackups}
       onRetryBackup={handleRetryBackup}
