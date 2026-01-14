@@ -35,8 +35,7 @@ export const VoicePanelContainer: React.FC = () => {
         return
       }
 
-      // Only reload if project changed
-      if (lastLoadedProjectRef.current === projectPath) return
+      // Always reload when panel opens (to catch inline recordings made while panel was closed)
       lastLoadedProjectRef.current = projectPath
 
       try {
