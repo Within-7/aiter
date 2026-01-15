@@ -127,6 +127,13 @@
   letter-spacing: 0.5px;
 }
 
+/* Add top margin for h3 that follows other content (not the first h3) */
+.settings-section h3:not(:first-child) {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color, #3c3c3c);
+}
+
 .setting-item {
   display: flex;
   align-items: center;

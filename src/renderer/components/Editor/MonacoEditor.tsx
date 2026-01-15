@@ -109,35 +109,32 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
   const monacoLanguage = languageMap[language] || 'plaintext'
 
-  // Update editor options when settings change
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.updateOptions({
-        wordWrap: wordWrap ? 'on' : 'off',
-        minimap: { enabled: minimap },
-        lineNumbers: lineNumbers ? 'on' : 'off'
-      })
-    }
-  }, [wordWrap, minimap, lineNumbers])
+  // Monaco editor options - computed from settings
+  const editorOptions = {
+    minimap: { enabled: minimap },
+    fontSize: 14,
+    lineNumbers: lineNumbers ? 'on' as const : 'off' as const,
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    tabSize: 2,
+    wordWrap: wordWrap ? 'on' as const : 'off' as const,
+    renderWhitespace: 'selection' as const
+  }
+
+  // Generate a key based on settings to force re-render when settings change
+  // This ensures Monaco Editor picks up the new options reliably
+  const editorKey = `editor-${wordWrap}-${minimap}-${lineNumbers}`
 
   return (
     <Editor
+      key={editorKey}
       height="100%"
       language={monacoLanguage}
       value={value}
       theme="vs-dark"
       onChange={handleEditorChange}
       onMount={handleEditorDidMount}
-      options={{
-        minimap: { enabled: minimap },
-        fontSize: 14,
-        lineNumbers: lineNumbers ? 'on' : 'off',
-        scrollBeyondLastLine: false,
-        automaticLayout: true,
-        tabSize: 2,
-        wordWrap: wordWrap ? 'on' : 'off',
-        renderWhitespace: 'selection'
-      }}
+      options={editorOptions}
     />
   )
 }
