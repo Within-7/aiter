@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useContext } from 'react'
+import React, { Suspense, lazy, useContext, useMemo } from 'react'
 import type { OnMount } from '@monaco-editor/react'
 import { AppContext } from '../../context/AppContext'
 
@@ -6,6 +6,13 @@ import { AppContext } from '../../context/AppContext'
 const Editor = lazy(() =>
   import('@monaco-editor/react').then(module => ({ default: module.default }))
 )
+
+// Helper function to trim trailing whitespace from each line
+// This is necessary because terminal output often pads lines with spaces,
+// which causes Monaco's word wrap to wrap at unexpected positions
+const trimTrailingWhitespace = (text: string): string => {
+  return text.split('\n').map(line => line.trimEnd()).join('\n')
+}
 
 interface MonacoMarkdownEditorProps {
   value: string
@@ -49,6 +56,12 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
   const minimap = state.settings.editorMinimap ?? false
   const lineNumbers = state.settings.editorLineNumbers ?? true
 
+  // Process value to trim trailing whitespace for display
+  // This fixes word wrap issues with terminal output that has lines padded with spaces
+  const processedValue = useMemo(() => {
+    return trimTrailingWhitespace(value)
+  }, [value])
+
   // Monaco editor options - computed from settings
   const editorOptions = {
     minimap: { enabled: minimap },
@@ -58,7 +71,13 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
     automaticLayout: true,
     tabSize: 2,
     wordWrap: wordWrap ? 'on' as const : 'off' as const,
-    renderWhitespace: 'selection' as const
+    // Word wrap configuration
+    wrappingStrategy: 'advanced' as const,
+    wrappingIndent: 'same' as const,
+    renderWhitespace: 'selection' as const,
+    // Improve scroll and layout stability during editing
+    smoothScrolling: true,
+    cursorSmoothCaretAnimation: 'on' as const
   }
 
   // Generate a key based on settings to force re-render when settings change
@@ -70,7 +89,7 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
         key={editorKey}
         height="100%"
         language="markdown"
-        value={value}
+        value={processedValue}
         theme="vs-dark"
         onChange={onChange}
         onMount={onMount}
