@@ -130,6 +130,30 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
       onSaveRef.current(currentContent)
     })
 
+    // Override paste action to trim trailing whitespace from pasted content
+    editor.addAction({
+      id: 'trim-trailing-whitespace-on-paste',
+      label: 'Paste with trimmed trailing whitespace',
+      keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyV],
+      run: async (ed) => {
+        try {
+          const clipboardText = await navigator.clipboard.readText()
+          const trimmedText = trimTrailingWhitespace(clipboardText)
+          const selection = ed.getSelection()
+          if (selection) {
+            ed.executeEdits('paste-trimmed', [{
+              range: selection,
+              text: trimmedText,
+              forceMoveMarkers: true
+            }])
+          }
+        } catch {
+          // If clipboard access fails, fallback to default paste behavior
+          document.execCommand('paste')
+        }
+      }
+    })
+
     // Focus the editor
     editor.focus()
   }

@@ -82,6 +82,36 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
     }
   }, [value, onChange])
 
+  // Wrap the external onMount to add paste trimming behavior
+  const handleEditorMount: OnMount = (editor, monacoInstance) => {
+    // Override paste action to trim trailing whitespace from pasted content
+    editor.addAction({
+      id: 'trim-trailing-whitespace-on-paste',
+      label: 'Paste with trimmed trailing whitespace',
+      keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyV],
+      run: async (ed) => {
+        try {
+          const clipboardText = await navigator.clipboard.readText()
+          const trimmedText = trimTrailingWhitespace(clipboardText)
+          const selection = ed.getSelection()
+          if (selection) {
+            ed.executeEdits('paste-trimmed', [{
+              range: selection,
+              text: trimmedText,
+              forceMoveMarkers: true
+            }])
+          }
+        } catch {
+          // If clipboard access fails, fallback to default paste behavior
+          document.execCommand('paste')
+        }
+      }
+    })
+
+    // Call the external onMount handler
+    onMount(editor, monacoInstance)
+  }
+
   // Monaco editor options - computed from settings
   const editorOptions = {
     minimap: { enabled: minimap },
@@ -118,7 +148,7 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
         value={value}
         theme="vs-dark"
         onChange={onChange}
-        onMount={onMount}
+        onMount={handleEditorMount}
         options={editorOptions}
       />
     </Suspense>
