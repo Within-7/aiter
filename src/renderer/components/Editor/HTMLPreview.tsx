@@ -257,9 +257,15 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
     wrappingStrategy: 'advanced' as const,
     wrappingIndent: 'same' as const,
     renderWhitespace: 'selection' as const,
-    // Improve scroll and layout stability during editing
-    smoothScrolling: true,
-    cursorSmoothCaretAnimation: 'on' as const
+    // Fix for horizontal scroll flickering when typing in word wrap mode
+    // See: https://github.com/microsoft/monaco-editor/issues/4444
+    scrollBeyondLastColumn: 0,
+    // Disable horizontal scrollbar when word wrap is enabled
+    scrollbar: {
+      horizontal: wordWrap ? 'hidden' as const : 'auto' as const,
+      horizontalScrollbarSize: wordWrap ? 0 : 10,
+      alwaysConsumeMouseWheel: false
+    }
   }
 
   // Generate a key based on settings to force re-render when settings change

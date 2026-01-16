@@ -144,8 +144,8 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
   // Monaco editor options - computed from settings
   //
-  // Note: We trim trailing whitespace from each line before displaying (see processedValue)
-  // This fixes word wrap issues with terminal output that has lines padded with spaces
+  // Note: We trim trailing whitespace on initial file load to fix word wrap issues
+  // with terminal output that has lines padded with spaces
   const editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
     minimap: { enabled: minimap },
     fontSize: 14,
@@ -160,9 +160,17 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     wrappingStrategy: 'advanced',
     wrappingIndent: 'same',
     renderWhitespace: 'selection',
-    // Improve scroll and layout stability during editing
-    smoothScrolling: true,
-    cursorSmoothCaretAnimation: 'on'
+    // Fix for horizontal scroll flickering when typing in word wrap mode
+    // See: https://github.com/microsoft/monaco-editor/issues/4444
+    // Setting scrollBeyondLastColumn to 0 prevents the editor from scrolling
+    // horizontally when the cursor is at the end of a wrapped line
+    scrollBeyondLastColumn: 0,
+    // Disable horizontal scrollbar when word wrap is enabled
+    scrollbar: {
+      horizontal: wordWrap ? 'hidden' : 'auto',
+      horizontalScrollbarSize: wordWrap ? 0 : 10,
+      alwaysConsumeMouseWheel: false
+    }
   }
 
   // Generate a key based on settings to force re-render when settings change
