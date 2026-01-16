@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useContext, useMemo } from 'react'
+import React, { useEffect, useRef, useState, useContext } from 'react'
 import Editor, { OnMount } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { AppContext } from '../../context/AppContext'
@@ -32,6 +32,32 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string>('')
   const [isLoadingUrl, setIsLoadingUrl] = useState(false)
+
+  // Track the last value we received from props to detect external changes
+  const lastExternalValueRef = useRef<string>(value)
+  // Track if we've done initial trim for this content
+  const hasInitiallyTrimmedRef = useRef(false)
+
+  // Trim trailing whitespace on initial load only
+  // This fixes word wrap issues without causing cursor jumping during editing
+  useEffect(() => {
+    // Check if this is a new/different file (external value changed significantly)
+    const isNewFile = lastExternalValueRef.current !== value &&
+                      Math.abs(lastExternalValueRef.current.length - value.length) > 10
+
+    if (!hasInitiallyTrimmedRef.current || isNewFile) {
+      const trimmed = trimTrailingWhitespace(value)
+      if (trimmed !== value) {
+        // Only trigger onChange if we actually trimmed something
+        onChange(trimmed)
+      }
+      hasInitiallyTrimmedRef.current = true
+      lastExternalValueRef.current = trimmed
+    } else {
+      // Track the value for comparison
+      lastExternalValueRef.current = value
+    }
+  }, [value, onChange])
 
   // Get server URL for current file when in preview mode
   useEffect(() => {
@@ -218,12 +244,6 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
   const minimap = state.settings.editorMinimap ?? false
   const lineNumbers = state.settings.editorLineNumbers ?? true
 
-  // Process value to trim trailing whitespace for display
-  // This fixes word wrap issues with terminal output that has lines padded with spaces
-  const processedValue = useMemo(() => {
-    return trimTrailingWhitespace(value)
-  }, [value])
-
   // Monaco editor options - computed from settings
   const editorOptions = {
     minimap: { enabled: minimap },
@@ -253,7 +273,7 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
             key={editorKey}
             height="100%"
             language="html"
-            value={processedValue}
+            value={value}
             theme="vs-dark"
             onChange={handleEditorChange}
             onMount={handleEditorDidMount}

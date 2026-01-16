@@ -55,20 +55,36 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const onSaveRef = useRef(onSave)
 
+  // Track the last value we received from props to detect external changes
+  const lastExternalValueRef = useRef<string>(value)
+  // Track if we've done initial trim for this content
+  const hasInitiallyTrimmedRef = useRef(false)
+
   // Get editor settings with defaults
   const wordWrap = state.settings.editorWordWrap ?? true
   const minimap = state.settings.editorMinimap ?? false
   const lineNumbers = state.settings.editorLineNumbers ?? true
 
-  // Process value to trim trailing whitespace for display
-  // This fixes word wrap issues with terminal output that has lines padded with spaces
-  // We always trim because:
-  // 1. Trailing whitespace is almost always unintentional or meaningless
-  // 2. It causes Monaco's word wrap to behave unexpectedly
-  // 3. Most code editors trim trailing whitespace on save anyway
-  const processedValue = React.useMemo(() => {
-    return trimTrailingWhitespace(value)
-  }, [value])
+  // Trim trailing whitespace on initial load only
+  // This fixes word wrap issues without causing cursor jumping during editing
+  useEffect(() => {
+    // Check if this is a new/different file (external value changed significantly)
+    const isNewFile = lastExternalValueRef.current !== value &&
+                      Math.abs(lastExternalValueRef.current.length - value.length) > 10
+
+    if (!hasInitiallyTrimmedRef.current || isNewFile) {
+      const trimmed = trimTrailingWhitespace(value)
+      if (trimmed !== value) {
+        // Only trigger onChange if we actually trimmed something
+        onChange(trimmed)
+      }
+      hasInitiallyTrimmedRef.current = true
+      lastExternalValueRef.current = trimmed
+    } else {
+      // Track the value for comparison
+      lastExternalValueRef.current = value
+    }
+  }, [value, onChange])
 
   // Keep onSave ref updated
   useEffect(() => {
@@ -158,7 +174,7 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
       key={editorKey}
       height="100%"
       language={monacoLanguage}
-      value={processedValue}
+      value={value}
       theme="vs-dark"
       onChange={handleEditorChange}
       onMount={handleEditorDidMount}

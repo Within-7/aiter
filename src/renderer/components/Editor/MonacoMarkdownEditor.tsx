@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useContext, useMemo } from 'react'
+import React, { Suspense, lazy, useContext, useRef, useEffect } from 'react'
 import type { OnMount } from '@monaco-editor/react'
 import { AppContext } from '../../context/AppContext'
 
@@ -51,16 +51,36 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
 }) => {
   const { state } = useContext(AppContext)
 
+  // Track the last value we received from props to detect external changes
+  const lastExternalValueRef = useRef<string>(value)
+  // Track if we've done initial trim for this content
+  const hasInitiallyTrimmedRef = useRef(false)
+
   // Get editor settings with defaults
   const wordWrap = state.settings.editorWordWrap ?? true
   const minimap = state.settings.editorMinimap ?? false
   const lineNumbers = state.settings.editorLineNumbers ?? true
 
-  // Process value to trim trailing whitespace for display
-  // This fixes word wrap issues with terminal output that has lines padded with spaces
-  const processedValue = useMemo(() => {
-    return trimTrailingWhitespace(value)
-  }, [value])
+  // Trim trailing whitespace on initial load only
+  // This fixes word wrap issues without causing cursor jumping during editing
+  useEffect(() => {
+    // Check if this is a new/different file (external value changed significantly)
+    const isNewFile = lastExternalValueRef.current !== value &&
+                      Math.abs(lastExternalValueRef.current.length - value.length) > 10
+
+    if (!hasInitiallyTrimmedRef.current || isNewFile) {
+      const trimmed = trimTrailingWhitespace(value)
+      if (trimmed !== value) {
+        // Only trigger onChange if we actually trimmed something
+        onChange(trimmed)
+      }
+      hasInitiallyTrimmedRef.current = true
+      lastExternalValueRef.current = trimmed
+    } else {
+      // Track the value for comparison
+      lastExternalValueRef.current = value
+    }
+  }, [value, onChange])
 
   // Monaco editor options - computed from settings
   const editorOptions = {
@@ -89,7 +109,7 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
         key={editorKey}
         height="100%"
         language="markdown"
-        value={processedValue}
+        value={value}
         theme="vs-dark"
         onChange={onChange}
         onMount={onMount}
