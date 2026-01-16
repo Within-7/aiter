@@ -110,15 +110,28 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   const monacoLanguage = languageMap[language] || 'plaintext'
 
   // Monaco editor options - computed from settings
-  const editorOptions = {
+  const editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
     minimap: { enabled: minimap },
     fontSize: 14,
-    lineNumbers: lineNumbers ? 'on' as const : 'off' as const,
+    lineNumbers: lineNumbers ? 'on' : 'off',
     scrollBeyondLastLine: false,
     automaticLayout: true,
     tabSize: 2,
-    wordWrap: wordWrap ? 'on' as const : 'off' as const,
-    renderWhitespace: 'selection' as const
+    wordWrap: wordWrap ? 'on' : 'off',
+    // Fix word wrap issues:
+    // - wordWrapColumn: 0 means wrap at viewport width (not a fixed column)
+    // - wrappingStrategy: 'advanced' uses better algorithm for calculating wrap points
+    // - wrappingIndent: 'same' keeps wrapped lines aligned with the original line
+    wordWrapColumn: 0,
+    wrappingStrategy: 'advanced',
+    wrappingIndent: 'same',
+    renderWhitespace: 'selection',
+    // Improve scroll and layout stability during editing
+    smoothScrolling: true,
+    cursorSmoothCaretAnimation: 'on',
+    // Ensure proper width calculation
+    wordWrapOverride1: 'inherit',
+    wordWrapOverride2: 'inherit'
   }
 
   // Generate a key based on settings to force re-render when settings change
