@@ -1,8 +1,14 @@
-import React, { useEffect, useRef, useState, useContext } from 'react'
+import React, { useEffect, useRef, useState, useContext, useMemo } from 'react'
 import Editor, { OnMount } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { AppContext } from '../../context/AppContext'
 import './HTMLPreview.css'
+
+// Helper function to trim trailing whitespace from each line
+// This fixes word wrap issues with terminal output that has lines padded with spaces
+const trimTrailingWhitespace = (text: string): string => {
+  return text.split('\n').map(line => line.trimEnd()).join('\n')
+}
 
 interface HTMLPreviewProps {
   value: string
@@ -212,6 +218,12 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
   const minimap = state.settings.editorMinimap ?? false
   const lineNumbers = state.settings.editorLineNumbers ?? true
 
+  // Process value to trim trailing whitespace for display
+  // This fixes word wrap issues with terminal output that has lines padded with spaces
+  const processedValue = useMemo(() => {
+    return trimTrailingWhitespace(value)
+  }, [value])
+
   // Monaco editor options - computed from settings
   const editorOptions = {
     minimap: { enabled: minimap },
@@ -221,7 +233,13 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
     automaticLayout: true,
     tabSize: 2,
     wordWrap: wordWrap ? 'on' as const : 'off' as const,
-    renderWhitespace: 'selection' as const
+    // Word wrap configuration
+    wrappingStrategy: 'advanced' as const,
+    wrappingIndent: 'same' as const,
+    renderWhitespace: 'selection' as const,
+    // Improve scroll and layout stability during editing
+    smoothScrolling: true,
+    cursorSmoothCaretAnimation: 'on' as const
   }
 
   // Generate a key based on settings to force re-render when settings change
@@ -235,7 +253,7 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
             key={editorKey}
             height="100%"
             language="html"
-            value={value}
+            value={processedValue}
             theme="vs-dark"
             onChange={handleEditorChange}
             onMount={handleEditorDidMount}
