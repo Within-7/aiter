@@ -194,7 +194,12 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
       horizontal: wordWrap ? 'hidden' : 'auto',
       horizontalScrollbarSize: wordWrap ? 0 : 10,
       alwaysConsumeMouseWheel: false
-    }
+    },
+    // Enable EditContext API to fix IME (Chinese/Japanese/Korean input) flickering
+    // when using word wrap. This is the same fix VSCode uses (editor.editContext setting).
+    // See: https://github.com/microsoft/monaco-editor/issues/4592
+    // See: https://code.visualstudio.com/updates/v1_101#_edit-context
+    editContext: true
   }
 
   // Generate a key based on settings to force re-render when settings change
