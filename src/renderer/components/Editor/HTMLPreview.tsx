@@ -207,27 +207,39 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
     }
   }
 
+  // Get editor settings with defaults
+  const wordWrap = state.settings.editorWordWrap ?? true
+  const minimap = state.settings.editorMinimap ?? false
+  const lineNumbers = state.settings.editorLineNumbers ?? true
+
+  // Monaco editor options - computed from settings
+  const editorOptions = {
+    minimap: { enabled: minimap },
+    fontSize: 14,
+    lineNumbers: lineNumbers ? 'on' as const : 'off' as const,
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    tabSize: 2,
+    wordWrap: wordWrap ? 'on' as const : 'off' as const,
+    renderWhitespace: 'selection' as const
+  }
+
+  // Generate a key based on settings to force re-render when settings change
+  const editorKey = `html-${wordWrap}-${minimap}-${lineNumbers}`
+
   return (
     <div className="html-preview">
       {mode === 'edit' ? (
         <div className="html-editor-pane-full">
           <Editor
+            key={editorKey}
             height="100%"
             language="html"
             value={value}
             theme="vs-dark"
             onChange={handleEditorChange}
             onMount={handleEditorDidMount}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              lineNumbers: 'on',
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              tabSize: 2,
-              wordWrap: 'on',
-              renderWhitespace: 'selection'
-            }}
+            options={editorOptions}
           />
         </div>
       ) : (
