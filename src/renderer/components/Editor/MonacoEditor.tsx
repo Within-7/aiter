@@ -38,6 +38,13 @@ const languageMap: Record<string, string> = {
   other: 'plaintext'
 }
 
+// Helper function to trim trailing whitespace from each line
+// This is necessary because terminal output often pads lines with spaces,
+// which causes Monaco's word wrap to wrap at unexpected positions
+const trimTrailingWhitespace = (text: string): string => {
+  return text.split('\n').map(line => line.trimEnd()).join('\n')
+}
+
 export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   value,
   language,
@@ -52,6 +59,16 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   const wordWrap = state.settings.editorWordWrap ?? true
   const minimap = state.settings.editorMinimap ?? false
   const lineNumbers = state.settings.editorLineNumbers ?? true
+
+  // Process value to trim trailing whitespace for display
+  // This fixes word wrap issues with terminal output that has lines padded with spaces
+  // We always trim because:
+  // 1. Trailing whitespace is almost always unintentional or meaningless
+  // 2. It causes Monaco's word wrap to behave unexpectedly
+  // 3. Most code editors trim trailing whitespace on save anyway
+  const processedValue = React.useMemo(() => {
+    return trimTrailingWhitespace(value)
+  }, [value])
 
   // Keep onSave ref updated
   useEffect(() => {
@@ -88,11 +105,11 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     }
   }, [onChange])
 
-  const handleEditorDidMount: OnMount = (editor, monaco) => {
+  const handleEditorDidMount: OnMount = (editor, monacoInstance) => {
     editorRef.current = editor
 
     // Add save keyboard shortcut - get content directly from editor
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+    editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
       const currentContent = editor.getValue()
       onSaveRef.current(currentContent)
     })
@@ -110,6 +127,9 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   const monacoLanguage = languageMap[language] || 'plaintext'
 
   // Monaco editor options - computed from settings
+  //
+  // Note: We trim trailing whitespace from each line before displaying (see processedValue)
+  // This fixes word wrap issues with terminal output that has lines padded with spaces
   const editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
     minimap: { enabled: minimap },
     fontSize: 14,
@@ -118,20 +138,15 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     automaticLayout: true,
     tabSize: 2,
     wordWrap: wordWrap ? 'on' : 'off',
-    // Fix word wrap issues:
-    // - wordWrapColumn: 0 means wrap at viewport width (not a fixed column)
-    // - wrappingStrategy: 'advanced' uses better algorithm for calculating wrap points
+    // Word wrap configuration:
+    // - wrappingStrategy: 'advanced' uses a smarter algorithm that considers word boundaries
     // - wrappingIndent: 'same' keeps wrapped lines aligned with the original line
-    wordWrapColumn: 0,
     wrappingStrategy: 'advanced',
     wrappingIndent: 'same',
     renderWhitespace: 'selection',
     // Improve scroll and layout stability during editing
     smoothScrolling: true,
-    cursorSmoothCaretAnimation: 'on',
-    // Ensure proper width calculation
-    wordWrapOverride1: 'inherit',
-    wordWrapOverride2: 'inherit'
+    cursorSmoothCaretAnimation: 'on'
   }
 
   // Generate a key based on settings to force re-render when settings change
@@ -143,7 +158,7 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
       key={editorKey}
       height="100%"
       language={monacoLanguage}
-      value={value}
+      value={processedValue}
       theme="vs-dark"
       onChange={handleEditorChange}
       onMount={handleEditorDidMount}
