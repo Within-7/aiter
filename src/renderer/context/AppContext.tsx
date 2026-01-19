@@ -130,7 +130,13 @@ export const initialState: AppState = {
     // Editor settings
     editorWordWrap: true,
     editorMinimap: false,
-    editorLineNumbers: true
+    editorLineNumbers: true,
+    // Configuration isolation (default: disabled)
+    configIsolation: {
+      enabled: false,
+      basePath: undefined,
+      tools: []
+    }
   },
   terminalDataBuffer: new Map(),
   showPluginPanel: false,

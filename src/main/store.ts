@@ -1,5 +1,5 @@
 import Store from 'electron-store'
-import { Project, AppSettings, ShortcutConfig, SessionState } from '../types'
+import { Project, AppSettings, ShortcutConfig, SessionState, DEFAULT_CONFIG_ISOLATION_TOOLS } from '../types'
 import { defaultVoiceInputSettings } from '../types/voiceInput'
 
 // Default keyboard shortcuts (labels are translated via i18n in renderer)
@@ -70,7 +70,15 @@ const defaultSettings: AppSettings = {
   // Editor settings
   editorWordWrap: true,              // Enable word wrap by default
   editorMinimap: false,              // Disable minimap by default
-  editorLineNumbers: true            // Show line numbers by default
+  editorLineNumbers: true,           // Show line numbers by default
+
+  // Configuration directory isolation (Hybrid Mode)
+  // Disabled by default - users can opt-in for isolated CLI tool configs
+  configIsolation: {
+    enabled: false,                  // Master switch: disabled by default (use system configs)
+    basePath: undefined,             // Will use ~/.aiter/config when enabled
+    tools: DEFAULT_CONFIG_ISOLATION_TOOLS  // Predefined tool configurations
+  }
 }
 
 export class StoreManager {

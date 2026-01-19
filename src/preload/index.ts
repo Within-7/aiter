@@ -312,6 +312,8 @@ contextBridge.exposeInMainWorld('api', {
     // Version upgrade management
     checkUpgrade: () => ipcRenderer.invoke('nodejs:checkUpgrade'),
     upgrade: () => ipcRenderer.invoke('nodejs:upgrade'),
+    // Configuration isolation
+    getDefaultConfigPath: () => ipcRenderer.invoke('nodejs:getDefaultConfigPath'),
     onDownloadProgress: (callback: (progress: {
       percent: number;
       downloaded: number;
@@ -794,6 +796,12 @@ export interface API {
       oldVersion?: string | null;
       newVersion?: string | null;
       reason?: string;
+      error?: string;
+    }>
+    // Configuration isolation
+    getDefaultConfigPath(): Promise<{
+      success: boolean;
+      path?: string;
       error?: string;
     }>
     onDownloadProgress(callback: (progress: {

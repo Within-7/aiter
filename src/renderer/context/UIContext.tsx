@@ -74,7 +74,13 @@ export const initialUIState: UIState = {
     // Editor settings
     editorWordWrap: true,
     editorMinimap: false,
-    editorLineNumbers: true
+    editorLineNumbers: true,
+    // Configuration isolation (default: disabled)
+    configIsolation: {
+      enabled: false,
+      basePath: undefined,
+      tools: []
+    }
   },
   showPluginPanel: false,
   showAboutPanel: false,

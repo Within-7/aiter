@@ -3,7 +3,7 @@ import os from 'os';
 import { execFileSync } from 'child_process';
 import { app } from 'electron';
 import fs from 'fs-extra';
-import { AppSettings } from '../../types';
+import { AppSettings, ConfigIsolationSettings } from '../../types';
 import { VersionManagerDetector } from '../shell/VersionManagerDetector';
 
 export interface NodeInfo {
@@ -584,7 +584,72 @@ export class NodeManager {
     // 标记这是 AiTer 的终端环境
     result.AITER_TERMINAL = '1';
 
+    // Apply configuration isolation settings (Hybrid Mode)
+    this.applyConfigIsolation(result, settings);
+
     return result;
+  }
+
+  /**
+   * Apply configuration isolation settings (Hybrid Mode)
+   * Sets environment variables for CLI tools to use AiTer-specific config directories
+   * @param env - Environment variables object to modify
+   * @param settings - App settings containing config isolation configuration
+   */
+  private applyConfigIsolation(env: NodeJS.ProcessEnv, settings?: AppSettings): void {
+    const configIsolation = settings?.configIsolation;
+
+    // If config isolation is disabled or not configured, do nothing
+    if (!configIsolation?.enabled) {
+      return;
+    }
+
+    // Get base path for config directories
+    const basePath = this.getConfigIsolationBasePath(configIsolation);
+
+    // Ensure base config directory exists
+    fs.ensureDirSync(basePath);
+
+    // Set AITER_CONFIG_HOME for reference
+    env.AITER_CONFIG_HOME = basePath;
+
+    // Apply per-tool configurations
+    for (const tool of configIsolation.tools) {
+      if (!tool.enabled) {
+        continue;
+      }
+
+      // Determine the config path for this tool
+      const toolPath = tool.customPath || path.join(basePath, tool.id);
+
+      // Ensure tool-specific directory exists
+      fs.ensureDirSync(toolPath);
+
+      // Set the environment variable
+      env[tool.envVar] = toolPath;
+
+      console.log(`[NodeManager] Config isolation: ${tool.name} -> ${tool.envVar}=${toolPath}`);
+    }
+  }
+
+  /**
+   * Get the base path for configuration isolation
+   * Priority: custom basePath > default ~/.aiter/config
+   */
+  getConfigIsolationBasePath(configIsolation?: ConfigIsolationSettings): string {
+    if (configIsolation?.basePath) {
+      return configIsolation.basePath;
+    }
+
+    // Default to ~/.aiter/config
+    return path.join(os.homedir(), '.aiter', 'config');
+  }
+
+  /**
+   * Get the default config isolation base path (for UI display)
+   */
+  getDefaultConfigIsolationPath(): string {
+    return path.join(os.homedir(), '.aiter', 'config');
   }
 
   /**

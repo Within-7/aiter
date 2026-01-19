@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppContext } from '../../context/AppContext'
 import { getTerminalThemeNames } from '../../themes/terminalThemes'
-import { TerminalThemeName, DetectedShell, VersionManagerInfo, ShellType, ShortcutConfig, KeyboardShortcut } from '../../../types'
+import { TerminalThemeName, DetectedShell, VersionManagerInfo, ShellType, ShortcutConfig, KeyboardShortcut, ConfigIsolationSettings, ConfigIsolationToolSettings, DEFAULT_CONFIG_ISOLATION_TOOLS } from '../../../types'
 import { ShortcutInput } from './ShortcutInput'
 import { VoiceInputSettings } from '../VoiceInput/VoiceInputSettings'
 import { availableLanguages, changeLanguage, type LanguageCode } from '../../i18n'
@@ -45,6 +45,9 @@ export const SettingsPanel: React.FC = () => {
   // Proxy status state
   const [systemProxyStatus, setSystemProxyStatus] = useState<{ mode: string; url?: string; active: boolean } | null>(null)
 
+  // Config isolation default path
+  const [defaultConfigPath, setDefaultConfigPath] = useState<string>('~/.aiter/config')
+
   // Fetch available shells, version managers, and proxy status on mount
   useEffect(() => {
     if (isOpen) {
@@ -83,6 +86,17 @@ export const SettingsPanel: React.FC = () => {
         })
         .catch(error => {
           console.error('Failed to get proxy status:', error)
+        })
+
+      // Get default config isolation path
+      window.api.nodejs.getDefaultConfigPath()
+        .then(result => {
+          if (result.success && result.path) {
+            setDefaultConfigPath(result.path)
+          }
+        })
+        .catch(error => {
+          console.error('Failed to get default config path:', error)
         })
     }
   }, [isOpen])
@@ -178,6 +192,45 @@ export const SettingsPanel: React.FC = () => {
   const handleVoiceSettingsChange = useCallback((voiceSettings: VoiceInputSettingsType) => {
     handleSettingChange('voiceInput', voiceSettings)
   }, [handleSettingChange])
+
+  // Get current config isolation settings with defaults
+  const getConfigIsolation = useCallback((): ConfigIsolationSettings => {
+    return settings.configIsolation || {
+      enabled: false,
+      basePath: undefined,
+      tools: DEFAULT_CONFIG_ISOLATION_TOOLS
+    }
+  }, [settings.configIsolation])
+
+  // Handle config isolation master switch toggle
+  const handleConfigIsolationToggle = useCallback((enabled: boolean) => {
+    const current = getConfigIsolation()
+    handleSettingChange('configIsolation', { ...current, enabled })
+  }, [getConfigIsolation, handleSettingChange])
+
+  // Handle individual tool isolation toggle
+  const handleToolIsolationToggle = useCallback((toolId: string, enabled: boolean) => {
+    const current = getConfigIsolation()
+    const updatedTools = current.tools.map(tool =>
+      tool.id === toolId ? { ...tool, enabled } : tool
+    )
+    handleSettingChange('configIsolation', { ...current, tools: updatedTools })
+  }, [getConfigIsolation, handleSettingChange])
+
+  // Handle custom path change for a tool
+  const handleToolCustomPath = useCallback((toolId: string, customPath: string | undefined) => {
+    const current = getConfigIsolation()
+    const updatedTools = current.tools.map(tool =>
+      tool.id === toolId ? { ...tool, customPath } : tool
+    )
+    handleSettingChange('configIsolation', { ...current, tools: updatedTools })
+  }, [getConfigIsolation, handleSettingChange])
+
+  // Handle base path change
+  const handleBasePathChange = useCallback((basePath: string | undefined) => {
+    const current = getConfigIsolation()
+    handleSettingChange('configIsolation', { ...current, basePath })
+  }, [getConfigIsolation, handleSettingChange])
 
   // Format path for display (shorten home directory)
   const formatPath = (path: string): string => {
@@ -337,6 +390,62 @@ export const SettingsPanel: React.FC = () => {
               {detectedVersionManagers.map(vm => vm.name).join(', ')}
             </span>
           </div>
+        )}
+      </section>
+
+      {/* Configuration Isolation Section (Hybrid Mode) */}
+      <section className="settings-section">
+        <h3>{t('general.configIsolation.title')}</h3>
+
+        <div className="setting-item setting-item-checkbox">
+          <label htmlFor="config-isolation-enabled">{t('general.configIsolation.enable')}</label>
+          <input
+            id="config-isolation-enabled"
+            type="checkbox"
+            checked={getConfigIsolation().enabled}
+            onChange={(e) => handleConfigIsolationToggle(e.target.checked)}
+          />
+          <span className="setting-hint">
+            {t('general.configIsolation.enableHint')}
+          </span>
+        </div>
+
+        {getConfigIsolation().enabled && (
+          <>
+            <div className="setting-info">
+              <span className="setting-info-label">{t('general.configIsolation.basePath')}</span>
+              <span className="detected-items">{formatPath(getConfigIsolation().basePath || defaultConfigPath)}</span>
+            </div>
+
+            <div className="config-isolation-tools">
+              <span className="setting-subsection-label">{t('general.configIsolation.toolsTitle')}</span>
+              {getConfigIsolation().tools.map(tool => (
+                <div key={tool.id} className="config-isolation-tool-item">
+                  <div className="tool-header">
+                    <input
+                      type="checkbox"
+                      id={`tool-${tool.id}`}
+                      checked={tool.enabled}
+                      onChange={(e) => handleToolIsolationToggle(tool.id, e.target.checked)}
+                    />
+                    <label htmlFor={`tool-${tool.id}`} className="tool-name">{tool.name}</label>
+                    <span className="tool-env-var">{tool.envVar}</span>
+                  </div>
+                  {tool.description && (
+                    <span className="tool-description">{tool.description}</span>
+                  )}
+                  {tool.enabled && (
+                    <div className="tool-path">
+                      <span className="tool-path-label">{t('general.configIsolation.configPath')}</span>
+                      <span className="tool-path-value">
+                        {formatPath(tool.customPath || `${getConfigIsolation().basePath || defaultConfigPath}/${tool.id}`)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
 

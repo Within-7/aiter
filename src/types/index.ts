@@ -145,7 +145,60 @@ export interface AppSettings {
   editorWordWrap: boolean                 // Enable word wrap in code editor
   editorMinimap: boolean                  // Show minimap in code editor
   editorLineNumbers: boolean              // Show line numbers in code editor
+
+  // Configuration directory isolation (Hybrid Mode)
+  configIsolation: ConfigIsolationSettings  // Configuration isolation settings for CLI tools
 }
+
+// Configuration directory isolation settings (Hybrid Mode)
+// Allows CLI tools to use AiTer-specific config directories instead of system ~/.xxx
+export interface ConfigIsolationSettings {
+  enabled: boolean                        // Master switch: enable AiTer config isolation
+  basePath?: string                       // Custom base path (default: ~/.aiter/config)
+  tools: ConfigIsolationToolSettings[]    // Per-tool isolation settings
+}
+
+// Per-tool configuration isolation
+export interface ConfigIsolationToolSettings {
+  id: string                              // Tool identifier (e.g., 'minto', 'claude', 'gemini')
+  name: string                            // Display name
+  envVar: string                          // Environment variable to set (e.g., 'MINTO_CONFIG_DIR')
+  enabled: boolean                        // Whether this tool's config is isolated
+  customPath?: string                     // Custom path override (optional)
+  description?: string                    // Description of what this isolates
+}
+
+// Predefined tool configurations
+export const DEFAULT_CONFIG_ISOLATION_TOOLS: ConfigIsolationToolSettings[] = [
+  {
+    id: 'minto',
+    name: 'Minto CLI',
+    envVar: 'MINTO_CONFIG_DIR',
+    enabled: false,
+    description: 'Minto CLI configuration (~/.minto.json)'
+  },
+  {
+    id: 'claude',
+    name: 'Claude Code CLI',
+    envVar: 'CLAUDE_CONFIG_DIR',
+    enabled: false,
+    description: 'Claude Code CLI configuration (~/.claude/)'
+  },
+  {
+    id: 'xdg-config',
+    name: 'XDG Config (General)',
+    envVar: 'XDG_CONFIG_HOME',
+    enabled: false,
+    description: 'XDG config directory for tools supporting XDG spec'
+  },
+  {
+    id: 'xdg-data',
+    name: 'XDG Data (General)',
+    envVar: 'XDG_DATA_HOME',
+    enabled: false,
+    description: 'XDG data directory for tools supporting XDG spec'
+  }
+]
 
 // Configuration for opening files with external applications
 export interface ExternalOpenConfig {

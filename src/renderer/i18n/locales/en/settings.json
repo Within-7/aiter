@@ -67,6 +67,14 @@
       "title": "Terminal Behavior",
       "confirmClose": "Confirm Terminal Close",
       "confirmCloseHint": "Show confirmation dialog when closing terminal tabs to prevent accidental loss of running processes"
+    },
+    "configIsolation": {
+      "title": "Configuration Isolation",
+      "enable": "Use AiTer Config Directory",
+      "enableHint": "Store CLI tool configurations in AiTer-specific directory instead of system home (~/.xxx)",
+      "basePath": "Base Path:",
+      "toolsTitle": "TOOL CONFIGURATIONS",
+      "configPath": "Path:"
     }
   },
   "appearance": {

@@ -204,7 +204,13 @@ export class PTYManager {
       // Editor settings
       editorWordWrap: true,
       editorMinimap: false,
-      editorLineNumbers: true
+      editorLineNumbers: true,
+      // Configuration isolation (default: disabled)
+      configIsolation: {
+        enabled: false,
+        basePath: undefined,
+        tools: []
+      }
     }
 
     try {

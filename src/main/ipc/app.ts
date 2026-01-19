@@ -270,6 +270,17 @@ export function registerAppHandlers(
     }
   })
 
+  // Get default configuration isolation path
+  ipcMain.handle('nodejs:getDefaultConfigPath', async () => {
+    try {
+      const path = nodeManager.getDefaultConfigIsolationPath()
+      return { success: true, path }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      return { success: false, error: message }
+    }
+  })
+
   // Proxy management
   ipcMain.handle('proxy:getStatus', async () => {
     try {
