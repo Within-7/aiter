@@ -136,9 +136,34 @@ docs/
 ├── RELEASE_GUIDE.md               # 发布指南
 ├── CODE_SIGNING.md                # 代码签名指南
 ├── TEAM_DOWNLOAD_GUIDE.md         # 团队下载指南
+├── LOGIN_SYSTEM_DESIGN.md         # 登录系统设计文档
+├── TEMPLATE_SYSTEM_DESIGN.md      # 模板系统设计文档 (NEW)
 └── archive/                       # 归档的开发文档
     └── README.md                  # 归档文档索引
 ```
+
+---
+
+### 🔐 [登录系统设计](LOGIN_SYSTEM_DESIGN.md)
+**适合**: 开发者、系统管理员
+
+**内容**:
+- 用户认证系统架构
+- 初始化配置规范 (AiTerInitConfig)
+- 配置同步流程
+- 安全考虑和实现计划
+
+---
+
+### 📋 [模板系统设计](TEMPLATE_SYSTEM_DESIGN.md) (NEW)
+**适合**: 开发者、模板创作者
+
+**内容**:
+- 增强模板系统架构 (v2 格式)
+- AI CLI 配置 (Agents, Skills, MCP, Hooks)
+- 知识库系统设计
+- 模板应用流程
+- 预置模板示例
 
 ---
 

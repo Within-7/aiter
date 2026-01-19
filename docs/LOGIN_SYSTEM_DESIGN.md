@@ -263,6 +263,15 @@ interface AiTerInitConfig {
 
 ### 4.2 模板配置 (TemplateConfig)
 
+> **详细设计文档**: 完整的模板系统设计请参考 [TEMPLATE_SYSTEM_DESIGN.md](./TEMPLATE_SYSTEM_DESIGN.md)
+
+模板是项目初始化的核心功能，支持完整的 AI CLI 配置生态系统：
+
+- **AI CLI Plugins**: Agents, Skills, Commands, Hooks
+- **MCP Servers**: 模型上下文协议服务器配置
+- **项目规范**: CLAUDE.md / MINTO.md / AGENT.md
+- **知识库**: 本地文档、示例代码、远程资源
+
 ```typescript
 interface TemplateConfig {
   /** 是否启用模板同步 */
@@ -309,11 +318,23 @@ interface TemplateDefinition {
     files?: Record<string, string>
   }
 
+  /** 目标 AI CLI 工具 */
+  targetCLI?: ('claude-code' | 'minto' | 'gemini')[]
+
+  /** AI CLI 配置 (增强 v2 格式) */
+  aiCli?: TemplateAICliConfig
+
+  /** 知识库配置 */
+  knowledge?: TemplateKnowledgeConfig
+
   /** 模板变量定义 */
   variables?: TemplateVariable[]
 
   /** 模板应用后的钩子脚本 */
   postApply?: string[]
+
+  /** 项目依赖 */
+  dependencies?: TemplateDependencies
 }
 
 interface TemplateVariable {
@@ -323,6 +344,30 @@ interface TemplateVariable {
   default?: string | boolean
   options?: string[]  // type=select 时的选项
   required?: boolean
+}
+
+// AI CLI 配置 (详见 TEMPLATE_SYSTEM_DESIGN.md)
+interface TemplateAICliConfig {
+  plugins?: {
+    agents?: TemplateAgentDefinition[]
+    skills?: TemplateSkillDefinition[]
+    commands?: TemplateCommandDefinition[]
+    hooks?: TemplateHookDefinition[]
+  }
+  mcp?: { servers: TemplateMCPServer[] }
+  prompts?: { system?: string; context?: string }
+  memory?: { enabled: boolean; type: 'local' | 'cloud' }
+  permissions?: { allowedTools?: string[]; bashWhitelist?: string[] }
+}
+
+// 知识库配置
+interface TemplateKnowledgeConfig {
+  enabled: boolean
+  sources: Array<{
+    type: 'local' | 'url' | 'git'
+    path?: string
+    url?: string
+  }>
 }
 ```
 
