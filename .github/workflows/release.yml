@@ -39,6 +39,11 @@ jobs:
         env:
           npm_config_canvas_binary_host_mirror: "https://example.invalid/"
 
+      - name: Rebuild native modules for Electron
+        run: npx @electron/rebuild
+        env:
+          npm_config_canvas_binary_host_mirror: "https://example.invalid/"
+
       - name: Download Node.js binaries
         run: bash scripts/download-nodejs.sh
 
