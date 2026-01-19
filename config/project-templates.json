@@ -1,7 +1,7 @@
 {
   "$schema": "./project-templates.schema.json",
-  "version": "1.0.0",
-  "description": "Default project templates configuration",
+  "version": "1.1.0",
+  "description": "Default project templates configuration (v1 and v2 format support)",
   "templates": [
     {
       "id": "blank",
@@ -29,6 +29,15 @@
       "category": "work",
       "order": 3,
       "templateDir": "content-creation"
+    },
+    {
+      "id": "web-development",
+      "name": "Web Development",
+      "description": "Full-stack web project with AI-assisted coding (Enhanced v2)",
+      "icon": "🌐",
+      "category": "development",
+      "order": 10,
+      "templateDir": "web-development"
     }
   ]
 }

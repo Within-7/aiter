@@ -1,0 +1,177 @@
+{
+  "$schema": "https://aiter.app/schemas/template-v2.json",
+  "version": "2.0.0",
+  "id": "web-development",
+  "name": "Web Development",
+  "description": "Full-stack web development project with AI-assisted coding",
+  "icon": "🌐",
+  "category": "development",
+  "order": 10,
+  "author": "AiTer Team",
+  "license": "MIT",
+  "tags": ["web", "fullstack", "react", "nodejs"],
+  "targetCLI": ["claude-code", "minto"],
+
+  "files": {
+    "include": ["**/*"],
+    "exclude": ["*.tmp", "node_modules/**"],
+    "rename": {
+      "_gitignore": ".gitignore",
+      "_env.template": ".env.example"
+    }
+  },
+
+  "variables": [
+    {
+      "name": "PROJECT_NAME",
+      "type": "string",
+      "label": "Project Name",
+      "required": true
+    },
+    {
+      "name": "AUTHOR",
+      "type": "string",
+      "label": "Author Name",
+      "default": ""
+    },
+    {
+      "name": "USE_TYPESCRIPT",
+      "type": "boolean",
+      "label": "Use TypeScript",
+      "default": true
+    },
+    {
+      "name": "FRAMEWORK",
+      "type": "select",
+      "label": "Frontend Framework",
+      "options": ["react", "vue", "none"],
+      "default": "react"
+    }
+  ],
+
+  "aiCli": {
+    "plugins": {
+      "agents": [
+        {
+          "id": "frontend-developer",
+          "name": "Frontend Developer",
+          "description": "Expert in React/Vue components and modern frontend patterns",
+          "promptFile": "ai-cli/plugins/agents/frontend-developer.md",
+          "tools": ["Read", "Write", "Edit", "Glob", "Grep", "Bash"]
+        },
+        {
+          "id": "code-reviewer",
+          "name": "Code Reviewer",
+          "description": "Reviews code for quality, security, and best practices",
+          "promptFile": "ai-cli/plugins/agents/code-reviewer.md",
+          "tools": ["Read", "Glob", "Grep"]
+        }
+      ],
+      "skills": [
+        {
+          "id": "component",
+          "name": "Create Component",
+          "description": "Generate a new React/Vue component",
+          "promptFile": "ai-cli/plugins/skills/component.md",
+          "trigger": "/component"
+        },
+        {
+          "id": "commit",
+          "name": "Smart Commit",
+          "description": "Create git commit with conventional message",
+          "promptFile": "ai-cli/plugins/skills/commit.md",
+          "trigger": "/commit"
+        }
+      ],
+      "hooks": [
+        {
+          "id": "pre-commit-lint",
+          "event": "beforeCommit",
+          "scriptFile": "ai-cli/plugins/hooks/pre-commit.sh",
+          "platforms": ["darwin", "linux"],
+          "blocking": true,
+          "timeout": 60
+        }
+      ]
+    },
+
+    "mcp": {
+      "servers": [
+        {
+          "id": "filesystem",
+          "name": "Filesystem MCP",
+          "command": "npx",
+          "args": ["-y", "@anthropic/mcp-server-filesystem", "{{PROJECT_PATH}}"],
+          "enabled": true,
+          "description": "Access project files"
+        }
+      ]
+    },
+
+    "prompts": {
+      "system": "ai-cli/prompts/system.md",
+      "context": "ai-cli/prompts/context.md"
+    },
+
+    "memory": {
+      "enabled": true,
+      "type": "local",
+      "maxItems": 100,
+      "persistPath": ".ai-memory/"
+    },
+
+    "permissions": {
+      "allowedTools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebFetch"],
+      "bashWhitelist": ["npm", "npx", "git", "node", "pnpm", "yarn"],
+      "autoApprove": {
+        "fileOperations": true,
+        "bashCommands": false
+      }
+    }
+  },
+
+  "knowledge": {
+    "enabled": true,
+    "indexOnApply": false,
+    "sources": [
+      {
+        "type": "local",
+        "path": "docs/**/*.md",
+        "description": "Project documentation",
+        "tags": ["docs"]
+      }
+    ],
+    "search": {
+      "maxResults": 10,
+      "minScore": 0.7
+    }
+  },
+
+  "postApply": {
+    "scripts": [
+      {
+        "type": "shell",
+        "command": "git init && git add -A && git commit -m 'Initial commit from AiTer template'",
+        "condition": "not:dir:.git",
+        "platforms": ["darwin", "linux", "win32"]
+      }
+    ],
+    "messages": [
+      {
+        "type": "success",
+        "message": "Web development project created successfully!"
+      },
+      {
+        "type": "info",
+        "message": "Use /component to quickly create new components."
+      }
+    ]
+  },
+
+  "dependencies": {
+    "system": {
+      "node": ">=18.0.0",
+      "platforms": ["darwin", "linux", "win32"]
+    }
+  }
+}

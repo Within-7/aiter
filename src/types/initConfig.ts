@@ -144,6 +144,399 @@ export interface TemplateDefinition {
 
   /** 模板应用后的钩子脚本 */
   postApply?: string[]
+
+  /** 目标 AI CLI 工具 */
+  targetCLI?: ('claude-code' | 'minto' | 'gemini')[]
+
+  /** AI CLI 配置 */
+  aiCli?: TemplateAICliConfig
+
+  /** 知识库配置 */
+  knowledge?: TemplateKnowledgeConfig
+
+  /** 项目依赖 */
+  dependencies?: TemplateDependencies
+}
+
+// ============================================================================
+// AI CLI Plugin Types
+// ============================================================================
+
+/**
+ * AI CLI 配置
+ */
+export interface TemplateAICliConfig {
+  /** 插件配置 */
+  plugins?: TemplatePluginsConfig
+
+  /** MCP 服务器配置 */
+  mcp?: TemplateMCPConfig
+
+  /** 系统提示词配置 */
+  prompts?: TemplatePromptsConfig
+
+  /** 记忆配置 */
+  memory?: TemplateMemoryConfig
+
+  /** 权限配置 */
+  permissions?: TemplatePermissionsConfig
+}
+
+/**
+ * 插件配置
+ */
+export interface TemplatePluginsConfig {
+  /** Agent 定义 */
+  agents?: TemplateAgentDefinition[]
+
+  /** Skill 定义 */
+  skills?: TemplateSkillDefinition[]
+
+  /** Command 定义 */
+  commands?: TemplateCommandDefinition[]
+
+  /** Hook 定义 */
+  hooks?: TemplateHookDefinition[]
+}
+
+/**
+ * Agent 定义
+ */
+export interface TemplateAgentDefinition {
+  /** Agent ID */
+  id: string
+
+  /** Agent 名称 */
+  name: string
+
+  /** Agent 描述 */
+  description?: string
+
+  /** Prompt 文件路径 (相对于模板目录) */
+  promptFile: string
+
+  /** 可用工具列表 */
+  tools?: string[]
+
+  /** 模型覆盖 */
+  model?: 'sonnet' | 'opus' | 'haiku'
+}
+
+/**
+ * Skill 定义
+ */
+export interface TemplateSkillDefinition {
+  /** Skill ID */
+  id: string
+
+  /** Skill 名称 */
+  name: string
+
+  /** Skill 描述 */
+  description?: string
+
+  /** Prompt 文件路径 */
+  promptFile: string
+
+  /** 触发命令 (如 /commit) */
+  trigger: string
+
+  /** 参数定义 */
+  args?: TemplateSkillArg[]
+}
+
+/**
+ * Skill 参数定义
+ */
+export interface TemplateSkillArg {
+  /** 参数名 */
+  name: string
+
+  /** 参数类型 */
+  type: 'string' | 'boolean' | 'number'
+
+  /** 是否必填 */
+  required?: boolean
+
+  /** 默认值 */
+  default?: string | boolean | number
+
+  /** 描述 */
+  description?: string
+}
+
+/**
+ * Command 定义
+ */
+export interface TemplateCommandDefinition {
+  /** Command ID */
+  id: string
+
+  /** Command 名称 */
+  name: string
+
+  /** Command 描述 */
+  description?: string
+
+  /** 配置文件路径 */
+  configFile: string
+}
+
+/**
+ * Hook 事件类型
+ */
+export type TemplateHookEvent =
+  | 'beforeCommand'
+  | 'afterCommand'
+  | 'beforeCommit'
+  | 'afterCommit'
+  | 'beforeFileWrite'
+  | 'afterFileWrite'
+  | 'onError'
+
+/**
+ * Hook 定义
+ */
+export interface TemplateHookDefinition {
+  /** Hook ID */
+  id: string
+
+  /** 触发事件 */
+  event: TemplateHookEvent
+
+  /** 脚本文件路径 */
+  scriptFile: string
+
+  /** 适用平台 */
+  platforms?: NodeJS.Platform[]
+
+  /** 是否阻塞执行 */
+  blocking?: boolean
+
+  /** 超时时间 (秒) */
+  timeout?: number
+}
+
+// ============================================================================
+// MCP Configuration
+// ============================================================================
+
+/**
+ * MCP 配置
+ */
+export interface TemplateMCPConfig {
+  /** MCP 服务器列表 */
+  servers: TemplateMCPServer[]
+}
+
+/**
+ * MCP 服务器定义
+ */
+export interface TemplateMCPServer {
+  /** 服务器 ID */
+  id: string
+
+  /** 服务器名称 */
+  name?: string
+
+  /** 启动命令 */
+  command: string
+
+  /** 命令参数 */
+  args?: string[]
+
+  /** 环境变量 */
+  env?: Record<string, string>
+
+  /** 是否启用 */
+  enabled: boolean
+
+  /** 需要的 API Keys */
+  requiredKeys?: string[]
+
+  /** 描述 */
+  description?: string
+}
+
+// ============================================================================
+// Prompts Configuration
+// ============================================================================
+
+/**
+ * 提示词配置
+ */
+export interface TemplatePromptsConfig {
+  /** 系统提示词文件路径 */
+  system?: string
+
+  /** 上下文提示词文件路径 */
+  context?: string
+
+  /** 自定义提示词文件 */
+  custom?: Record<string, string>
+}
+
+// ============================================================================
+// Memory Configuration
+// ============================================================================
+
+/**
+ * 记忆配置
+ */
+export interface TemplateMemoryConfig {
+  /** 是否启用 */
+  enabled: boolean
+
+  /** 记忆类型 */
+  type: 'local' | 'cloud'
+
+  /** 最大记忆条目数 */
+  maxItems?: number
+
+  /** 持久化路径 */
+  persistPath?: string
+}
+
+// ============================================================================
+// Permissions Configuration
+// ============================================================================
+
+/**
+ * 权限配置
+ */
+export interface TemplatePermissionsConfig {
+  /** 允许的工具列表 */
+  allowedTools?: string[]
+
+  /** 禁止的工具列表 */
+  deniedTools?: string[]
+
+  /** Bash 命令白名单 */
+  bashWhitelist?: string[]
+
+  /** Bash 命令黑名单 */
+  bashBlacklist?: string[]
+
+  /** 自动批准配置 */
+  autoApprove?: {
+    /** 文件操作自动批准 */
+    fileOperations?: boolean
+    /** Bash 命令自动批准 */
+    bashCommands?: boolean
+  }
+}
+
+// ============================================================================
+// Knowledge Configuration
+// ============================================================================
+
+/**
+ * 知识库配置
+ */
+export interface TemplateKnowledgeConfig {
+  /** 是否启用 */
+  enabled: boolean
+
+  /** 应用模板时是否建立索引 */
+  indexOnApply?: boolean
+
+  /** 知识源列表 */
+  sources: TemplateKnowledgeSource[]
+
+  /** 嵌入配置 (可选) */
+  embeddings?: TemplateEmbeddingsConfig
+
+  /** 搜索配置 */
+  search?: {
+    /** 最大结果数 */
+    maxResults?: number
+    /** 最小相关性分数 */
+    minScore?: number
+  }
+}
+
+/**
+ * 知识源类型
+ */
+export type TemplateKnowledgeSourceType = 'local' | 'url' | 'git'
+
+/**
+ * 知识源定义
+ */
+export interface TemplateKnowledgeSource {
+  /** 源类型 */
+  type: TemplateKnowledgeSourceType
+
+  /** 本地路径 (支持 glob 模式) */
+  path?: string
+
+  /** 远程 URL */
+  url?: string
+
+  /** Git 仓库地址 */
+  git?: {
+    url: string
+    ref?: string
+    sparse?: string[]
+  }
+
+  /** 是否缓存 */
+  cache?: boolean
+
+  /** 缓存刷新间隔 (秒) */
+  refreshInterval?: number
+
+  /** 描述 */
+  description?: string
+
+  /** 标签 */
+  tags?: string[]
+}
+
+/**
+ * 嵌入配置
+ */
+export interface TemplateEmbeddingsConfig {
+  /** 是否启用 */
+  enabled: boolean
+
+  /** 嵌入模型 */
+  model?: string
+
+  /** 分块大小 */
+  chunkSize?: number
+
+  /** 分块重叠 */
+  chunkOverlap?: number
+}
+
+// ============================================================================
+// Dependencies Configuration
+// ============================================================================
+
+/**
+ * 模板依赖配置
+ */
+export interface TemplateDependencies {
+  /** NPM 依赖 */
+  npm?: {
+    dependencies?: Record<string, string>
+    devDependencies?: Record<string, string>
+  }
+
+  /** AiTer 插件依赖 */
+  plugins?: {
+    id: string
+    version?: string
+    required?: boolean
+  }[]
+
+  /** 系统要求 */
+  system?: {
+    node?: string
+    npm?: string
+    platforms?: NodeJS.Platform[]
+  }
 }
 
 // ============================================================================
