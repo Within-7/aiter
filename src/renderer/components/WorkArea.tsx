@@ -12,6 +12,7 @@ import { ConfirmDialog } from './FileTree/ConfirmDialog'
 import { VoiceInputButton, InlineVoiceBubble } from './VoiceInput'
 import { useInlineVoiceInput } from '../hooks/useInlineVoiceInput'
 import { defaultVoiceInputSettings, VoiceTranscription, VoiceRecord } from '../../types/voiceInput'
+import type { EditorTab } from '../../types'
 import { getProjectColor } from '../utils/projectColors'
 import '../styles/WorkArea.css'
 
@@ -670,6 +671,31 @@ export const WorkArea: React.FC = () => {
           />
         </div>
         <div className={`work-area-tabs-right ${isWindows ? 'windows-platform' : ''}`}>
+          {/* File type selector for scratchpad tabs */}
+          {activeEditorTab?.isScratchpad && (
+            <select
+              className="scratchpad-type-selector"
+              value={activeEditorTab.fileType}
+              onChange={(e) => dispatch({
+                type: 'UPDATE_SCRATCHPAD_TYPE',
+                payload: { id: activeEditorTab.id, fileType: e.target.value as EditorTab['fileType'] }
+              })}
+              title="Select content type"
+            >
+              <option value="text">Plain Text</option>
+              <option value="markdown">Markdown</option>
+              <option value="html">HTML</option>
+              <option value="json">JSON</option>
+              <option value="javascript">JavaScript</option>
+              <option value="typescript">TypeScript</option>
+              <option value="css">CSS</option>
+              <option value="python">Python</option>
+              <option value="shell">Shell</option>
+              <option value="sql">SQL</option>
+              <option value="yaml">YAML</option>
+              <option value="xml">XML</option>
+            </select>
+          )}
           {/* Voice Input Button - toggles voice panel */}
           <VoiceInputButton
             isEnabled={voiceSettings.enabled}

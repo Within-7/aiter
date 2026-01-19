@@ -154,6 +154,23 @@ export function editorReducer(state: AppState, action: AppAction): AppState {
       }
     }
 
+    case 'UPDATE_SCRATCHPAD_TYPE': {
+      // Only allow changing file type for scratchpad tabs
+      const tab = state.editorTabs.find(t => t.id === action.payload.id)
+      if (!tab?.isScratchpad) {
+        return state
+      }
+
+      return {
+        ...state,
+        editorTabs: state.editorTabs.map(t =>
+          t.id === action.payload.id
+            ? { ...t, fileType: action.payload.fileType }
+            : t
+        )
+      }
+    }
+
     case 'REMOVE_EDITOR_TAB': {
       const newTabs = state.editorTabs.filter(t => t.id !== action.payload)
       const removedTabId = `editor-${action.payload}`

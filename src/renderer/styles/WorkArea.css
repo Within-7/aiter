@@ -271,3 +271,31 @@
   opacity: 0.3;
   cursor: not-allowed;
 }
+
+/* Scratchpad file type selector */
+.scratchpad-type-selector {
+  background: #3c3c3c;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #cccccc;
+  font-size: 12px;
+  padding: 4px 8px;
+  margin-right: 8px;
+  cursor: pointer;
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+
+.scratchpad-type-selector:hover {
+  background: #4a4a4a;
+  border-color: #666;
+}
+
+.scratchpad-type-selector:focus {
+  border-color: #007acc;
+}
+
+.scratchpad-type-selector option {
+  background: #2d2d30;
+  color: #cccccc;
+}

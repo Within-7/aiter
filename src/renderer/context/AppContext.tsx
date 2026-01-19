@@ -54,6 +54,7 @@ export type AppAction =
   | { type: 'REORDER_TERMINALS'; payload: Terminal[] }
   | { type: 'ADD_EDITOR_TAB'; payload: EditorTab }
   | { type: 'ADD_SCRATCHPAD_TAB' }
+  | { type: 'UPDATE_SCRATCHPAD_TYPE'; payload: { id: string; fileType: EditorTab['fileType'] } }
   | { type: 'REMOVE_EDITOR_TAB'; payload: string }
   | { type: 'SET_ACTIVE_EDITOR_TAB'; payload: string }
   | { type: 'REORDER_EDITOR_TABS'; payload: EditorTab[] }
