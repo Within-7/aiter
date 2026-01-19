@@ -1,11 +1,68 @@
 import { AppState, AppAction } from '../AppContext'
 import { removeTabAndActivateNext } from '../utils/tabManagement'
+import type { EditorTab } from '../../../types'
+
+// Counter for generating unique scratchpad names
+let scratchpadCounter = 1
 
 /**
  * Handles editor tab-related actions
  */
 export function editorReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
+    case 'ADD_SCRATCHPAD_TAB': {
+      // Generate unique ID and name for the scratchpad
+      const id = `scratchpad-${Date.now()}`
+      const name = `Untitled-${scratchpadCounter++}`
+
+      const scratchpadTab: EditorTab = {
+        id,
+        filePath: '', // Empty for scratchpad
+        fileName: name,
+        fileType: 'text',
+        content: '',
+        isDirty: false,
+        isScratchpad: true
+      }
+
+      // Insert new tab after the current active tab
+      const newTabId = `editor-${id}`
+      let newTabOrder: string[]
+
+      // Find current active tab position
+      const activeTabId = state.activeEditorTabId
+        ? `editor-${state.activeEditorTabId}`
+        : state.activeTerminalId
+        ? `terminal-${state.activeTerminalId}`
+        : null
+
+      if (activeTabId) {
+        const activeIndex = state.tabOrder.indexOf(activeTabId)
+        if (activeIndex !== -1) {
+          // Insert after the active tab
+          newTabOrder = [
+            ...state.tabOrder.slice(0, activeIndex + 1),
+            newTabId,
+            ...state.tabOrder.slice(activeIndex + 1)
+          ]
+        } else {
+          // Fallback: append to end
+          newTabOrder = [...state.tabOrder, newTabId]
+        }
+      } else {
+        // No active tab, append to end
+        newTabOrder = [...state.tabOrder, newTabId]
+      }
+
+      return {
+        ...state,
+        editorTabs: [...state.editorTabs, scratchpadTab],
+        tabOrder: newTabOrder,
+        activeEditorTabId: id,
+        activeTerminalId: undefined
+      }
+    }
+
     case 'ADD_EDITOR_TAB': {
       // Check if tab already exists for this file
       // For HTML files with serverUrl (which may have query params), compare both filePath and serverUrl

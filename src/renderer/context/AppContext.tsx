@@ -5,6 +5,7 @@ import { combinedReducer } from './reducers'
 // Default keyboard shortcuts (labels are translated via i18n in SettingsPanel)
 const defaultShortcuts: ShortcutConfig[] = [
   { action: 'newTerminal', label: 'New Terminal', shortcut: { key: 't', metaKey: true }, enabled: true },
+  { action: 'newScratchpad', label: 'New Scratchpad', shortcut: { key: 't', ctrlKey: true }, enabled: true },
   { action: 'closeTab', label: 'Close Tab', shortcut: { key: 'w', metaKey: true }, enabled: true },
   { action: 'saveFile', label: 'Save File', shortcut: { key: 's', metaKey: true }, enabled: true },
   { action: 'openSettings', label: 'Open Settings', shortcut: { key: ',', metaKey: true }, enabled: true },
@@ -52,6 +53,7 @@ export type AppAction =
   | { type: 'UPDATE_TERMINAL_NAME'; payload: { id: string; name: string } }
   | { type: 'REORDER_TERMINALS'; payload: Terminal[] }
   | { type: 'ADD_EDITOR_TAB'; payload: EditorTab }
+  | { type: 'ADD_SCRATCHPAD_TAB' }
   | { type: 'REMOVE_EDITOR_TAB'; payload: string }
   | { type: 'SET_ACTIVE_EDITOR_TAB'; payload: string }
   | { type: 'REORDER_EDITOR_TABS'; payload: EditorTab[] }

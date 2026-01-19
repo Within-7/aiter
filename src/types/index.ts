@@ -33,6 +33,7 @@ export interface EditorTab {
   content: string
   isDirty: boolean
   isPreview?: boolean // Preview tab (VSCode-like behavior): replaced on next file click, unless pinned
+  isScratchpad?: boolean // Temporary scratchpad tab, not associated with a file
   cursorPosition?: { line: number; column: number }
   serverUrl?: string // HTTP server URL for HTML preview
   // Diff view properties
@@ -268,6 +269,7 @@ export interface PluginUpdateProgress {
 // Keyboard shortcut types
 export type ShortcutAction =
   | 'newTerminal'      // 新建终端
+  | 'newScratchpad'    // 新建临时文档
   | 'closeTab'         // 关闭当前标签页
   | 'saveFile'         // 保存文件
   | 'openSettings'     // 打开设置

@@ -114,6 +114,7 @@
     "pressKey": "Press a key...",
     "keys": {
       "newTerminal": "New Terminal",
+      "newScratchpad": "New Scratchpad",
       "closeTab": "Close Tab",
       "saveFile": "Save File",
       "openSettings": "Open Settings",

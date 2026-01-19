@@ -32,6 +32,13 @@ interface CloseTerminalDialogState {
   terminalName: string
 }
 
+// Dialog state for scratchpad close confirmation
+interface CloseScratchpadDialogState {
+  show: boolean
+  tabId: string | null
+  tabName: string
+}
+
 export const WorkArea: React.FC = () => {
   const { state, dispatch } = useContext(AppContext)
 
@@ -48,6 +55,13 @@ export const WorkArea: React.FC = () => {
     show: false,
     terminalId: null,
     terminalName: ''
+  })
+
+  // Track scratchpad close confirmation dialog
+  const [closeScratchpadDialog, setCloseScratchpadDialog] = useState<CloseScratchpadDialogState>({
+    show: false,
+    tabId: null,
+    tabName: ''
   })
 
   // Detect platform for Windows-specific styling
@@ -243,7 +257,20 @@ export const WorkArea: React.FC = () => {
     e.stopPropagation()
     if (tabId.startsWith('editor-')) {
       const id = tabId.substring('editor-'.length)
-      dispatch({ type: 'REMOVE_EDITOR_TAB', payload: id })
+      const editorTab = state.editorTabs.find(t => t.id === id)
+
+      // Check if it's a scratchpad tab with content
+      if (editorTab?.isScratchpad && editorTab.content.trim().length > 0) {
+        // Show confirmation dialog for scratchpad with content
+        setCloseScratchpadDialog({
+          show: true,
+          tabId: id,
+          tabName: editorTab.fileName
+        })
+      } else {
+        // Close directly for non-scratchpad or empty scratchpad
+        dispatch({ type: 'REMOVE_EDITOR_TAB', payload: id })
+      }
     } else if (tabId.startsWith('terminal-')) {
       const id = tabId.substring('terminal-'.length)
       // Check if confirmation is enabled in settings
@@ -262,7 +289,7 @@ export const WorkArea: React.FC = () => {
         dispatch({ type: 'REMOVE_TERMINAL', payload: id })
       }
     }
-  }, [dispatch, state.terminals, state.settings.confirmTerminalClose])
+  }, [dispatch, state.terminals, state.editorTabs, state.settings.confirmTerminalClose])
 
   // Handle terminal close confirmation
   const handleConfirmCloseTerminal = useCallback(() => {
@@ -275,6 +302,19 @@ export const WorkArea: React.FC = () => {
   // Handle terminal close cancellation
   const handleCancelCloseTerminal = useCallback(() => {
     setCloseTerminalDialog({ show: false, terminalId: null, terminalName: '' })
+  }, [])
+
+  // Handle scratchpad close confirmation (discard content)
+  const handleConfirmCloseScratchpad = useCallback(() => {
+    if (closeScratchpadDialog.tabId) {
+      dispatch({ type: 'REMOVE_EDITOR_TAB', payload: closeScratchpadDialog.tabId })
+    }
+    setCloseScratchpadDialog({ show: false, tabId: null, tabName: '' })
+  }, [closeScratchpadDialog.tabId, dispatch])
+
+  // Handle scratchpad close cancellation
+  const handleCancelCloseScratchpad = useCallback(() => {
+    setCloseScratchpadDialog({ show: false, tabId: null, tabName: '' })
   }, [])
 
   // Handle terminal close request from keyboard shortcut (Ctrl/Cmd+W)
@@ -299,6 +339,27 @@ export const WorkArea: React.FC = () => {
     }
   }, [dispatch, state.terminals, state.settings.confirmTerminalClose])
 
+  // Handle editor close request from keyboard shortcut (Ctrl/Cmd+W)
+  const handleCloseEditorRequest = useCallback((event: CustomEvent<{ editorTabId: string }>) => {
+    const { editorTabId } = event.detail
+    if (!editorTabId) return
+
+    const editorTab = state.editorTabs.find(t => t.id === editorTabId)
+
+    // Check if it's a scratchpad tab with content
+    if (editorTab?.isScratchpad && editorTab.content.trim().length > 0) {
+      // Show confirmation dialog for scratchpad with content
+      setCloseScratchpadDialog({
+        show: true,
+        tabId: editorTabId,
+        tabName: editorTab.fileName
+      })
+    } else {
+      // Close directly for non-scratchpad or empty scratchpad
+      dispatch({ type: 'REMOVE_EDITOR_TAB', payload: editorTabId })
+    }
+  }, [dispatch, state.editorTabs])
+
   // Listen for terminal close request events
   React.useEffect(() => {
     window.addEventListener('close-terminal-request', handleCloseTerminalRequest as EventListener)
@@ -306,6 +367,14 @@ export const WorkArea: React.FC = () => {
       window.removeEventListener('close-terminal-request', handleCloseTerminalRequest as EventListener)
     }
   }, [handleCloseTerminalRequest])
+
+  // Listen for editor close request events
+  React.useEffect(() => {
+    window.addEventListener('close-editor-request', handleCloseEditorRequest as EventListener)
+    return () => {
+      window.removeEventListener('close-editor-request', handleCloseEditorRequest as EventListener)
+    }
+  }, [handleCloseEditorRequest])
 
   const handleDragStart = useCallback((e: React.DragEvent, tabId: string) => {
     // If the dragged tab is not in selection, make it the only selected tab
@@ -591,12 +660,13 @@ export const WorkArea: React.FC = () => {
               </div>
             )
           })}
-          {/* Drop zone for dropping tabs at the end */}
+          {/* Drop zone for dropping tabs at the end / double-click to create scratchpad */}
           <div
-            className={`tab-drop-end-zone ${dragOverEnd ? 'drag-over' : ''} ${draggedTabId ? 'visible' : ''}`}
+            className={`tab-drop-end-zone ${dragOverEnd ? 'drag-over' : ''}`}
             onDragOver={handleDragOverEnd}
             onDrop={handleDropAtEnd}
             onDragLeave={() => setDragOverEnd(false)}
+            onDoubleClick={() => dispatch({ type: 'ADD_SCRATCHPAD_TAB' })}
           />
         </div>
         <div className={`work-area-tabs-right ${isWindows ? 'windows-platform' : ''}`}>
@@ -697,6 +767,19 @@ export const WorkArea: React.FC = () => {
           variant="danger"
           onConfirm={handleConfirmCloseTerminal}
           onCancel={handleCancelCloseTerminal}
+        />
+      )}
+
+      {/* Scratchpad close confirmation dialog */}
+      {closeScratchpadDialog.show && (
+        <ConfirmDialog
+          title="Discard Changes?"
+          message={`"${closeScratchpadDialog.tabName}" has unsaved content. Do you want to discard it?`}
+          confirmLabel="Discard"
+          cancelLabel="Cancel"
+          variant="danger"
+          onConfirm={handleConfirmCloseScratchpad}
+          onCancel={handleCancelCloseScratchpad}
         />
       )}
 

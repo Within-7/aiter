@@ -25,10 +25,19 @@ export const KeyboardShortcutsHandler: React.FC = () => {
         break
       }
 
+      case 'newScratchpad': {
+        // Create a new scratchpad tab for temporary notes
+        dispatch({ type: 'ADD_SCRATCHPAD_TAB' })
+        break
+      }
+
       case 'closeTab': {
         // Close active tab (terminal or editor)
         if (state.activeEditorTabId) {
-          dispatch({ type: 'REMOVE_EDITOR_TAB', payload: state.activeEditorTabId })
+          // Dispatch event to let WorkArea handle editor close with confirmation (for scratchpads)
+          window.dispatchEvent(new CustomEvent('close-editor-request', {
+            detail: { editorTabId: state.activeEditorTabId }
+          }))
         } else if (state.activeTerminalId) {
           // Dispatch event to let WorkArea handle terminal close with confirmation
           window.dispatchEvent(new CustomEvent('close-terminal-request', {

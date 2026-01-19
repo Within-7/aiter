@@ -74,5 +74,11 @@
     "title": "Select File",
     "select": "Select",
     "cancel": "Cancel"
+  },
+  "scratchpad": {
+    "discardTitle": "Discard Changes?",
+    "discardMessage": "\"{{name}}\" has unsaved content. Do you want to discard it?",
+    "discard": "Discard",
+    "cancel": "Cancel"
   }
 }
