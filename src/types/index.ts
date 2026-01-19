@@ -425,3 +425,9 @@ export interface SessionState {
 
 // Export voice input types
 export * from './voiceInput'
+
+// Export authentication types
+export * from './auth'
+
+// Export initialization config types
+export * from './initConfig'
