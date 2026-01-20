@@ -767,6 +767,7 @@ export const WorkArea: React.FC = () => {
                 language={activeEditorTab.fileType}
                 onChange={handleContentChange}
                 onSave={handleSave}
+                isActive={!isTerminalActive}
               />
             )}
           </div>

@@ -8,6 +8,7 @@ interface MonacoEditorProps {
   language: string
   onChange: (value: string) => void
   onSave: (content: string) => void
+  isActive?: boolean
 }
 
 const languageMap: Record<string, string> = {
@@ -49,7 +50,8 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   value,
   language,
   onChange,
-  onSave
+  onSave,
+  isActive = true
 }) => {
   const { state } = useContext(AppContext)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -90,6 +92,13 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   useEffect(() => {
     onSaveRef.current = onSave
   }, [onSave])
+
+  // Focus editor when it becomes active
+  useEffect(() => {
+    if (isActive && editorRef.current) {
+      editorRef.current.focus()
+    }
+  }, [isActive])
 
   // Listen for voice input text insertion events
   useEffect(() => {

@@ -171,6 +171,13 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     onSaveRef.current = onSave
   }, [onSave])
 
+  // Focus editor when switching to edit mode
+  useEffect(() => {
+    if (mode === 'edit' && editorRef.current) {
+      editorRef.current.focus()
+    }
+  }, [mode])
+
   const handleEditorDidMount: OnMount = (editor, monacoInstance) => {
     editorRef.current = editor
 

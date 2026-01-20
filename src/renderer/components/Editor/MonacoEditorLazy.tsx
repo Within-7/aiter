@@ -11,6 +11,7 @@ interface MonacoEditorProps {
   language: string
   onChange: (value: string) => void
   onSave: (content: string) => void
+  isActive?: boolean
 }
 
 // Loading skeleton that mimics Monaco Editor appearance

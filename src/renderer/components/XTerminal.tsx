@@ -216,11 +216,16 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
     }
   }, [terminal.id, isVisible])
 
-  // Flush inactive buffer when terminal becomes active
+  // Flush inactive buffer and focus terminal when it becomes active
   useEffect(() => {
-    if (isActive && xtermRef.current && inactiveBufferRef.current) {
-      xtermRef.current.write(inactiveBufferRef.current)
-      inactiveBufferRef.current = ''
+    if (isActive && xtermRef.current) {
+      // Flush any buffered data
+      if (inactiveBufferRef.current) {
+        xtermRef.current.write(inactiveBufferRef.current)
+        inactiveBufferRef.current = ''
+      }
+      // Focus the terminal so user can type immediately
+      xtermRef.current.focus()
     }
   }, [isActive])
 
