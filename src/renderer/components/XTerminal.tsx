@@ -142,7 +142,13 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
 
     // Use RAF to ensure DOM is painted
     requestAnimationFrame(() => {
-      requestAnimationFrame(fitTerminal)
+      requestAnimationFrame(() => {
+        fitTerminal()
+        // Focus terminal if it's active after creation
+        if (isActive) {
+          xterm.focus()
+        }
+      })
     })
 
     // Store references
