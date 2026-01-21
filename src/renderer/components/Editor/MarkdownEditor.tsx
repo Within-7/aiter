@@ -193,6 +193,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
   }, [mode])
 
+  // Ref to store the scroll listener disposable
+  const scrollListenerRef = useRef<monaco.IDisposable | null>(null)
+
   const handleEditorDidMount: OnMount = (editor, monacoInstance) => {
     editorRef.current = editor
 
@@ -211,6 +214,20 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         editor.setScrollLeft(savedPosition.scrollLeft)
       })
     }
+
+    // Dispose previous scroll listener if exists
+    if (scrollListenerRef.current) {
+      scrollListenerRef.current.dispose()
+    }
+
+    // Add scroll event listener to save position continuously
+    scrollListenerRef.current = editor.onDidScrollChange(() => {
+      if (currentFilePath) {
+        const scrollTop = editor.getScrollTop()
+        const scrollLeft = editor.getScrollLeft()
+        editorScrollPositionMap.set(currentFilePath, { scrollTop, scrollLeft })
+      }
+    })
 
     // Focus the editor
     editor.focus()
@@ -237,13 +254,17 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   }, [currentFilePath])
 
   // Detect when file path changes (preview tab replaced with new file)
+  // and reset scroll position to top for new files
   useEffect(() => {
     if (prevFilePathRef.current !== currentFilePath) {
       // File path changed - this is a different file now
-      // Update the ref and don't restore old scroll position
       prevFilePathRef.current = currentFilePath
       // Update instanceId for unique heading IDs
       instanceId.current = tabId || `md-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      // Reset preview scroll to top for the new file
+      if (previewRef.current) {
+        previewRef.current.scrollTop = 0
+      }
     }
   }, [currentFilePath, tabId])
 
@@ -251,28 +272,25 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   useEffect(() => {
     if (mode === 'preview' && previewRef.current && currentFilePath) {
       const savedPosition = previewScrollPositionMap.get(currentFilePath)
-      if (savedPosition !== undefined) {
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-          if (previewRef.current) {
-            previewRef.current.scrollTop = savedPosition
-          }
-        })
-      }
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        if (previewRef.current) {
+          // Restore saved position or scroll to top
+          previewRef.current.scrollTop = savedPosition ?? 0
+        }
+      })
     }
   }, [mode, currentFilePath, preview]) // Also depend on preview to restore after content renders
 
-  // Save editor scroll position before unmounting or switching modes
+  // Cleanup scroll listener on unmount
   useEffect(() => {
     return () => {
-      // Save editor scroll position on cleanup
-      if (editorRef.current && currentFilePath) {
-        const scrollTop = editorRef.current.getScrollTop()
-        const scrollLeft = editorRef.current.getScrollLeft()
-        editorScrollPositionMap.set(currentFilePath, { scrollTop, scrollLeft })
+      if (scrollListenerRef.current) {
+        scrollListenerRef.current.dispose()
+        scrollListenerRef.current = null
       }
     }
-  }, [currentFilePath, mode])
+  }, [])
 
   return (
     <div className="markdown-editor">
