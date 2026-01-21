@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useRef } from 'react'
+import React, { useEffect, useState, useContext, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -21,22 +21,31 @@ interface MarkdownEditorProps {
   onSave: (content?: string) => void
   mode: 'preview' | 'edit'
   currentFilePath: string
+  tabId?: string // Unique ID for this editor instance
 }
+
+// Global map to store scroll positions per file path
+const scrollPositionMap = new Map<string, number>()
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   value,
   onChange,
   onSave,
   mode,
-  currentFilePath
+  currentFilePath,
+  tabId
 }) => {
   const { t } = useTranslation('editor')
   const { state } = useContext(AppContext)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
   const [preview, setPreview] = useState('')
   const [toc, setToc] = useState<TocItem[]>([])
   const [showToc, setShowToc] = useState(true)
   const [imageUrls, setImageUrls] = useState<Map<string, string>>(new Map())
+
+  // Generate unique ID prefix for this editor instance to avoid DOM conflicts
+  const instanceId = useRef(tabId || `md-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
 
   // Resolve relative image paths to HTTP Server URLs
   useEffect(() => {
@@ -125,7 +134,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       rawHTML = rawHTML.replace(imgSrcRegex, `src="${serverUrl}"`)
     })
 
-    // Extract headings for TOC
+    // Extract headings for TOC with unique IDs per instance
     const headingRegex = /<h([1-6])[^>]*>(.*?)<\/h\1>/gi
     const tocItems: TocItem[] = []
     let match
@@ -134,7 +143,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     while ((match = headingRegex.exec(rawHTML)) !== null) {
       const level = parseInt(match[1])
       const text = match[2].replace(/<[^>]*>/g, '') // Remove any HTML tags from heading text
-      const id = `heading-${headingIndex++}`
+      // Use instanceId to create unique IDs across multiple editor instances
+      const id = `${instanceId.current}-heading-${headingIndex++}`
       tocItems.push({ level, text, id })
     }
 
@@ -144,7 +154,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     let htmlWithIds = rawHTML
     headingIndex = 0
     htmlWithIds = htmlWithIds.replace(/<h([1-6])([^>]*)>(.*?)<\/h\1>/gi, (_match, level, attrs, content) => {
-      const id = `heading-${headingIndex++}`
+      const id = `${instanceId.current}-heading-${headingIndex++}`
       return `<h${level}${attrs} id="${id}">${content}</h${level}>`
     })
 
@@ -204,6 +214,28 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
   }
 
+  // Save scroll position when scrolling in preview mode
+  const handlePreviewScroll = useCallback(() => {
+    if (previewRef.current && currentFilePath) {
+      scrollPositionMap.set(currentFilePath, previewRef.current.scrollTop)
+    }
+  }, [currentFilePath])
+
+  // Restore scroll position when component mounts or file changes
+  useEffect(() => {
+    if (mode === 'preview' && previewRef.current && currentFilePath) {
+      const savedPosition = scrollPositionMap.get(currentFilePath)
+      if (savedPosition !== undefined) {
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          if (previewRef.current) {
+            previewRef.current.scrollTop = savedPosition
+          }
+        })
+      }
+    }
+  }, [mode, currentFilePath, preview]) // Also depend on preview to restore after content renders
+
   return (
     <div className="markdown-editor">
       {mode === 'edit' ? (
@@ -246,8 +278,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           <div className="markdown-preview-pane-full">
             {/* SAFE: HTML is sanitized with DOMPurify above before rendering */}
             <div
+              ref={previewRef}
               className="markdown-preview"
               dangerouslySetInnerHTML={{ __html: preview }}
+              onScroll={handlePreviewScroll}
             />
           </div>
         </div>
