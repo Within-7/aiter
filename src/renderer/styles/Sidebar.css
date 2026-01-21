@@ -92,6 +92,10 @@
   cursor: pointer;
   user-select: none;
   transition: background-color 0.1s;
+  /* Sticky header - freeze at top while scrolling within explorer */
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .project-header:hover {
