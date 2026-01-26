@@ -1,7 +1,8 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useContext } from 'react'
 import { VscGitCommit, VscRefresh, VscCheck, VscFile, VscDiffAdded, VscDiffModified, VscDiffRemoved, VscCloudUpload, VscCloudDownload, VscSync, VscAdd, VscRemove, VscChevronDown, VscChevronRight } from 'react-icons/vsc'
-import { GitCommit, GitStatus, EditorTab } from '../../types'
+import { GitStatus, EditorTab, GitCommit } from '../../types'
 import { AppContext } from '../context/AppContext'
+import { useGitOperations, type CommitFile, type FileChange } from '../hooks/useGitOperations'
 import '../styles/GitHistoryPanel.css'
 
 interface GitHistoryPanelProps {
@@ -12,242 +13,60 @@ interface GitHistoryPanelProps {
   onClose: () => void
 }
 
-interface FileChange {
-  path: string
-  status: 'added' | 'modified' | 'deleted' | 'untracked'
-}
-
-interface CommitFile {
-  path: string
-  status: 'added' | 'modified' | 'deleted' | 'renamed'
-}
-
-interface Branch {
-  name: string
-  current: boolean
-}
-
 export function GitHistoryPanel({ projectId, projectPath, projectName, gitStatus, onClose }: GitHistoryPanelProps) {
   const { dispatch } = useContext(AppContext)
-  const [commits, setCommits] = useState<GitCommit[]>([])
-  const [fileChanges, setFileChanges] = useState<FileChange[]>([])
-  const [branches, setBranches] = useState<Branch[]>([])
-  const [loading, setLoading] = useState(true)
-  const [committing, setCommitting] = useState(false)
+
+  // Use Git operations hook
+  const {
+    commits,
+    fileChanges,
+    branches,
+    commitFiles,
+    loading,
+    committing,
+    operationInProgress,
+    refresh,
+    commitAll,
+    switchBranch,
+    createBranch,
+    deleteBranch,
+    pull,
+    push,
+    fetch,
+    stageFile,
+    unstageFile,
+    loadCommitFiles,
+    getCommitFileDiff,
+    getFileDiff
+  } = useGitOperations(projectPath)
+
+  // Local UI state
   const [commitMessage, setCommitMessage] = useState('')
   const [showBranchDropdown, setShowBranchDropdown] = useState(false)
   const [newBranchName, setNewBranchName] = useState('')
   const [showNewBranchInput, setShowNewBranchInput] = useState(false)
-  const [operationInProgress, setOperationInProgress] = useState<string | null>(null)
   const [expandedCommits, setExpandedCommits] = useState<Set<string>>(new Set())
-  const [commitFiles, setCommitFiles] = useState<Map<string, CommitFile[]>>(new Map())
 
-  const loadGitData = async () => {
-    setLoading(true)
-    try {
-      // Load commits
-      const commitsResult = await window.api.git.getRecentCommits(projectPath, 10)
-      if (commitsResult.success && commitsResult.commits) {
-        setCommits(commitsResult.commits)
-      }
-
-      // Load file changes
-      const changesResult = await window.api.git.getFileChanges(projectPath)
-      if (changesResult.success && changesResult.changes) {
-        setFileChanges(changesResult.changes)
-      }
-
-      // Load branches
-      const branchesResult = await window.api.git.getBranches(projectPath)
-      if (branchesResult.success && branchesResult.branches) {
-        setBranches(branchesResult.branches)
-      }
-    } catch (error) {
-      console.error('Failed to load git data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadGitData()
-  }, [projectPath])
-
-  const handleRefresh = () => {
-    loadGitData()
-  }
-
+  // Handler wrappers that manage local UI state
   const handleCommitAll = async () => {
-    if (!commitMessage.trim()) {
-      alert('Please enter a commit message')
-      return
-    }
-
-    setCommitting(true)
-    try {
-      const result = await window.api.git.commitAll(projectPath, commitMessage)
-      if (result.success) {
-        setCommitMessage('')
-        await loadGitData()
-      } else {
-        alert(`Commit failed: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Failed to commit:', error)
-      alert('Failed to commit changes')
-    } finally {
-      setCommitting(false)
+    const result = await commitAll(commitMessage)
+    if (result.success) {
+      setCommitMessage('')
     }
   }
 
   const handleSwitchBranch = async (branchName: string) => {
-    setOperationInProgress('switch-branch')
-    try {
-      const result = await window.api.git.switchBranch(projectPath, branchName)
-      if (result.success) {
-        await loadGitData()
-        setShowBranchDropdown(false)
-      } else {
-        alert(`Failed to switch branch: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Failed to switch branch:', error)
-      alert('Failed to switch branch')
-    } finally {
-      setOperationInProgress(null)
+    const result = await switchBranch(branchName)
+    if (result.success) {
+      setShowBranchDropdown(false)
     }
   }
 
   const handleCreateBranch = async () => {
-    if (!newBranchName.trim()) {
-      alert('Please enter a branch name')
-      return
-    }
-
-    setOperationInProgress('create-branch')
-    try {
-      const result = await window.api.git.createBranch(projectPath, newBranchName)
-      if (result.success) {
-        setNewBranchName('')
-        setShowNewBranchInput(false)
-        await loadGitData()
-      } else {
-        alert(`Failed to create branch: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Failed to create branch:', error)
-      alert('Failed to create branch')
-    } finally {
-      setOperationInProgress(null)
-    }
-  }
-
-  const handleDeleteBranch = async (branchName: string) => {
-    if (!confirm(`Are you sure you want to delete branch "${branchName}"?`)) {
-      return
-    }
-
-    setOperationInProgress('delete-branch')
-    try {
-      const result = await window.api.git.deleteBranch(projectPath, branchName)
-      if (result.success) {
-        await loadGitData()
-      } else {
-        alert(`Failed to delete branch: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Failed to delete branch:', error)
-      alert('Failed to delete branch')
-    } finally {
-      setOperationInProgress(null)
-    }
-  }
-
-  const handlePull = async () => {
-    setOperationInProgress('pull')
-    try {
-      const result = await window.api.git.pull(projectPath)
-      if (result.success) {
-        await loadGitData()
-        alert('Pull completed successfully')
-      } else {
-        alert(`Pull failed: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Failed to pull:', error)
-      alert('Failed to pull')
-    } finally {
-      setOperationInProgress(null)
-    }
-  }
-
-  const handlePush = async () => {
-    setOperationInProgress('push')
-    try {
-      const result = await window.api.git.push(projectPath)
-      if (result.success) {
-        await loadGitData()
-        alert('Push completed successfully')
-      } else {
-        alert(`Push failed: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Failed to push:', error)
-      alert('Failed to push')
-    } finally {
-      setOperationInProgress(null)
-    }
-  }
-
-  const handleFetch = async () => {
-    setOperationInProgress('fetch')
-    try {
-      const result = await window.api.git.fetch(projectPath)
-      if (result.success) {
-        await loadGitData()
-        alert('Fetch completed successfully')
-      } else {
-        alert(`Fetch failed: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Failed to fetch:', error)
-      alert('Failed to fetch')
-    } finally {
-      setOperationInProgress(null)
-    }
-  }
-
-  const handleStageFile = async (filePath: string) => {
-    setOperationInProgress(`stage-${filePath}`)
-    try {
-      const result = await window.api.git.stageFile(projectPath, filePath)
-      if (result.success) {
-        await loadGitData()
-      } else {
-        alert(`Failed to stage file: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Failed to stage file:', error)
-      alert('Failed to stage file')
-    } finally {
-      setOperationInProgress(null)
-    }
-  }
-
-  const handleUnstageFile = async (filePath: string) => {
-    setOperationInProgress(`unstage-${filePath}`)
-    try {
-      const result = await window.api.git.unstageFile(projectPath, filePath)
-      if (result.success) {
-        await loadGitData()
-      } else {
-        alert(`Failed to unstage file: ${result.error}`)
-      }
-    } catch (error) {
-      console.error('Failed to unstage file:', error)
-      alert('Failed to unstage file')
-    } finally {
-      setOperationInProgress(null)
+    const result = await createBranch(newBranchName)
+    if (result.success) {
+      setNewBranchName('')
+      setShowNewBranchInput(false)
     }
   }
 
@@ -255,22 +74,10 @@ export function GitHistoryPanel({ projectId, projectPath, projectName, gitStatus
     const newExpanded = new Set(expandedCommits)
 
     if (newExpanded.has(commitHash)) {
-      // Collapse
       newExpanded.delete(commitHash)
     } else {
-      // Expand and load files if not already loaded
       newExpanded.add(commitHash)
-
-      if (!commitFiles.has(commitHash)) {
-        try {
-          const result = await window.api.git.getCommitFiles(projectPath, commitHash)
-          if (result.success && result.files) {
-            setCommitFiles(prev => new Map(prev).set(commitHash, result.files!))
-          }
-        } catch (error) {
-          console.error('Failed to load commit files:', error)
-        }
-      }
+      await loadCommitFiles(commitHash)
     }
 
     setExpandedCommits(newExpanded)
@@ -293,37 +100,27 @@ export function GitHistoryPanel({ projectId, projectPath, projectName, gitStatus
 
   // Open diff tab for a file in a commit
   const handleOpenCommitFileDiff = async (commit: GitCommit, file: CommitFile) => {
-    try {
-      const result = await window.api.git.getCommitFileDiff(projectPath, commit.hash, file.path)
-      if (result.success && result.diff !== undefined) {
-        // Extract file name from path
-        const fileName = file.path.split('/').pop() || file.path
+    const diff = await getCommitFileDiff(commit.hash, file.path)
+    if (diff !== null) {
+      const fileName = file.path.split('/').pop() || file.path
+      const tabId = `diff-${commit.shortHash}-${file.path.replace(/[^a-zA-Z0-9]/g, '-')}`
 
-        // Create a unique ID for this diff tab
-        const tabId = `diff-${commit.shortHash}-${file.path.replace(/[^a-zA-Z0-9]/g, '-')}`
-
-        // Create editor tab for diff view (preview mode - replaced on next click)
-        const diffTab: EditorTab = {
-          id: tabId,
-          filePath: file.path,
-          fileName: `${fileName} (${commit.shortHash})`,
-          fileType: 'diff',
-          content: '',
-          isDirty: false,
-          isPreview: true,
-          isDiff: true,
-          diffContent: result.diff,
-          commitHash: commit.hash,
-          commitMessage: commit.message,
-          projectPath: projectPath
-        }
-
-        dispatch({ type: 'ADD_EDITOR_TAB', payload: diffTab })
-      } else {
-        console.error('Failed to get commit file diff:', result.error)
+      const diffTab: EditorTab = {
+        id: tabId,
+        filePath: file.path,
+        fileName: `${fileName} (${commit.shortHash})`,
+        fileType: 'diff',
+        content: '',
+        isDirty: false,
+        isPreview: true,
+        isDiff: true,
+        diffContent: diff,
+        commitHash: commit.hash,
+        commitMessage: commit.message,
+        projectPath: projectPath
       }
-    } catch (error) {
-      console.error('Failed to open commit file diff:', error)
+
+      dispatch({ type: 'ADD_EDITOR_TAB', payload: diffTab })
     }
   }
 
@@ -356,11 +153,10 @@ ${lines.map(line => `+${line}`).join('\n')}`
         }
       } else {
         // For tracked files, use git diff
-        const result = await window.api.git.getFileDiff(projectPath, change.path)
-        if (result.success && result.diff !== undefined) {
-          diffContent = result.diff || `[${change.status.toUpperCase()}] ${change.path}\n\nNo changes detected.`
+        const diff = await getFileDiff(change.path)
+        if (diff !== null) {
+          diffContent = diff || `[${change.status.toUpperCase()}] ${change.path}\n\nNo changes detected.`
         } else {
-          console.error('Failed to get file diff:', result.error)
           return
         }
       }
@@ -426,7 +222,7 @@ ${lines.map(line => `+${line}`).join('\n')}`
         <div className="git-history-actions">
           <button
             className="btn-icon"
-            onClick={handleRefresh}
+            onClick={refresh}
             disabled={loading}
             title="Refresh"
           >
@@ -504,7 +300,7 @@ ${lines.map(line => `+${line}`).join('\n')}`
                     {!branch.current && (
                       <button
                         className="btn-delete-branch"
-                        onClick={() => handleDeleteBranch(branch.name)}
+                        onClick={() => deleteBranch(branch.name)}
                         disabled={operationInProgress !== null}
                         title="Delete branch"
                       >
@@ -522,7 +318,7 @@ ${lines.map(line => `+${line}`).join('\n')}`
         <div className="remote-operations">
           <button
             className="btn-remote"
-            onClick={handleFetch}
+            onClick={fetch}
             disabled={operationInProgress !== null}
             title="Fetch from remote"
           >
@@ -530,7 +326,7 @@ ${lines.map(line => `+${line}`).join('\n')}`
           </button>
           <button
             className="btn-remote"
-            onClick={handlePull}
+            onClick={pull}
             disabled={operationInProgress !== null}
             title="Pull from remote"
           >
@@ -538,7 +334,7 @@ ${lines.map(line => `+${line}`).join('\n')}`
           </button>
           <button
             className="btn-remote"
-            onClick={handlePush}
+            onClick={push}
             disabled={operationInProgress !== null}
             title="Push to remote"
           >
@@ -576,7 +372,7 @@ ${lines.map(line => `+${line}`).join('\n')}`
                             className="btn-file-action"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleStageFile(change.path)
+                              stageFile(change.path)
                             }}
                             disabled={operationInProgress !== null}
                             title="Stage file"
