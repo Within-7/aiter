@@ -7,7 +7,7 @@
  */
 
 import {
-  Plugin,
+  PluginWithInstaller,
   PluginDefinition,
   PartialPluginDefinition,
   PluginInstaller,
@@ -44,7 +44,7 @@ interface PluginStoreSchema {
 export class PluginManager {
   private static instance: PluginManager | null = null;
 
-  private plugins: Map<string, Plugin> = new Map();
+  private plugins: Map<string, PluginWithInstaller> = new Map();
   private store: Store<PluginStoreSchema>;
   private autoCheckInterval: NodeJS.Timeout | null = null;
   private readonly AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
@@ -382,7 +382,7 @@ export class PluginManager {
     };
 
     // Create plugin object
-    const plugin: Plugin = {
+    const plugin: PluginWithInstaller = {
       definition: normalizedDefinition,
       installer,
       status: 'not-installed',
@@ -505,7 +505,7 @@ export class PluginManager {
   /**
    * Get a specific plugin by ID
    */
-  public getPlugin(pluginId: string): Plugin | null {
+  public getPlugin(pluginId: string): PluginWithInstaller | null {
     return this.plugins.get(pluginId) || null;
   }
 

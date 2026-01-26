@@ -174,9 +174,9 @@ export type PartialPluginDefinition = Omit<PluginDefinition, 'version' | 'author
 }
 
 /**
- * Complete plugin with installer and metadata
+ * Complete plugin with installer and metadata (internal use)
  */
-export interface Plugin {
+export interface PluginWithInstaller {
   /** Plugin metadata */
   definition: PluginDefinition;
 
@@ -200,6 +200,26 @@ export interface Plugin {
 
   /** Whether plugin is enabled */
   enabled: boolean;
+}
+
+/**
+ * Plugin data transfer object for UI display
+ */
+export interface Plugin {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  author: string;
+  installed: boolean;
+  installedVersion?: string;
+  updateAvailable: boolean;
+  enabled: boolean;
+  config?: Record<string, unknown>;
+  tags?: string[];
+  icon?: string;
+  homepage?: string;
+  isBuiltIn?: boolean;
 }
 
 /**
@@ -248,4 +268,28 @@ export interface PluginListItem {
   platforms: string[];
   tags?: string[];
   isBuiltIn?: boolean;
+}
+
+/**
+ * Plugin installation progress
+ */
+export interface PluginInstallProgress {
+  pluginId: string;
+  status: 'downloading' | 'installing' | 'complete' | 'error';
+  phase: string;
+  percentage: number;
+  message?: string;
+}
+
+/**
+ * Plugin update progress
+ */
+export interface PluginUpdateProgress {
+  pluginId: string;
+  status: 'checking' | 'downloading' | 'installing' | 'complete' | 'error';
+  phase: string;
+  percentage: number;
+  message?: string;
+  fromVersion?: string;
+  toVersion?: string;
 }
