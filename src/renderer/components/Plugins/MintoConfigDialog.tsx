@@ -1,5 +1,12 @@
+/**
+ * MintoConfigDialog Component
+ * Configuration dialog for Minto plugin settings
+ */
+
 import React, { useState, useEffect } from 'react'
+import { BaseDialog } from '../shared/BaseDialog'
 import { MintoConfig } from '../../../types/pluginConfigs'
+import './Plugins.css'
 
 interface MintoConfigDialogProps {
   isOpen: boolean
@@ -45,70 +52,56 @@ export const MintoConfigDialog: React.FC<MintoConfigDialogProps> = ({
     }
   }
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget && !isSaving) {
-      onClose()
-    }
-  }
-
-  if (!isOpen) return null
+  const footer = (
+    <>
+      <button
+        className="btn-secondary"
+        onClick={onClose}
+        disabled={isSaving}
+      >
+        Cancel
+      </button>
+      <button
+        className="btn-primary"
+        onClick={handleSave}
+        disabled={isSaving}
+      >
+        {isSaving ? 'Saving...' : 'Save Configuration'}
+      </button>
+    </>
+  )
 
   return (
-    <div className="minto-config-overlay" onClick={handleOverlayClick}>
-      <div className="minto-config-dialog">
-        <div className="minto-config-header">
-          <h2>Minto Configuration</h2>
-          <button
-            className="minto-config-close"
-            onClick={onClose}
+    <BaseDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Minto Configuration"
+      footer={footer}
+      width="medium"
+      isProcessing={isSaving}
+      className="minto-config-dialog"
+    >
+      <div className="base-dialog-field">
+        <label className="base-dialog-checkbox">
+          <input
+            type="checkbox"
+            checked={autoUpdate}
+            onChange={(e) => setAutoUpdate(e.target.checked)}
             disabled={isSaving}
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="minto-config-content">
-          <div className="minto-config-field">
-            <label className="minto-config-checkbox-label">
-              <input
-                type="checkbox"
-                checked={autoUpdate}
-                onChange={(e) => setAutoUpdate(e.target.checked)}
-                disabled={isSaving}
-              />
-              <span>Automatically update Minto</span>
-            </label>
-            <p className="minto-config-hint">
-              Automatically update Minto CLI to the latest version when updates are available (updates run in terminal)
-            </p>
-          </div>
-
-          {error && (
-            <div className="minto-config-error">
-              <span className="minto-config-error-icon">⚠️</span>
-              {error}
-            </div>
-          )}
-        </div>
-
-        <div className="minto-config-footer">
-          <button
-            className="minto-config-btn minto-config-btn-secondary"
-            onClick={onClose}
-            disabled={isSaving}
-          >
-            Cancel
-          </button>
-          <button
-            className="minto-config-btn minto-config-btn-primary"
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Saving...' : 'Save Configuration'}
-          </button>
-        </div>
+          />
+          <span>Automatically update Minto</span>
+        </label>
+        <p className="base-dialog-hint">
+          Automatically update Minto CLI to the latest version when updates are available (updates run in terminal)
+        </p>
       </div>
-    </div>
+
+      {error && (
+        <div className="base-dialog-error">
+          <span className="base-dialog-error-icon">⚠️</span>
+          <span>{error}</span>
+        </div>
+      )}
+    </BaseDialog>
   )
 }

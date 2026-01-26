@@ -1,0 +1,291 @@
+/**
+ * BaseDialog Styles
+ * Shared dialog styles with consistent animations and theming
+ */
+
+/* Overlay */
+.base-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  animation: base-dialog-overlay-fade-in 0.15s ease-out;
+  /* Disable window dragging so overlay can be clicked */
+  -webkit-app-region: no-drag;
+}
+
+@keyframes base-dialog-overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Dialog Container */
+.base-dialog {
+  background: var(--bg-primary, #1e1e1e);
+  border: 1px solid var(--border-color, #3c3c3c);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: base-dialog-slide-in 0.15s ease-out;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes base-dialog-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Width Variants */
+.base-dialog--small {
+  min-width: 280px;
+  max-width: 360px;
+}
+
+.base-dialog--medium {
+  min-width: 320px;
+  max-width: 480px;
+}
+
+.base-dialog--large {
+  min-width: 480px;
+  max-width: 640px;
+}
+
+/* Header */
+.base-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border-color, #3c3c3c);
+  flex-shrink: 0;
+}
+
+.base-dialog-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #cccccc);
+}
+
+.base-dialog-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary, #999999);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.base-dialog-close:hover {
+  background: var(--bg-hover, #3e3e42);
+  color: var(--text-primary, #cccccc);
+}
+
+.base-dialog-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Content */
+.base-dialog-content {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+/* Footer */
+.base-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border-color, #3c3c3c);
+  flex-shrink: 0;
+}
+
+/* Shared Button Styles */
+.base-dialog-footer button {
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.base-dialog-footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Secondary Button */
+.base-dialog-footer .btn-secondary,
+.base-dialog-btn-secondary {
+  background: var(--bg-secondary, #2d2d30);
+  border: 1px solid var(--border-color, #3c3c3c);
+  color: var(--text-primary, #cccccc);
+}
+
+.base-dialog-footer .btn-secondary:hover:not(:disabled),
+.base-dialog-btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover, #3e3e42);
+}
+
+/* Primary Button */
+.base-dialog-footer .btn-primary,
+.base-dialog-btn-primary {
+  background: var(--accent-color, #007acc);
+  border: 1px solid transparent;
+  color: #fff;
+}
+
+.base-dialog-footer .btn-primary:hover:not(:disabled),
+.base-dialog-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* Danger Button */
+.base-dialog-footer .btn-danger,
+.base-dialog-btn-danger {
+  background: var(--error-color, #f44336);
+  border: 1px solid transparent;
+  color: #fff;
+}
+
+.base-dialog-footer .btn-danger:hover:not(:disabled),
+.base-dialog-btn-danger:hover:not(:disabled) {
+  background: #d32f2f;
+}
+
+/* Form Elements */
+.base-dialog-field {
+  margin-bottom: 16px;
+}
+
+.base-dialog-field:last-child {
+  margin-bottom: 0;
+}
+
+.base-dialog-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary, #999999);
+}
+
+.base-dialog-field input[type="text"],
+.base-dialog-field input[type="email"],
+.base-dialog-field input[type="password"],
+.base-dialog-field textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-secondary, #2d2d30);
+  border: 1px solid var(--border-color, #3c3c3c);
+  border-radius: 4px;
+  color: var(--text-primary, #cccccc);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.base-dialog-field input:focus,
+.base-dialog-field textarea:focus {
+  border-color: var(--accent-color, #007acc);
+  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+}
+
+.base-dialog-field input.error,
+.base-dialog-field textarea.error {
+  border-color: var(--error-color, #f44336);
+}
+
+.base-dialog-field input.error:focus,
+.base-dialog-field textarea.error:focus {
+  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.2);
+}
+
+.base-dialog-field input:disabled,
+.base-dialog-field textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Hint Text */
+.base-dialog-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary, #666666);
+  line-height: 1.4;
+}
+
+/* Error Message */
+.base-dialog-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-top: 12px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--error-color, #f44336);
+}
+
+.base-dialog-error-icon {
+  flex-shrink: 0;
+}
+
+/* Message (for simple confirm dialogs) */
+.base-dialog-message {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #999999);
+  line-height: 1.5;
+}
+
+/* Checkbox */
+.base-dialog-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.base-dialog-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.base-dialog-checkbox span {
+  font-size: 13px;
+  color: var(--text-primary, #cccccc);
+}

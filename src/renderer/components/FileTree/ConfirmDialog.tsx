@@ -1,5 +1,10 @@
-import React, { useEffect, useRef } from 'react'
-import { createPortal } from 'react-dom'
+/**
+ * ConfirmDialog Component
+ * A simple confirmation dialog with customizable title, message, and buttons
+ */
+
+import React from 'react'
+import { BaseDialog } from '../shared/BaseDialog'
 import './ConfirmDialog.css'
 
 interface ConfirmDialogProps {
@@ -21,52 +26,31 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel
 }) => {
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const footer = (
+    <>
+      <button className="btn-secondary" onClick={onCancel}>
+        {cancelLabel}
+      </button>
+      <button
+        className={`btn-primary ${variant === 'danger' ? 'btn-danger' : ''}`}
+        onClick={onConfirm}
+      >
+        {confirmLabel}
+      </button>
+    </>
+  )
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dialogRef.current && !dialogRef.current.contains(event.target as Node)) {
-        onCancel()
-      }
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onCancel()
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleEscape)
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [onCancel])
-
-  return createPortal(
-    <div className="confirm-dialog-overlay">
-      <div ref={dialogRef} className="confirm-dialog">
-        <div className="confirm-dialog-header">
-          <h3>{title}</h3>
-        </div>
-        <div className="confirm-dialog-content">
-          <p>{message}</p>
-        </div>
-        <div className="confirm-dialog-actions">
-          <button className="btn-secondary" onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button
-            className={`btn-primary ${variant === 'danger' ? 'btn-danger' : ''}`}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
+  return (
+    <BaseDialog
+      isOpen={true}
+      onClose={onCancel}
+      title={title}
+      footer={footer}
+      width="small"
+      showCloseButton={false}
+      className="confirm-dialog-wrapper"
+    >
+      <p className="base-dialog-message">{message}</p>
+    </BaseDialog>
   )
 }

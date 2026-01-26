@@ -1,4 +1,10 @@
+/**
+ * AddPluginDialog Component
+ * Dialog for adding custom plugins via URL or package name
+ */
+
 import React, { useState } from 'react'
+import { BaseDialog } from '../shared/BaseDialog'
 import './Plugins.css'
 
 interface AddPluginDialogProps {
@@ -46,67 +52,62 @@ export const AddPluginDialog: React.FC<AddPluginDialogProps> = ({
     }
   }
 
-  if (!isOpen) return null
+  const footer = (
+    <>
+      <button
+        type="button"
+        className="btn-secondary"
+        onClick={handleClose}
+        disabled={isAdding}
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        form="add-plugin-form"
+        className="btn-primary"
+        disabled={isAdding}
+      >
+        {isAdding ? 'Adding...' : 'Add Plugin'}
+      </button>
+    </>
+  )
 
   return (
-    <div className="plugin-dialog-overlay" onClick={handleClose}>
-      <div className="plugin-dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="plugin-dialog-header">
-          <h3>Add Custom Plugin</h3>
-          <button
-            className="plugin-dialog-close"
-            onClick={handleClose}
+    <BaseDialog
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Add Custom Plugin"
+      footer={footer}
+      width="medium"
+      isProcessing={isAdding}
+      className="add-plugin-dialog"
+    >
+      <form id="add-plugin-form" onSubmit={handleSubmit}>
+        <div className="base-dialog-field">
+          <label htmlFor="plugin-url">Package URL or Name</label>
+          <input
+            id="plugin-url"
+            type="text"
+            value={urlOrPackageName}
+            onChange={(e) => setUrlOrPackageName(e.target.value)}
+            placeholder="https://www.npmjs.com/package/@within-7/minto or @within-7/minto"
             disabled={isAdding}
-            aria-label="Close dialog"
-          >
-            ×
-          </button>
+            autoFocus
+          />
+          <p className="base-dialog-hint">
+            Enter an npm package URL (e.g., https://www.npmjs.com/package/package-name) or
+            package name (e.g., @scope/package-name)
+          </p>
         </div>
 
-        <form className="plugin-dialog-content" onSubmit={handleSubmit}>
-          <div className="plugin-dialog-field">
-            <label htmlFor="plugin-url">Package URL or Name</label>
-            <input
-              id="plugin-url"
-              type="text"
-              value={urlOrPackageName}
-              onChange={(e) => setUrlOrPackageName(e.target.value)}
-              placeholder="https://www.npmjs.com/package/@within-7/minto or @within-7/minto"
-              disabled={isAdding}
-              autoFocus
-            />
-            <p className="plugin-dialog-hint">
-              Enter an npm package URL (e.g., https://www.npmjs.com/package/package-name) or
-              package name (e.g., @scope/package-name)
-            </p>
+        {error && (
+          <div className="base-dialog-error">
+            <span className="base-dialog-error-icon">⚠️</span>
+            <span>{error}</span>
           </div>
-
-          {error && (
-            <div className="plugin-dialog-error">
-              <span className="plugin-dialog-error-icon">⚠️</span>
-              <span>{error}</span>
-            </div>
-          )}
-
-          <div className="plugin-dialog-actions">
-            <button
-              type="button"
-              className="plugin-dialog-button plugin-dialog-button-cancel"
-              onClick={handleClose}
-              disabled={isAdding}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="plugin-dialog-button plugin-dialog-button-primary"
-              disabled={isAdding}
-            >
-              {isAdding ? 'Adding...' : 'Add Plugin'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        )}
+      </form>
+    </BaseDialog>
   )
 }

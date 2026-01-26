@@ -1,128 +1,18 @@
-.input-dialog-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1001;
-  animation: overlayFadeIn 0.15s ease-out;
-  /* Disable window dragging so overlay can be clicked */
-  -webkit-app-region: no-drag;
+/**
+ * InputDialog Styles
+ * Extends BaseDialog with input-specific styles
+ */
+
+/* Override for input dialog specific styling */
+.input-dialog-wrapper {
+  /* Can be customized here */
 }
 
-@keyframes overlayFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.input-dialog {
-  background: var(--bg-primary, #1e1e1e);
-  border: 1px solid var(--border-color, #3c3c3c);
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  min-width: 320px;
-  max-width: 480px;
-  animation: dialogSlideIn 0.15s ease-out;
-}
-
-@keyframes dialogSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.input-dialog-header {
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid var(--border-color, #3c3c3c);
-}
-
-.input-dialog-header h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary, #cccccc);
-}
-
-.input-dialog-content {
-  padding: 16px 20px;
-}
-
-.input-dialog-content input {
-  width: 100%;
-  padding: 8px 12px;
-  background: var(--bg-secondary, #2d2d30);
-  border: 1px solid var(--border-color, #3c3c3c);
-  border-radius: 4px;
-  color: var(--text-primary, #cccccc);
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.input-dialog-content input:focus {
-  border-color: var(--accent-color, #007acc);
-  box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
-}
-
-.input-dialog-content input.error {
-  border-color: var(--error-color, #f44336);
-}
-
-.input-dialog-content input.error:focus {
-  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.2);
-}
-
+/* Error message below input */
 .input-dialog-error {
   margin-top: 8px;
   font-size: 12px;
   color: var(--error-color, #f44336);
 }
 
-.input-dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 20px 16px;
-}
-
-.input-dialog-actions button {
-  padding: 6px 16px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
-}
-
-.input-dialog-actions .btn-secondary {
-  background: var(--bg-secondary, #2d2d30);
-  border: 1px solid var(--border-color, #3c3c3c);
-  color: var(--text-primary, #cccccc);
-}
-
-.input-dialog-actions .btn-secondary:hover {
-  background: var(--bg-hover, #3e3e42);
-}
-
-.input-dialog-actions .btn-primary {
-  background: var(--accent-color, #007acc);
-  border: 1px solid transparent;
-  color: #fff;
-}
-
-.input-dialog-actions .btn-primary:hover {
-  opacity: 0.9;
-}
+/* Input styles are inherited from BaseDialog */
