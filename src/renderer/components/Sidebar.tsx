@@ -5,11 +5,13 @@ import { ExplorerView } from './ExplorerView'
 import { GitView } from './GitView'
 import { SearchView } from './SearchView'
 import { WorkspaceSelector } from './WorkspaceSelector'
+import {
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+  SIDEBAR_DEFAULT_WIDTH
+} from '../../constants'
 import '../styles/Sidebar.css'
 
-const MIN_WIDTH = 200
-const MAX_WIDTH = 600
-const DEFAULT_WIDTH = 300
 const STORAGE_KEY = 'sidebar-width'
 
 export function Sidebar() {
@@ -17,7 +19,7 @@ export function Sidebar() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
-    return saved ? parseInt(saved, 10) : DEFAULT_WIDTH
+    return saved ? parseInt(saved, 10) : SIDEBAR_DEFAULT_WIDTH
   })
   const [isResizing, setIsResizing] = useState(false)
   const sidebarRef = useRef<HTMLDivElement>(null)
@@ -67,7 +69,7 @@ export function Sidebar() {
       if (!isResizingRef.current) return
 
       const newWidth = e.clientX
-      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
+      if (newWidth >= SIDEBAR_MIN_WIDTH && newWidth <= SIDEBAR_MAX_WIDTH) {
         setSidebarWidth(newWidth)
       }
     }

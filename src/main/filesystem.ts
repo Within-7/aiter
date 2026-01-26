@@ -7,9 +7,11 @@ import ignore, { Ignore } from 'ignore'
 import { getFileType as getFileTypeFromConfig, isBinaryType, FileType } from '../shared/fileTypeConfig'
 import { extractLargestPNG, isValidICNS } from './utils/icnsParser'
 import { testWithTimeout, RegexTimeoutError } from './utils/safeRegex'
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB for reading
-const MAX_WRITE_SIZE = 50 * 1024 * 1024 // 50MB for writing (DoS protection)
+import {
+  MAX_FILE_READ_SIZE,
+  MAX_FILE_WRITE_SIZE,
+  MAX_CONTENT_SEARCH_SIZE
+} from '../constants'
 // Only exclude truly internal/system directories, show all other hidden files
 const EXCLUDED_DIRS = ['.git', '.DS_Store']
 
@@ -244,8 +246,8 @@ export class SecureFileSystemManager {
 
       // Check file size
       const stats = await fs.promises.stat(validPath)
-      if (stats.size > MAX_FILE_SIZE) {
-        throw new Error(`File too large: ${(stats.size / 1024 / 1024).toFixed(2)}MB (max ${MAX_FILE_SIZE / 1024 / 1024}MB)`)
+      if (stats.size > MAX_FILE_READ_SIZE) {
+        throw new Error(`File too large: ${(stats.size / 1024 / 1024).toFixed(2)}MB (max ${MAX_FILE_READ_SIZE / 1024 / 1024}MB)`)
       }
 
       // Check if it's a file
@@ -299,8 +301,8 @@ export class SecureFileSystemManager {
 
       // SECURITY: Check file size to prevent DoS attacks
       const contentSize = Buffer.byteLength(content, 'utf-8')
-      if (contentSize > MAX_WRITE_SIZE) {
-        throw new Error(`File too large to write: ${(contentSize / 1024 / 1024).toFixed(2)}MB (max ${MAX_WRITE_SIZE / 1024 / 1024}MB)`)
+      if (contentSize > MAX_FILE_WRITE_SIZE) {
+        throw new Error(`File too large to write: ${(contentSize / 1024 / 1024).toFixed(2)}MB (max ${MAX_FILE_WRITE_SIZE / 1024 / 1024}MB)`)
       }
 
       // Ensure directory exists
@@ -669,8 +671,7 @@ export class SecureFileSystemManager {
       }>
     }> = []
 
-    // Maximum file size for content search (1MB)
-    const MAX_CONTENT_SEARCH_SIZE = 1 * 1024 * 1024
+    // Use constant for maximum file size in content search
 
     // Binary file extensions to skip
     const BINARY_EXTENSIONS = new Set([

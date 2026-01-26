@@ -7,6 +7,10 @@ import { CanvasAddon } from '@xterm/addon-canvas'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { Terminal as TerminalType, AppSettings } from '../../types'
 import { getTerminalTheme } from '../themes/terminalThemes'
+import {
+  MAX_INACTIVE_TERMINAL_BUFFER,
+  TERMINAL_BATCH_WINDOW_MS
+} from '../../constants'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/XTerminal.css'
 
@@ -15,9 +19,6 @@ interface XTerminalProps {
   settings: AppSettings
   isActive?: boolean
 }
-
-// Maximum size for inactive buffer (1MB) to prevent memory leaks
-const MAX_INACTIVE_BUFFER_SIZE = 1024 * 1024
 
 // Memoize the component to prevent unnecessary re-renders from parent state changes
 export const XTerminal = memo(function XTerminal({ terminal, settings, isActive = true }: XTerminalProps) {
@@ -262,8 +263,7 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
     let timeoutId: NodeJS.Timeout | null = null
     let rafId: number | null = null
 
-    // Batch window in ms - 32ms allows ~2 frames worth of data to accumulate
-    const BATCH_WINDOW_MS = 32
+    // Use constant for batch window (~2 frames worth of data)
 
     const flushBuffer = () => {
       rafId = null
@@ -276,8 +276,8 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
           // Inactive terminal: accumulate in inactive buffer for later
           inactiveBufferRef.current += dataBuffer
           // Limit inactive buffer size to prevent memory leaks
-          if (inactiveBufferRef.current.length > MAX_INACTIVE_BUFFER_SIZE) {
-            inactiveBufferRef.current = inactiveBufferRef.current.slice(-MAX_INACTIVE_BUFFER_SIZE)
+          if (inactiveBufferRef.current.length > MAX_INACTIVE_TERMINAL_BUFFER) {
+            inactiveBufferRef.current = inactiveBufferRef.current.slice(-MAX_INACTIVE_TERMINAL_BUFFER)
           }
         }
         dataBuffer = ''
@@ -297,7 +297,7 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
         // Schedule flush after batch window expires
         // This allows multiple data events to be batched together
         if (timeoutId === null && rafId === null) {
-          timeoutId = setTimeout(scheduleFlush, BATCH_WINDOW_MS)
+          timeoutId = setTimeout(scheduleFlush, TERMINAL_BATCH_WINDOW_MS)
         }
       }
     })
@@ -317,8 +317,8 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
         } else {
           inactiveBufferRef.current += dataBuffer
           // Limit inactive buffer size to prevent memory leaks
-          if (inactiveBufferRef.current.length > MAX_INACTIVE_BUFFER_SIZE) {
-            inactiveBufferRef.current = inactiveBufferRef.current.slice(-MAX_INACTIVE_BUFFER_SIZE)
+          if (inactiveBufferRef.current.length > MAX_INACTIVE_TERMINAL_BUFFER) {
+            inactiveBufferRef.current = inactiveBufferRef.current.slice(-MAX_INACTIVE_TERMINAL_BUFFER)
           }
         }
       }
