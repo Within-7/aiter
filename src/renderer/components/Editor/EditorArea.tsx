@@ -1,6 +1,6 @@
 import React, { useContext } from 'react'
 import { AppContext } from '../../context/AppContext'
-import { MonacoEditor } from './MonacoEditor'
+import { MonacoEditorLazy } from './MonacoEditorLazy'
 import './EditorArea.css'
 
 export const EditorArea: React.FC = () => {
@@ -92,7 +92,7 @@ export const EditorArea: React.FC = () => {
 
       <div className="editor-content">
         {activeTab && (
-          <MonacoEditor
+          <MonacoEditorLazy
             value={activeTab.content}
             language={activeTab.fileType}
             onChange={handleContentChange}

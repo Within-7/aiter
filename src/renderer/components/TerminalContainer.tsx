@@ -1,6 +1,6 @@
 import React, { memo } from 'react'
 import { Terminal as TerminalType, AppSettings } from '../../types'
-import { XTerminal } from './XTerminal'
+import { XTerminalLazy } from './XTerminalLazy'
 import '../styles/TerminalContainer.css'
 
 interface TerminalContainerProps {
@@ -28,7 +28,7 @@ export const TerminalContainer = memo(function TerminalContainer({
             key={terminal.id}
             className={`terminal-wrapper ${isActive ? 'active' : 'hidden'}`}
           >
-            <XTerminal
+            <XTerminalLazy
               terminal={terminal}
               settings={settings}
               isActive={isActive}
