@@ -3,6 +3,7 @@ import { VscGitCommit, VscRefresh, VscCheck, VscFile, VscDiffAdded, VscDiffModif
 import { GitStatus, EditorTab, GitCommit } from '../../types'
 import { AppContext } from '../context/AppContext'
 import { useGitOperations, type CommitFile, type FileChange } from '../hooks/useGitOperations'
+import { formatRelativeTime } from '../utils'
 import '../styles/GitHistoryPanel.css'
 
 interface GitHistoryPanelProps {
@@ -181,22 +182,6 @@ ${lines.map(line => `+${line}`).join('\n')}`
     } catch (error) {
       console.error('Failed to open uncommitted file diff:', error)
     }
-  }
-
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-
-    if (diffMins < 1) return 'Just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
-
-    return date.toLocaleDateString()
   }
 
   const getStatusIcon = (status: string) => {
@@ -447,7 +432,7 @@ ${lines.map(line => `+${line}`).join('\n')}`
                           <span className="commit-separator">•</span>
                           <span className="commit-hash">{commit.shortHash}</span>
                           <span className="commit-separator">•</span>
-                          <span className="commit-date">{formatDate(commit.timestamp)}</span>
+                          <span className="commit-date">{formatRelativeTime(commit.timestamp)}</span>
                         </div>
                       </div>
                     </div>

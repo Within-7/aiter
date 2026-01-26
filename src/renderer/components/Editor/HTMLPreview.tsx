@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useContext } from 'react'
 import Editor, { OnMount } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { AppContext } from '../../context/AppContext'
+import { getParentDir, generateTabId } from '../../utils'
 import './HTMLPreview.css'
 
 // Helper function to trim trailing whitespace from each line
@@ -126,7 +127,7 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
       if (!project) return
 
       // Parse the href to handle query parameters and relative paths
-      const currentDir = currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
+      const currentDir = getParentDir(currentFilePath)
       let targetPath: string
 
       if (href.startsWith('/')) {
@@ -187,8 +188,7 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
 
         if (fileResult.success) {
           // Create a new editor tab with server URL (including query params)
-          // Generate unique ID for each tab
-          const tabId = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          const tabId = generateTabId()
 
           dispatch({
             type: 'ADD_EDITOR_TAB',

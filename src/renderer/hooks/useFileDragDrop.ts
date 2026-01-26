@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { FileNode } from '../../types'
+import { getParentDir, getFileName, joinPath, isChildPath } from '../utils'
 
 interface FileDragState {
   draggedPath: string | null
@@ -60,7 +61,7 @@ export function useFileDragDrop({
     if (!draggedPath) return
 
     // Don't allow dropping on self or parent
-    if (draggedPath === node.path || node.path.startsWith(draggedPath + '/')) return
+    if (draggedPath === node.path || isChildPath(node.path, draggedPath)) return
 
     e.dataTransfer.dropEffect = 'move'
     setFileDragState(prev => ({ ...prev, dropTargetPath: node.path }))
@@ -82,14 +83,14 @@ export function useFileDragDrop({
     }
 
     // Don't drop on self or into own subdirectory
-    if (draggedPath === targetNode.path || targetNode.path.startsWith(draggedPath + '/')) {
+    if (draggedPath === targetNode.path || isChildPath(targetNode.path, draggedPath)) {
       setFileDragState({ draggedPath: null, dropTargetPath: null })
       return
     }
 
-    // Get the file/folder name
-    const name = draggedPath.substring(draggedPath.lastIndexOf('/') + 1)
-    const newPath = `${targetNode.path}/${name}`
+    // Get the file/folder name and build new path
+    const name = getFileName(draggedPath)
+    const newPath = joinPath(targetNode.path, name)
 
     try {
       const result = await window.api.fs.rename(draggedPath, newPath)
@@ -136,15 +137,15 @@ export function useFileDragDrop({
     }
 
     // Check if already in root directory
-    const parentDir = draggedPath.substring(0, draggedPath.lastIndexOf('/'))
+    const parentDir = getParentDir(draggedPath)
     if (parentDir === projectPath) {
       setFileDragState({ draggedPath: null, dropTargetPath: null })
       return
     }
 
-    // Get the file/folder name
-    const name = draggedPath.substring(draggedPath.lastIndexOf('/') + 1)
-    const newPath = `${projectPath}/${name}`
+    // Get the file/folder name and build new path
+    const name = getFileName(draggedPath)
+    const newPath = joinPath(projectPath, name)
 
     try {
       const result = await window.api.fs.rename(draggedPath, newPath)

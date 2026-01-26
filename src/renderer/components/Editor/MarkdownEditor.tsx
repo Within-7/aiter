@@ -6,6 +6,7 @@ import type { OnMount } from '@monaco-editor/react'
 import type * as monaco from 'monaco-editor'
 import { AppContext } from '../../context/AppContext'
 import { MonacoMarkdownEditor } from './MonacoMarkdownEditor'
+import { getParentDir, generateMarkdownId } from '../../utils'
 import './MarkdownEditor.css'
 import './MonacoEditorLazy.css'
 
@@ -50,7 +51,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const prevFilePathRef = useRef<string>(currentFilePath)
 
   // Generate unique ID prefix for this editor instance to avoid DOM conflicts
-  const instanceId = useRef(tabId || `md-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
+  const instanceId = useRef(tabId || generateMarkdownId())
 
   // Resolve relative image paths to HTTP Server URLs
   useEffect(() => {
@@ -76,7 +77,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         }
 
         // Resolve relative path
-        const currentDir = currentFilePath.substring(0, currentFilePath.lastIndexOf('/'))
+        const currentDir = getParentDir(currentFilePath)
         let resolvedPath: string
 
         if (src.startsWith('/')) {
@@ -260,7 +261,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       // File path changed - this is a different file now
       prevFilePathRef.current = currentFilePath
       // Update instanceId for unique heading IDs
-      instanceId.current = tabId || `md-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      instanceId.current = tabId || generateMarkdownId()
       // Reset preview scroll to top for the new file
       if (previewRef.current) {
         previewRef.current.scrollTop = 0

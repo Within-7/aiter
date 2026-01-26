@@ -7,7 +7,7 @@ import { ConfirmDialog } from './FileTree/ConfirmDialog'
 import { TemplateSelector } from './TemplateSelector'
 import { useProjectDragDrop } from '../hooks/useProjectDragDrop'
 import { FileNode, EditorTab } from '../../types'
-import { getProjectColor } from '../utils/projectColors'
+import { getProjectColor, generateTabId } from '../utils'
 import { getFileType, isExternalOpenCandidate, FileType } from '../../shared/fileTypeConfig'
 import '../styles/ExplorerView.css'
 
@@ -234,7 +234,7 @@ export function ExplorerView() {
         const result = await window.api.fs.readFile(file.path)
         if (result.success && result.content !== undefined && result.fileType) {
           const tab: EditorTab = {
-            id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: generateTabId(),
             filePath: file.path,
             fileName: file.name,
             fileType: result.fileType as EditorTab['fileType'],

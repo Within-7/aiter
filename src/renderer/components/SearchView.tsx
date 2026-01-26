@@ -2,7 +2,7 @@ import { useContext, useState, useEffect, useCallback, useRef, useMemo } from 'r
 import { VscSearch, VscCaseSensitive, VscRegex, VscFile, VscChevronDown, VscChevronRight } from 'react-icons/vsc'
 import { AppContext } from '../context/AppContext'
 import { EditorTab } from '../../types'
-import { getProjectColor } from '../utils/projectColors'
+import { getProjectColor, generateTabId } from '../utils'
 import '../styles/SearchView.css'
 
 interface FileResult {
@@ -150,7 +150,7 @@ export function SearchView() {
       const fileResult = await window.api.fs.readFile(result.filePath)
       if (fileResult.success && fileResult.content !== undefined && fileResult.fileType) {
         const tab: EditorTab = {
-          id: `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: generateTabId(),
           filePath: result.filePath,
           fileName: result.fileName,
           fileType: fileResult.fileType as EditorTab['fileType'],

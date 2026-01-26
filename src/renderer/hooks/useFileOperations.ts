@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { getParentDir, joinPath } from '../utils'
 
 export interface FileDialogState {
   type: 'new-file' | 'new-folder' | 'rename' | 'delete' | null
@@ -67,7 +68,7 @@ export function useFileOperations({
 
   const handleCreateFile = useCallback(async (name: string) => {
     const targetDir = dialog.targetPath
-    const filePath = `${targetDir}/${name}`
+    const filePath = joinPath(targetDir, name)
 
     try {
       const result = await window.api.fs.createFile(filePath)
@@ -85,7 +86,7 @@ export function useFileOperations({
 
   const handleCreateFolder = useCallback(async (name: string) => {
     const targetDir = dialog.targetPath
-    const folderPath = `${targetDir}/${name}`
+    const folderPath = joinPath(targetDir, name)
 
     try {
       const result = await window.api.fs.createDirectory(folderPath)
@@ -103,8 +104,8 @@ export function useFileOperations({
 
   const handleRename = useCallback(async (newName: string) => {
     const oldPath = dialog.targetPath
-    const parentDir = oldPath.substring(0, oldPath.lastIndexOf('/'))
-    const newPath = `${parentDir}/${newName}`
+    const parentDir = getParentDir(oldPath)
+    const newPath = joinPath(parentDir, newName)
 
     try {
       const result = await window.api.fs.rename(oldPath, newPath)
