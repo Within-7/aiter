@@ -1,4 +1,9 @@
-import React, { useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react'
+/**
+ * WorkArea Component
+ * Main content area with tabs for editors and terminals
+ */
+
+import React, { useContext, useCallback, useMemo } from 'react'
 import { AppContext } from '../context/AppContext'
 import { MonacoEditorLazy } from './Editor/MonacoEditorLazy'
 import { MarkdownEditor } from './Editor/MarkdownEditor'
@@ -13,6 +18,8 @@ import { VoiceInputButton, InlineVoiceBubble } from './VoiceInput'
 import { TabItem } from './WorkArea/TabItem'
 import { useInlineVoiceInput } from '../hooks/useInlineVoiceInput'
 import { useTabDragDrop } from '../hooks/useTabDragDrop'
+import { useTabClose } from '../hooks/useTabClose'
+import { useEditorMode } from '../hooks/useEditorMode'
 import { defaultVoiceInputSettings, VoiceTranscription, VoiceRecord } from '../../types/voiceInput'
 import type { EditorTab } from '../../types'
 import { getProjectColor } from '../utils/projectColors'
@@ -28,25 +35,15 @@ interface Tab {
   isPreview?: boolean
 }
 
-// Dialog state for terminal close confirmation
-interface CloseTerminalDialogState {
-  show: boolean
-  terminalId: string | null
-  terminalName: string
-}
-
-// Dialog state for scratchpad close confirmation
-interface CloseScratchpadDialogState {
-  show: boolean
-  tabId: string | null
-  tabName: string
-}
-
 export const WorkArea: React.FC = () => {
   const { state, dispatch } = useContext(AppContext)
 
-  // Track edit/preview mode for each editor tab
-  const [editorModes, setEditorModes] = useState<Record<string, 'preview' | 'edit'>>({})
+  // Derive active tab ID from global state
+  const activeTabId = state.activeEditorTabId
+    ? `editor-${state.activeEditorTabId}`
+    : state.activeTerminalId
+    ? `terminal-${state.activeTerminalId}`
+    : null
 
   // Tab drag and drop functionality
   const {
@@ -62,22 +59,39 @@ export const WorkArea: React.FC = () => {
     clearDragOverEnd
   } = useTabDragDrop(state, dispatch)
 
-  // Track terminal close confirmation dialog
-  const [closeTerminalDialog, setCloseTerminalDialog] = useState<CloseTerminalDialogState>({
-    show: false,
-    terminalId: null,
-    terminalName: ''
+  // Tab close functionality with confirmation dialogs
+  const {
+    closeTerminalDialog,
+    closeScratchpadDialog,
+    handleTabClose,
+    handleConfirmCloseTerminal,
+    handleCancelCloseTerminal,
+    handleConfirmCloseScratchpad,
+    handleCancelCloseScratchpad
+  } = useTabClose({
+    terminals: state.terminals,
+    editorTabs: state.editorTabs,
+    settings: state.settings,
+    dispatch
   })
 
-  // Track scratchpad close confirmation dialog
-  const [closeScratchpadDialog, setCloseScratchpadDialog] = useState<CloseScratchpadDialogState>({
-    show: false,
-    tabId: null,
-    tabName: ''
+  // Editor mode management
+  const {
+    currentMode,
+    supportsPreview,
+    activeEditorTab,
+    toggleMode,
+    handleContentChange,
+    handleSave
+  } = useEditorMode({
+    editorTabs: state.editorTabs,
+    activeTabId,
+    dispatch
   })
 
   // Detect platform for Windows-specific styling
   const isWindows = navigator.platform.toLowerCase().includes('win')
+  const isTerminalActive = activeTabId?.startsWith('terminal-')
 
   // Get voice input settings
   const voiceSettings = state.settings.voiceInput || defaultVoiceInputSettings
@@ -95,9 +109,8 @@ export const WorkArea: React.FC = () => {
   }, [dispatch])
 
   // Handle inline voice text insertion (for Push-to-Talk)
-  // backupId is the streaming backup ID - if provided, update existing record instead of creating new one
   const handleInlineVoiceInsert = useCallback((text: string, backupId?: string) => {
-    // Sanitize text for terminal: replace newlines with spaces
+    // Sanitize text for terminal
     const sanitizeForTerminal = (t: string) => t
       .replace(/\r\n/g, ' ')
       .replace(/\n/g, ' ')
@@ -110,17 +123,14 @@ export const WorkArea: React.FC = () => {
 
     let insertedTo: 'terminal' | 'editor' | undefined
 
-    // Check if terminal is active
     if (state.activeTerminalId) {
       const sanitizedText = sanitizeForTerminal(text)
       window.api.terminal.write(state.activeTerminalId, sanitizedText)
-      // Auto-execute if enabled
       if (voiceSettings.autoExecuteInTerminal) {
         window.api.terminal.write(state.activeTerminalId, '\r')
       }
       insertedTo = 'terminal'
     } else if (state.activeEditorTabId) {
-      // Check if editor is active
       window.dispatchEvent(new CustomEvent('voice-input-insert', {
         detail: { text }
       }))
@@ -129,11 +139,9 @@ export const WorkArea: React.FC = () => {
       console.log('[WorkArea] No active target for inline voice input')
     }
 
-    // Use backupId if available (streaming backup created record), otherwise generate new ID
     const recordId = backupId || Date.now().toString()
     const timestamp = backupId ? parseInt(backupId, 10) : Date.now()
 
-    // Add to voice transcription history (shared with voice panel)
     const transcription: VoiceTranscription = {
       id: recordId,
       text: text.trim(),
@@ -144,19 +152,15 @@ export const WorkArea: React.FC = () => {
     }
     dispatch({ type: 'ADD_VOICE_TRANSCRIPTION', payload: transcription })
 
-    // Persist to disk using unified records API
+    // Persist to disk
     if (activeProjectPath) {
       if (backupId) {
-        // Update existing record created by streaming backup
         window.api.voiceRecords.update(activeProjectPath, backupId, {
           status: 'transcribed',
           text: transcription.text,
           insertedTo: transcription.insertedTo
-        }).catch(err => {
-          console.error('[WorkArea] Failed to update voice record:', err)
-        })
+        }).catch(err => console.error('[WorkArea] Failed to update voice record:', err))
       } else {
-        // Create new record (fallback if no streaming backup)
         const record: VoiceRecord = {
           id: transcription.id,
           timestamp: transcription.timestamp,
@@ -166,21 +170,18 @@ export const WorkArea: React.FC = () => {
           text: transcription.text,
           insertedTo: transcription.insertedTo
         }
-        window.api.voiceRecords.add(activeProjectPath, record).catch(err => {
-          console.error('[WorkArea] Failed to persist voice transcription:', err)
-        })
+        window.api.voiceRecords.add(activeProjectPath, record)
+          .catch(err => console.error('[WorkArea] Failed to persist voice transcription:', err))
       }
     }
   }, [state.activeTerminalId, state.activeEditorTabId, state.activeProjectId, voiceSettings.autoExecuteInTerminal, dispatch, activeProjectPath])
 
   // Inline voice input (Push-to-Talk mode)
-  // Only enable if voice panel is not open (avoid conflict)
   const inlineVoice = useInlineVoiceInput({
     settings: {
       ...voiceSettings,
       pushToTalk: {
         ...voiceSettings.pushToTalk,
-        // Disable Push-to-Talk if voice panel is open
         enabled: voiceSettings.pushToTalk.enabled && !state.showVoicePanel
       }
     },
@@ -188,18 +189,9 @@ export const WorkArea: React.FC = () => {
     projectPath: activeProjectPath
   })
 
-  // Voice button shows active state when panel is open or inline recording
   const voiceButtonState = state.showVoicePanel || inlineVoice.isActive ? 'recording' : 'idle'
 
-  // Derive active tab ID from global state
-  const activeTabId = state.activeEditorTabId
-    ? `editor-${state.activeEditorTabId}`
-    : state.activeTerminalId
-    ? `terminal-${state.activeTerminalId}`
-    : null
-
-  // Memoize project color lookup maps to avoid recalculating on every render
-  // This creates stable references that only change when projects actually change
+  // Memoize project color lookup maps
   const projectColorById = useMemo(() => {
     const map = new Map<string, string>()
     state.projects.forEach(p => {
@@ -216,17 +208,15 @@ export const WorkArea: React.FC = () => {
     return map
   }, [state.projects])
 
-  // Memoize tabs creation to prevent unnecessary recalculations
+  // Memoize tabs creation
   const allTabs = useMemo(() => {
     const tabsById = new Map<string, Tab>()
 
     state.editorTabs.forEach(t => {
-      // For diff tabs, use projectPath; for regular tabs, match by filePath
       let projectColor: string | undefined
       if (t.projectPath) {
         projectColor = projectColorByPath.get(t.projectPath)
       } else {
-        // Find project by file path prefix
         for (const [path, color] of projectColorByPath) {
           if (t.filePath.startsWith(path)) {
             projectColor = color
@@ -252,7 +242,6 @@ export const WorkArea: React.FC = () => {
       })
     })
 
-    // Use tabOrder to determine display order, filtering out any removed tabs
     return (state.tabOrder || [])
       .map(id => tabsById.get(id))
       .filter((tab): tab is Tab => tab !== undefined)
@@ -264,17 +253,11 @@ export const WorkArea: React.FC = () => {
     const isMultiSelectKey = isMac ? e.metaKey : e.ctrlKey
 
     if (e.shiftKey || isMultiSelectKey) {
-      // Multi-select mode: update selection without switching active tab
       dispatch({
         type: 'SELECT_TAB',
-        payload: {
-          tabId,
-          shiftKey: e.shiftKey,
-          ctrlKey: isMultiSelectKey
-        }
+        payload: { tabId, shiftKey: e.shiftKey, ctrlKey: isMultiSelectKey }
       })
     } else {
-      // Normal click: activate tab (this also updates selection in a single dispatch)
       if (tabId.startsWith('editor-')) {
         const id = tabId.substring('editor-'.length)
         dispatch({ type: 'SET_ACTIVE_EDITOR_TAB', payload: id })
@@ -284,186 +267,6 @@ export const WorkArea: React.FC = () => {
       }
     }
   }, [dispatch])
-
-  const handleTabClose = useCallback((e: React.MouseEvent, tabId: string) => {
-    e.stopPropagation()
-    if (tabId.startsWith('editor-')) {
-      const id = tabId.substring('editor-'.length)
-      const editorTab = state.editorTabs.find(t => t.id === id)
-
-      // Check if it's a scratchpad tab with content
-      if (editorTab?.isScratchpad && editorTab.content.trim().length > 0) {
-        // Show confirmation dialog for scratchpad with content
-        setCloseScratchpadDialog({
-          show: true,
-          tabId: id,
-          tabName: editorTab.fileName
-        })
-      } else {
-        // Close directly for non-scratchpad or empty scratchpad
-        dispatch({ type: 'REMOVE_EDITOR_TAB', payload: id })
-      }
-    } else if (tabId.startsWith('terminal-')) {
-      const id = tabId.substring('terminal-'.length)
-      // Check if confirmation is enabled in settings
-      if (state.settings.confirmTerminalClose ?? true) {
-        // Find terminal name for confirmation dialog
-        const terminal = state.terminals.find(t => t.id === id)
-        const terminalName = terminal?.name || 'Terminal'
-        // Show confirmation dialog for terminal close
-        setCloseTerminalDialog({
-          show: true,
-          terminalId: id,
-          terminalName
-        })
-      } else {
-        // Close immediately without confirmation
-        dispatch({ type: 'REMOVE_TERMINAL', payload: id })
-      }
-    }
-  }, [dispatch, state.terminals, state.editorTabs, state.settings.confirmTerminalClose])
-
-  // Handle terminal close confirmation
-  const handleConfirmCloseTerminal = useCallback(() => {
-    if (closeTerminalDialog.terminalId) {
-      dispatch({ type: 'REMOVE_TERMINAL', payload: closeTerminalDialog.terminalId })
-    }
-    setCloseTerminalDialog({ show: false, terminalId: null, terminalName: '' })
-  }, [closeTerminalDialog.terminalId, dispatch])
-
-  // Handle terminal close cancellation
-  const handleCancelCloseTerminal = useCallback(() => {
-    setCloseTerminalDialog({ show: false, terminalId: null, terminalName: '' })
-  }, [])
-
-  // Handle scratchpad close confirmation (discard content)
-  const handleConfirmCloseScratchpad = useCallback(() => {
-    if (closeScratchpadDialog.tabId) {
-      dispatch({ type: 'REMOVE_EDITOR_TAB', payload: closeScratchpadDialog.tabId })
-    }
-    setCloseScratchpadDialog({ show: false, tabId: null, tabName: '' })
-  }, [closeScratchpadDialog.tabId, dispatch])
-
-  // Handle scratchpad close cancellation
-  const handleCancelCloseScratchpad = useCallback(() => {
-    setCloseScratchpadDialog({ show: false, tabId: null, tabName: '' })
-  }, [])
-
-  // Use refs to store current state values for event handlers to avoid re-registering listeners
-  const stateRef = useRef({ terminals: state.terminals, editorTabs: state.editorTabs, settings: state.settings })
-  stateRef.current = { terminals: state.terminals, editorTabs: state.editorTabs, settings: state.settings }
-
-  // Listen for terminal and editor close request events - register once using refs
-  useEffect(() => {
-    const handleCloseTerminalRequest = (event: CustomEvent<{ terminalId: string }>) => {
-      const { terminalId } = event.detail
-      if (!terminalId) return
-
-      const { terminals, settings } = stateRef.current
-      // Check if confirmation is enabled in settings
-      if (settings.confirmTerminalClose ?? true) {
-        // Find terminal name for confirmation dialog
-        const terminal = terminals.find(t => t.id === terminalId)
-        const terminalName = terminal?.name || 'Terminal'
-        // Show confirmation dialog for terminal close
-        setCloseTerminalDialog({
-          show: true,
-          terminalId,
-          terminalName
-        })
-      } else {
-        // Close immediately without confirmation
-        dispatch({ type: 'REMOVE_TERMINAL', payload: terminalId })
-      }
-    }
-
-    const handleCloseEditorRequest = (event: CustomEvent<{ editorTabId: string }>) => {
-      const { editorTabId } = event.detail
-      if (!editorTabId) return
-
-      const { editorTabs } = stateRef.current
-      const editorTab = editorTabs.find(t => t.id === editorTabId)
-
-      // Check if it's a scratchpad tab with content
-      if (editorTab?.isScratchpad && editorTab.content.trim().length > 0) {
-        // Show confirmation dialog for scratchpad with content
-        setCloseScratchpadDialog({
-          show: true,
-          tabId: editorTabId,
-          tabName: editorTab.fileName
-        })
-      } else {
-        // Close directly for non-scratchpad or empty scratchpad
-        dispatch({ type: 'REMOVE_EDITOR_TAB', payload: editorTabId })
-      }
-    }
-
-    window.addEventListener('close-terminal-request', handleCloseTerminalRequest as EventListener)
-    window.addEventListener('close-editor-request', handleCloseEditorRequest as EventListener)
-
-    return () => {
-      window.removeEventListener('close-terminal-request', handleCloseTerminalRequest as EventListener)
-      window.removeEventListener('close-editor-request', handleCloseEditorRequest as EventListener)
-    }
-  }, [dispatch]) // Only dispatch is stable, handlers use refs for current state
-
-  const handleContentChange = (content: string) => {
-    const activeEditorTab = state.editorTabs.find(t => `editor-${t.id}` === activeTabId)
-    if (activeEditorTab) {
-      dispatch({
-        type: 'UPDATE_EDITOR_CONTENT',
-        payload: { id: activeEditorTab.id, content }
-      })
-    }
-  }
-
-  const handleSave = async (content?: string) => {
-    const activeEditorTab = state.editorTabs.find(t => `editor-${t.id}` === activeTabId)
-    if (!activeEditorTab) return
-
-    // Use provided content (from editor) or fall back to state content
-    const contentToSave = content !== undefined ? content : activeEditorTab.content
-
-    try {
-      const result = await window.api.fs.writeFile(activeEditorTab.filePath, contentToSave)
-      if (result.success) {
-        // Update state with the saved content if it was provided
-        if (content !== undefined && content !== activeEditorTab.content) {
-          dispatch({
-            type: 'UPDATE_EDITOR_CONTENT',
-            payload: { id: activeEditorTab.id, content }
-          })
-        }
-        dispatch({
-          type: 'MARK_TAB_DIRTY',
-          payload: { id: activeEditorTab.id, isDirty: false }
-        })
-      } else {
-        console.error('Failed to save file:', result.error)
-      }
-    } catch (error) {
-      console.error('Error saving file:', error)
-    }
-  }
-
-  const activeEditorTab = state.editorTabs.find(t => `editor-${t.id}` === activeTabId)
-  const isTerminalActive = activeTabId?.startsWith('terminal-')
-
-  // Get current mode for active editor tab
-  const currentMode = activeEditorTab ? (editorModes[activeEditorTab.id] || 'preview') : 'preview'
-
-  // Check if active tab supports preview mode (diff tabs don't support preview toggle)
-  const supportsPreview = activeEditorTab && !activeEditorTab.isDiff && (activeEditorTab.fileType === 'markdown' || activeEditorTab.fileType === 'html')
-
-  // Toggle between preview and edit modes
-  const toggleMode = () => {
-    if (activeEditorTab && supportsPreview) {
-      setEditorModes(prev => ({
-        ...prev,
-        [activeEditorTab.id]: prev[activeEditorTab.id] === 'edit' ? 'preview' : 'edit'
-      }))
-    }
-  }
 
   if (allTabs.length === 0) {
     return (
@@ -491,7 +294,6 @@ export const WorkArea: React.FC = () => {
               isMultiSelected={state.selectedTabIds.has(tab.id) && state.selectedTabIds.size > 1}
               onClick={(e) => handleTabClick(e, tab.id)}
               onDoubleClick={() => {
-                // Double-click on tab pins it (converts preview to permanent)
                 if (tab.isPreview && tab.id.startsWith('editor-')) {
                   const id = tab.id.substring('editor-'.length)
                   dispatch({ type: 'PIN_EDITOR_TAB', payload: id })
@@ -504,7 +306,6 @@ export const WorkArea: React.FC = () => {
               onDrop={(e) => handleDrop(e, tab.id)}
             />
           ))}
-          {/* Drop zone for dropping tabs at the end / double-click to create scratchpad */}
           <div
             className={`tab-drop-end-zone ${dragOverEnd ? 'drag-over' : ''}`}
             onDragOver={handleDragOverEnd}
@@ -514,7 +315,6 @@ export const WorkArea: React.FC = () => {
           />
         </div>
         <div className={`work-area-tabs-right ${isWindows ? 'windows-platform' : ''}`}>
-          {/* File type selector for scratchpad tabs */}
           {activeEditorTab?.isScratchpad && (
             <select
               className="scratchpad-type-selector"
@@ -539,7 +339,6 @@ export const WorkArea: React.FC = () => {
               <option value="xml">XML</option>
             </select>
           )}
-          {/* Voice Input Button - toggles voice panel */}
           <VoiceInputButton
             isEnabled={voiceSettings.enabled}
             state={voiceButtonState as 'idle' | 'recording' | 'processing' | 'error'}
