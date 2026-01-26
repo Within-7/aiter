@@ -4,6 +4,7 @@
  * Note: These tests use minimal mocking to verify handler behavior
  */
 
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { IpcMainInvokeEvent } from 'electron'
 import {
   createHandler,
@@ -27,7 +28,7 @@ const createMockEvent = (): IpcMainInvokeEvent => {
 describe('IPC Handler Utilities', () => {
   beforeEach(() => {
     clearRateLimits()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('createHandler', () => {
@@ -165,15 +166,15 @@ describe('IPC Handler Utilities', () => {
 
   describe('Rate Limiting', () => {
     beforeEach(() => {
-      jest.useFakeTimers()
+      vi.useFakeTimers()
     })
 
     afterEach(() => {
-      jest.useRealTimers()
+      vi.useRealTimers()
     })
 
     it('should enforce rate limit', async () => {
-      const mockFn = jest.fn(async () => true)
+      const mockFn = vi.fn(async () => true)
       const handler = createHandler(mockFn, { rateLimit: 1000 })
 
       // First call should succeed
@@ -188,7 +189,7 @@ describe('IPC Handler Utilities', () => {
       expect(mockFn).toHaveBeenCalledTimes(1)
 
       // After time passes, should work again
-      jest.advanceTimersByTime(1001)
+      vi.advanceTimersByTime(1001)
       const result3 = await handler(createMockEvent(), {})
       expect(result3.success).toBe(true)
       expect(mockFn).toHaveBeenCalledTimes(2)
@@ -199,14 +200,14 @@ describe('IPC Handler Utilities', () => {
 
       await handler(createMockEvent(), {})
 
-      jest.advanceTimersByTime(300)
+      vi.advanceTimersByTime(300)
 
       const result = await handler(createMockEvent(), {})
       expect(result.error).toMatch(/wait \d+ms/)
     })
 
     it('should allow clearing rate limits', async () => {
-      const mockFn = jest.fn(async () => true)
+      const mockFn = vi.fn(async () => true)
       const handler = createHandler(mockFn, { rateLimit: 1000 })
 
       await handler(createMockEvent(), {})
@@ -226,7 +227,7 @@ describe('IPC Handler Utilities', () => {
 
   describe('Error Logging', () => {
     it('should log errors by default', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation()
 
       const handler = createHandler(async () => {
         throw new Error('Test error')
@@ -239,7 +240,7 @@ describe('IPC Handler Utilities', () => {
     })
 
     it('should not log errors when disabled', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation()
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation()
 
       const handler = createHandler(
         async () => {
@@ -255,7 +256,7 @@ describe('IPC Handler Utilities', () => {
     })
 
     it('should use custom logger', async () => {
-      const mockLogger = jest.fn()
+      const mockLogger = vi.fn()
 
       const handler = createHandler(
         async () => {
@@ -300,7 +301,7 @@ describe('IPC Handler Utilities', () => {
 
   describe('createHandlerFactory', () => {
     it('should create handlers with shared options', async () => {
-      const mockLogger = jest.fn()
+      const mockLogger = vi.fn()
 
       const createCustomHandler = createHandlerFactory({
         logger: mockLogger,
@@ -322,7 +323,7 @@ describe('IPC Handler Utilities', () => {
     })
 
     it('should allow overriding factory options', async () => {
-      const mockLogger = jest.fn()
+      const mockLogger = vi.fn()
 
       const createCustomHandler = createHandlerFactory({
         logger: mockLogger,
