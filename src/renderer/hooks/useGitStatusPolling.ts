@@ -27,6 +27,7 @@ const getGitPollInterval = (nodeCount: number): number => {
 interface UseGitStatusPollingOptions {
   projectPath: string
   nodesRef: React.RefObject<FileNode[]>
+  /** Optional callback when file changes detected. Note: Uses ref internally to avoid re-subscriptions */
   onRefresh?: () => void
 }
 
@@ -52,6 +53,10 @@ export function useGitStatusPolling({
   const [gitChanges, setGitChanges] = useState<Map<string, ExtendedGitStatus>>(new Map())
   const gitPollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const currentIntervalRef = useRef<number>(GIT_POLL_INTERVAL_SMALL)
+
+  // Use ref to store onRefresh callback to avoid re-subscribing when callback changes
+  const onRefreshRef = useRef(onRefresh)
+  onRefreshRef.current = onRefresh
 
   const loadGitChanges = useCallback(async () => {
     try {
@@ -105,7 +110,7 @@ export function useGitStatusPolling({
     const unsubscribe = window.api.fileWatcher.onChanged((data) => {
       if (data.projectPath === projectPath) {
         console.log(`[useGitStatusPolling] Detected ${data.changeCount} file changes, refreshing...`)
-        onRefresh?.()
+        onRefreshRef.current?.()
         loadGitChanges()
       }
     })
@@ -117,7 +122,7 @@ export function useGitStatusPolling({
       window.api.fileWatcher.unwatch(projectPath)
       unsubscribe()
     }
-  }, [projectPath, loadGitChanges, nodesRef, onRefresh])
+  }, [projectPath, loadGitChanges, nodesRef])
 
   // Update git polling interval when node count changes significantly
   useEffect(() => {
