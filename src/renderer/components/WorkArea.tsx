@@ -10,6 +10,7 @@ import { OfficeViewer } from './Editor/OfficeViewer'
 import { TerminalContainer } from './TerminalContainer'
 import { ConfirmDialog } from './FileTree/ConfirmDialog'
 import { VoiceInputButton, InlineVoiceBubble } from './VoiceInput'
+import { TabItem } from './WorkArea/TabItem'
 import { useInlineVoiceInput } from '../hooks/useInlineVoiceInput'
 import { useTabDragDrop } from '../hooks/useTabDragDrop'
 import { defaultVoiceInputSettings, VoiceTranscription, VoiceRecord } from '../../types/voiceInput'
@@ -479,51 +480,30 @@ export const WorkArea: React.FC = () => {
     <div className="work-area">
       <div className="work-area-tabs">
         <div className="work-area-tabs-left">
-          {allTabs.map(tab => {
-            const isActive = tab.id === activeTabId
-            const isDragging = draggedTabId === tab.id
-            const isDragOver = dragOverTabId === tab.id
-            const isSelected = state.selectedTabIds.has(tab.id)
-            const isMultiSelected = isSelected && state.selectedTabIds.size > 1
-
-            return (
-              <div
-                key={tab.id}
-                className={`work-area-tab ${isActive ? 'active' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''} ${isSelected ? 'selected' : ''} ${isMultiSelected ? 'multi-selected' : ''} ${tab.isPreview ? 'preview' : ''}`}
-                onClick={(e) => handleTabClick(e, tab.id)}
-                onDoubleClick={() => {
-                  // Double-click on tab pins it (converts preview to permanent)
-                  if (tab.isPreview && tab.id.startsWith('editor-')) {
-                    const id = tab.id.substring('editor-'.length)
-                    dispatch({ type: 'PIN_EDITOR_TAB', payload: id })
-                  }
-                }}
-                draggable
-                onDragStart={(e) => handleDragStart(e, tab.id)}
-                onDragOver={(e) => handleDragOver(e, tab.id)}
-                onDragEnd={handleDragEnd}
-                onDrop={(e) => handleDrop(e, tab.id)}
-                style={{
-                  borderTopColor: tab.projectColor || 'transparent',
-                  background: isActive && tab.projectColor
-                    ? `linear-gradient(to bottom, ${tab.projectColor}40, #1e1e1e)`
-                    : undefined
-                }}
-              >
-                <span className="tab-icon">
-                  {tab.type === 'editor' ? '📄' : '⌨️'}
-                </span>
-                <span className="tab-title">{tab.title}</span>
-                <button
-                  className="tab-close"
-                  onClick={(e) => handleTabClose(e, tab.id)}
-                  title="Close"
-                >
-                  ×
-                </button>
-              </div>
-            )
-          })}
+          {allTabs.map(tab => (
+            <TabItem
+              key={tab.id}
+              tab={tab}
+              isActive={tab.id === activeTabId}
+              isDragging={draggedTabId === tab.id}
+              isDragOver={dragOverTabId === tab.id}
+              isSelected={state.selectedTabIds.has(tab.id)}
+              isMultiSelected={state.selectedTabIds.has(tab.id) && state.selectedTabIds.size > 1}
+              onClick={(e) => handleTabClick(e, tab.id)}
+              onDoubleClick={() => {
+                // Double-click on tab pins it (converts preview to permanent)
+                if (tab.isPreview && tab.id.startsWith('editor-')) {
+                  const id = tab.id.substring('editor-'.length)
+                  dispatch({ type: 'PIN_EDITOR_TAB', payload: id })
+                }
+              }}
+              onClose={(e) => handleTabClose(e, tab.id)}
+              onDragStart={(e) => handleDragStart(e, tab.id)}
+              onDragOver={(e) => handleDragOver(e, tab.id)}
+              onDragEnd={handleDragEnd}
+              onDrop={(e) => handleDrop(e, tab.id)}
+            />
+          ))}
           {/* Drop zone for dropping tabs at the end / double-click to create scratchpad */}
           <div
             className={`tab-drop-end-zone ${dragOverEnd ? 'drag-over' : ''}`}

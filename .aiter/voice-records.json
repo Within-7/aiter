@@ -12,7 +12,18 @@
       "sampleRate": 16000,
       "retryCount": 0,
       "lastError": "Empty transcription"
+    },
+    {
+      "id": "1769402190101",
+      "timestamp": 1769402190101,
+      "source": "inline",
+      "projectId": "/Users/lib/Desktop/dev/within-7/claude-code-projects/airter",
+      "status": "pending",
+      "duration": 0.1918125,
+      "sampleRate": 16000,
+      "retryCount": 0,
+      "lastError": "Empty transcription"
     }
   ],
-  "lastUpdated": 1769219768296
+  "lastUpdated": 1769402191203
 }
