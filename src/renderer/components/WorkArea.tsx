@@ -1,4 +1,4 @@
-import React, { useContext, useState, useCallback, useMemo } from 'react'
+import React, { useContext, useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { AppContext } from '../context/AppContext'
 import { MonacoEditorLazy } from './Editor/MonacoEditorLazy'
 import { MarkdownEditor } from './Editor/MarkdownEditor'
@@ -312,64 +312,63 @@ export const WorkArea: React.FC = () => {
     setCloseScratchpadDialog({ show: false, tabId: null, tabName: '' })
   }, [])
 
-  // Handle terminal close request from keyboard shortcut (Ctrl/Cmd+W)
-  const handleCloseTerminalRequest = useCallback((event: CustomEvent<{ terminalId: string }>) => {
-    const { terminalId } = event.detail
-    if (!terminalId) return
+  // Use refs to store current state values for event handlers to avoid re-registering listeners
+  const stateRef = useRef({ terminals: state.terminals, editorTabs: state.editorTabs, settings: state.settings })
+  stateRef.current = { terminals: state.terminals, editorTabs: state.editorTabs, settings: state.settings }
 
-    // Check if confirmation is enabled in settings
-    if (state.settings.confirmTerminalClose ?? true) {
-      // Find terminal name for confirmation dialog
-      const terminal = state.terminals.find(t => t.id === terminalId)
-      const terminalName = terminal?.name || 'Terminal'
-      // Show confirmation dialog for terminal close
-      setCloseTerminalDialog({
-        show: true,
-        terminalId,
-        terminalName
-      })
-    } else {
-      // Close immediately without confirmation
-      dispatch({ type: 'REMOVE_TERMINAL', payload: terminalId })
+  // Listen for terminal and editor close request events - register once using refs
+  useEffect(() => {
+    const handleCloseTerminalRequest = (event: CustomEvent<{ terminalId: string }>) => {
+      const { terminalId } = event.detail
+      if (!terminalId) return
+
+      const { terminals, settings } = stateRef.current
+      // Check if confirmation is enabled in settings
+      if (settings.confirmTerminalClose ?? true) {
+        // Find terminal name for confirmation dialog
+        const terminal = terminals.find(t => t.id === terminalId)
+        const terminalName = terminal?.name || 'Terminal'
+        // Show confirmation dialog for terminal close
+        setCloseTerminalDialog({
+          show: true,
+          terminalId,
+          terminalName
+        })
+      } else {
+        // Close immediately without confirmation
+        dispatch({ type: 'REMOVE_TERMINAL', payload: terminalId })
+      }
     }
-  }, [dispatch, state.terminals, state.settings.confirmTerminalClose])
 
-  // Handle editor close request from keyboard shortcut (Ctrl/Cmd+W)
-  const handleCloseEditorRequest = useCallback((event: CustomEvent<{ editorTabId: string }>) => {
-    const { editorTabId } = event.detail
-    if (!editorTabId) return
+    const handleCloseEditorRequest = (event: CustomEvent<{ editorTabId: string }>) => {
+      const { editorTabId } = event.detail
+      if (!editorTabId) return
 
-    const editorTab = state.editorTabs.find(t => t.id === editorTabId)
+      const { editorTabs } = stateRef.current
+      const editorTab = editorTabs.find(t => t.id === editorTabId)
 
-    // Check if it's a scratchpad tab with content
-    if (editorTab?.isScratchpad && editorTab.content.trim().length > 0) {
-      // Show confirmation dialog for scratchpad with content
-      setCloseScratchpadDialog({
-        show: true,
-        tabId: editorTabId,
-        tabName: editorTab.fileName
-      })
-    } else {
-      // Close directly for non-scratchpad or empty scratchpad
-      dispatch({ type: 'REMOVE_EDITOR_TAB', payload: editorTabId })
+      // Check if it's a scratchpad tab with content
+      if (editorTab?.isScratchpad && editorTab.content.trim().length > 0) {
+        // Show confirmation dialog for scratchpad with content
+        setCloseScratchpadDialog({
+          show: true,
+          tabId: editorTabId,
+          tabName: editorTab.fileName
+        })
+      } else {
+        // Close directly for non-scratchpad or empty scratchpad
+        dispatch({ type: 'REMOVE_EDITOR_TAB', payload: editorTabId })
+      }
     }
-  }, [dispatch, state.editorTabs])
 
-  // Listen for terminal close request events
-  React.useEffect(() => {
     window.addEventListener('close-terminal-request', handleCloseTerminalRequest as EventListener)
+    window.addEventListener('close-editor-request', handleCloseEditorRequest as EventListener)
+
     return () => {
       window.removeEventListener('close-terminal-request', handleCloseTerminalRequest as EventListener)
-    }
-  }, [handleCloseTerminalRequest])
-
-  // Listen for editor close request events
-  React.useEffect(() => {
-    window.addEventListener('close-editor-request', handleCloseEditorRequest as EventListener)
-    return () => {
       window.removeEventListener('close-editor-request', handleCloseEditorRequest as EventListener)
     }
-  }, [handleCloseEditorRequest])
+  }, [dispatch]) // Only dispatch is stable, handlers use refs for current state
 
   const handleDragStart = useCallback((e: React.DragEvent, tabId: string) => {
     // If the dragged tab is not in selection, make it the only selected tab

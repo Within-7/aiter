@@ -193,18 +193,20 @@ export const FileTree: React.FC<FileTreeProps> = ({
     }
   }, [projectPath, loadGitChanges])
 
-  // Update git polling interval when node count changes (directories expanded/collapsed)
+  // Track the current interval value to avoid unnecessary re-registrations
+  const currentIntervalRef = useRef<number>(3000)
+
+  // Update git polling interval when node count changes significantly
   useEffect(() => {
     if (!gitPollIntervalRef.current) return
 
     const nodeCount = countNodes(nodes)
     const newInterval = getGitPollInterval(nodeCount)
 
-    // Only update if interval has changed
-    const currentInterval = gitPollIntervalRef.current
-    if (currentInterval) {
-      // Check if we need to update the interval by comparing node count thresholds
-      clearInterval(currentInterval)
+    // Only update if interval threshold actually changed
+    if (newInterval !== currentIntervalRef.current) {
+      currentIntervalRef.current = newInterval
+      clearInterval(gitPollIntervalRef.current)
       gitPollIntervalRef.current = setInterval(loadGitChanges, newInterval)
       console.log(`[FileTree] Updated git poll interval to ${newInterval}ms for ${nodeCount} nodes`)
     }

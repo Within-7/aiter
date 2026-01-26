@@ -56,6 +56,7 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   const { state } = useContext(AppContext)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const onSaveRef = useRef(onSave)
+  const onChangeRef = useRef(onChange)
 
   // Track the last value we received from props to detect external changes
   const lastExternalValueRef = useRef<string>(value)
@@ -88,10 +89,11 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     }
   }, [value, onChange])
 
-  // Keep onSave ref updated
+  // Keep callback refs updated
   useEffect(() => {
     onSaveRef.current = onSave
-  }, [onSave])
+    onChangeRef.current = onChange
+  }, [onSave, onChange])
 
   // Focus editor when it becomes active
   useEffect(() => {
@@ -100,7 +102,7 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     }
   }, [isActive])
 
-  // Listen for voice input text insertion events
+  // Listen for voice input text insertion events - use ref to avoid re-registering
   useEffect(() => {
     const handleVoiceInsert = (event: CustomEvent<{ text: string }>) => {
       const editor = editorRef.current
@@ -116,9 +118,9 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
         forceMoveMarkers: true
       }])
 
-      // Update the content through onChange
+      // Update the content through onChange ref
       const newContent = editor.getValue()
-      onChange(newContent)
+      onChangeRef.current(newContent)
 
       // Focus the editor after insertion
       editor.focus()
@@ -128,7 +130,7 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     return () => {
       window.removeEventListener('voice-input-insert', handleVoiceInsert as EventListener)
     }
-  }, [onChange])
+  }, []) // Empty deps - listener registered once, uses ref for callback
 
   const handleEditorDidMount: OnMount = (editor, monacoInstance) => {
     editorRef.current = editor

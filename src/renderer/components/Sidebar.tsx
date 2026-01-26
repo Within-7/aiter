@@ -53,10 +53,18 @@ export function Sidebar() {
     }
   }, [])
 
-  // Handle sidebar resizing
+  // Use refs to track resizing state and width without causing useEffect re-runs
+  const isResizingRef = useRef(false)
+  const sidebarWidthRef = useRef(sidebarWidth)
+
+  // Keep refs in sync with state
+  isResizingRef.current = isResizing
+  sidebarWidthRef.current = sidebarWidth
+
+  // Handle sidebar resizing - register listeners once, use refs to track state
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return
+      if (!isResizingRef.current) return
 
       const newWidth = e.clientX
       if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
@@ -65,26 +73,33 @@ export function Sidebar() {
     }
 
     const handleMouseUp = () => {
-      if (isResizing) {
+      if (isResizingRef.current) {
         setIsResizing(false)
-        localStorage.setItem(STORAGE_KEY, sidebarWidth.toString())
+        localStorage.setItem(STORAGE_KEY, sidebarWidthRef.current.toString())
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
       }
     }
 
-    if (isResizing) {
-      document.body.style.cursor = 'col-resize'
-      document.body.style.userSelect = 'none'
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    }
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing, sidebarWidth])
+  }, []) // Empty deps - listeners registered once, use refs for current state
+
+  // Handle cursor style changes when resizing starts/stops
+  useEffect(() => {
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    } else {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizing])
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault()
