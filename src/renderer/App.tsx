@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef, useCallback } from 'react'
 import { AppContext, appReducer, initialState } from './context/AppContext'
 import { SessionState } from '../types'
+import { DEBOUNCE_SAVE_DELAY_MS } from '../constants'
 import { Sidebar } from './components/Sidebar'
 import { WorkArea } from './components/WorkArea'
 import { VoicePanelContainer } from './components/VoicePanel/VoicePanelContainer'
@@ -76,7 +77,7 @@ function App() {
       }
 
       await window.api.session.save(session)
-    }, 1000) // Debounce 1 second
+    }, DEBOUNCE_SAVE_DELAY_MS)
   }, [])
 
   // Auto-save session when state changes

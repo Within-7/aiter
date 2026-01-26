@@ -5,6 +5,7 @@ import { PluginCard } from './PluginCard'
 import { MintoConfigDialog } from './MintoConfigDialog'
 import { AddPluginDialog } from './AddPluginDialog'
 import { AppContext } from '../../context/AppContext'
+import { STATUS_MESSAGE_TIMEOUT_MS } from '../../../constants'
 import './Plugins.css'
 
 // Extended plugin interface for display
@@ -145,18 +146,18 @@ export const PluginPanel: React.FC = () => {
         await loadPlugins()
 
         // Auto-clear status message after 5 seconds
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       } else {
         const errorMsg = result.error || 'Installation failed'
         setStatusMessage(`✗ ${errorMsg}`)
         setError(errorMsg)
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Installation failed'
       setStatusMessage(`✗ ${errorMsg}`)
       setError(errorMsg)
-      setTimeout(() => setStatusMessage(null), 5000)
+      setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
     } finally {
       setProcessingPlugins((prev) => {
         const next = new Set(prev)
@@ -185,18 +186,18 @@ export const PluginPanel: React.FC = () => {
         await loadPlugins()
 
         // Auto-clear status message after 5 seconds
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       } else {
         const errorMsg = result.error || 'Update failed'
         setStatusMessage(`✗ ${errorMsg}`)
         setError(errorMsg)
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Update failed'
       setStatusMessage(`✗ ${errorMsg}`)
       setError(errorMsg)
-      setTimeout(() => setStatusMessage(null), 5000)
+      setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
     } finally {
       setProcessingPlugins((prev) => {
         const next = new Set(prev)
@@ -222,18 +223,18 @@ export const PluginPanel: React.FC = () => {
       if (result.success) {
         setStatusMessage(`✓ ${pluginName} uninstalled successfully`)
         await loadPlugins()
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       } else {
         const errorMsg = result.error || 'Uninstall failed'
         setStatusMessage(`✗ ${errorMsg}`)
         setError(errorMsg)
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Uninstall failed'
       setStatusMessage(`✗ ${errorMsg}`)
       setError(errorMsg)
-      setTimeout(() => setStatusMessage(null), 5000)
+      setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
     } finally {
       setProcessingPlugins((prev) => {
         const next = new Set(prev)
@@ -265,18 +266,18 @@ export const PluginPanel: React.FC = () => {
       if (result.success) {
         setStatusMessage(`✓ ${pluginName} deleted successfully`)
         await loadPlugins()
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       } else {
         const errorMsg = result.error || 'Delete failed'
         setStatusMessage(`✗ ${errorMsg}`)
         setError(errorMsg)
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Delete failed'
       setStatusMessage(`✗ ${errorMsg}`)
       setError(errorMsg)
-      setTimeout(() => setStatusMessage(null), 5000)
+      setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
     } finally {
       setProcessingPlugins((prev) => {
         const next = new Set(prev)
@@ -335,18 +336,18 @@ export const PluginPanel: React.FC = () => {
         }
 
         // Auto-clear status message after 5 seconds
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       } else {
         const errorMsg = result.error || 'Failed to check for updates'
         setStatusMessage(`✗ ${errorMsg}`)
         setError(errorMsg)
-        setTimeout(() => setStatusMessage(null), 5000)
+        setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to check for updates'
       setStatusMessage(`✗ ${errorMsg}`)
       setError(errorMsg)
-      setTimeout(() => setStatusMessage(null), 5000)
+      setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
     } finally {
       setProcessingPlugins((prev) => {
         const next = new Set(prev)
@@ -365,12 +366,12 @@ export const PluginPanel: React.FC = () => {
     if (result.success) {
       setStatusMessage(`✓ Plugin added successfully: ${result.pluginId}`)
       await loadPlugins()
-      setTimeout(() => setStatusMessage(null), 5000)
+      setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
     } else {
       const errorMsg = result.error || 'Failed to add plugin'
       setStatusMessage(`✗ ${errorMsg}`)
       setError(errorMsg)
-      setTimeout(() => setStatusMessage(null), 5000)
+      setTimeout(() => setStatusMessage(null), STATUS_MESSAGE_TIMEOUT_MS)
       throw new Error(errorMsg)
     }
   }

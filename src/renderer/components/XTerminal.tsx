@@ -9,7 +9,8 @@ import { Terminal as TerminalType, AppSettings } from '../../types'
 import { getTerminalTheme } from '../themes/terminalThemes'
 import {
   MAX_INACTIVE_TERMINAL_BUFFER,
-  TERMINAL_BATCH_WINDOW_MS
+  TERMINAL_BATCH_WINDOW_MS,
+  TERMINAL_FIT_DELAY_MS
 } from '../../constants'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/XTerminal.css'
@@ -148,7 +149,7 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
           fitAddon.fit()
         } else {
           // Terminal is hidden, retry later
-          setTimeout(fitTerminal, 100)
+          setTimeout(fitTerminal, TERMINAL_FIT_DELAY_MS)
         }
       } catch (error) {
         // Silently ignore fit errors during initialization

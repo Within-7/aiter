@@ -2,6 +2,13 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import type { FileChange } from '../../types'
 import { countNodes } from './useFileTreeData'
 import type { FileNode } from '../../types'
+import {
+  GIT_POLL_INTERVAL_SMALL,
+  GIT_POLL_INTERVAL_MEDIUM,
+  GIT_POLL_INTERVAL_LARGE,
+  GIT_POLL_THRESHOLD_MEDIUM,
+  GIT_POLL_THRESHOLD_LARGE
+} from '../../constants'
 
 /**
  * Extended status type to include recently committed files
@@ -12,9 +19,9 @@ export type ExtendedGitStatus = FileChange['status'] | 'recent-commit'
  * Calculate adaptive git polling interval based on project size
  */
 const getGitPollInterval = (nodeCount: number): number => {
-  if (nodeCount > 1000) return 10000  // 10s for large projects
-  if (nodeCount > 500) return 5000    // 5s for medium projects
-  return 3000                          // 3s for small projects
+  if (nodeCount > GIT_POLL_THRESHOLD_LARGE) return GIT_POLL_INTERVAL_LARGE
+  if (nodeCount > GIT_POLL_THRESHOLD_MEDIUM) return GIT_POLL_INTERVAL_MEDIUM
+  return GIT_POLL_INTERVAL_SMALL
 }
 
 interface UseGitStatusPollingOptions {
@@ -44,7 +51,7 @@ export function useGitStatusPolling({
 }: UseGitStatusPollingOptions): UseGitStatusPollingReturn {
   const [gitChanges, setGitChanges] = useState<Map<string, ExtendedGitStatus>>(new Map())
   const gitPollIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const currentIntervalRef = useRef<number>(3000)
+  const currentIntervalRef = useRef<number>(GIT_POLL_INTERVAL_SMALL)
 
   const loadGitChanges = useCallback(async () => {
     try {

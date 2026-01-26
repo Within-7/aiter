@@ -64,17 +64,39 @@ export const SIDEBAR_DEFAULT_WIDTH = 300
 // Polling & Refresh Intervals
 // =============================================================================
 
-/** Interval for Git status refresh (10 seconds) */
-export const GIT_STATUS_POLL_INTERVAL = 10000
+/** Git poll interval for small projects (<= 500 nodes, 3 seconds) */
+export const GIT_POLL_INTERVAL_SMALL = 3000
 
-/** Initial interval for file tree Git status (3 seconds) */
-export const FILE_TREE_GIT_POLL_INTERVAL = 3000
+/** Git poll interval for medium projects (501-1000 nodes, 5 seconds) */
+export const GIT_POLL_INTERVAL_MEDIUM = 5000
+
+/** Git poll interval for large projects (> 1000 nodes, 10 seconds) */
+export const GIT_POLL_INTERVAL_LARGE = 10000
+
+/** Project size threshold for medium git polling */
+export const GIT_POLL_THRESHOLD_MEDIUM = 500
+
+/** Project size threshold for large git polling */
+export const GIT_POLL_THRESHOLD_LARGE = 1000
 
 /** Interval for plugin status check (1 hour) */
 export const PLUGIN_STATUS_CHECK_INTERVAL = 3600000
 
 /** Debounce delay for file watcher events (150ms) */
 export const FILE_WATCHER_DEBOUNCE_DELAY = 150
+
+// =============================================================================
+// UI Feedback Timeouts
+// =============================================================================
+
+/** Status message auto-dismiss timeout (5 seconds) */
+export const STATUS_MESSAGE_TIMEOUT_MS = 5000
+
+/** Debounce delay for auto-save operations (1 second) */
+export const DEBOUNCE_SAVE_DELAY_MS = 1000
+
+/** Delay for terminal fit after resize (100ms) */
+export const TERMINAL_FIT_DELAY_MS = 100
 
 // =============================================================================
 // Session & Cache
