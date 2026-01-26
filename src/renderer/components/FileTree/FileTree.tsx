@@ -1,57 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { FileNode, FileChange } from '../../../types'
+import React, { useState, useCallback } from 'react'
+import { FileNode } from '../../../types'
 import { FileTreeNode } from './FileTreeNode'
 import { FileContextMenu, getFileContextMenuActions, ContextMenuAction } from './FileContextMenu'
 import { InputDialog } from './InputDialog'
 import { ConfirmDialog } from './ConfirmDialog'
+import { useFileTreeData } from '../../hooks/useFileTreeData'
+import { useGitStatusPolling, ExtendedGitStatus } from '../../hooks/useGitStatusPolling'
+import { useFileDragDrop } from '../../hooks/useFileDragDrop'
+import { useFileOperations } from '../../hooks/useFileOperations'
 import './FileTree.css'
 
-// 收集所有展开的文件夹路径
-const collectExpandedPaths = (nodes: FileNode[]): Set<string> => {
-  const expanded = new Set<string>()
-
-  const traverse = (nodeList: FileNode[]) => {
-    for (const node of nodeList) {
-      if (node.type === 'directory' && node.isExpanded) {
-        expanded.add(node.path)
-        if (node.children) {
-          traverse(node.children)
-        }
-      }
-    }
-  }
-
-  traverse(nodes)
-  return expanded
-}
-
-// 恢复展开状态到新节点树（异步加载子目录内容）
-const restoreExpandedState = async (
-  newNodes: FileNode[],
-  expandedPaths: Set<string>
-): Promise<FileNode[]> => {
-  const restoreNode = async (node: FileNode): Promise<FileNode> => {
-    if (node.type === 'directory' && expandedPaths.has(node.path)) {
-      try {
-        // 重新加载子目录内容
-        const result = await window.api.fs.readDir(node.path, 1)
-        if (result.success && result.nodes) {
-          // 递归恢复子节点的展开状态
-          const restoredChildren = await Promise.all(
-            result.nodes.map(child => restoreNode(child))
-          )
-          return { ...node, isExpanded: true, children: restoredChildren }
-        }
-      } catch {
-        // 如果加载失败，保持节点但不展开
-        return node
-      }
-    }
-    return node
-  }
-
-  return Promise.all(newNodes.map(node => restoreNode(node)))
-}
+// Re-export for backward compatibility
+export type { ExtendedGitStatus }
 
 interface FileTreeProps {
   projectId: string
@@ -62,47 +22,11 @@ interface FileTreeProps {
   activeFilePath?: string
 }
 
-interface FileDragState {
-  draggedPath: string | null
-  dropTargetPath: string | null
-}
-
-// Extended status type to include recently committed files
-export type ExtendedGitStatus = FileChange['status'] | 'recent-commit'
-
 interface ContextMenuState {
   x: number
   y: number
   node: FileNode | null
   isProjectRoot: boolean
-}
-
-// Calculate adaptive git polling interval based on project size
-const getGitPollInterval = (nodeCount: number): number => {
-  if (nodeCount > 1000) return 10000  // 10s for large projects
-  if (nodeCount > 500) return 5000    // 5s for medium projects
-  return 3000                          // 3s for small projects
-}
-
-// Count total nodes in the tree
-const countNodes = (nodes: FileNode[]): number => {
-  let count = 0
-  const traverse = (nodeList: FileNode[]) => {
-    for (const node of nodeList) {
-      count++
-      if (node.children) {
-        traverse(node.children)
-      }
-    }
-  }
-  traverse(nodes)
-  return count
-}
-
-interface DialogState {
-  type: 'new-file' | 'new-folder' | 'rename' | 'delete' | null
-  targetPath: string
-  targetName?: string
 }
 
 export const FileTree: React.FC<FileTreeProps> = ({
@@ -111,181 +35,68 @@ export const FileTree: React.FC<FileTreeProps> = ({
   onFileDoubleClick,
   activeFilePath
 }) => {
-  const [nodes, setNodes] = useState<FileNode[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [gitChanges, setGitChanges] = useState<Map<string, ExtendedGitStatus>>(new Map())
-  const gitPollIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const nodesRef = useRef<FileNode[]>([]) // 用于在刷新时访问当前节点状态
+  // File tree data management
+  const {
+    nodes,
+    loading,
+    error,
+    nodesRef,
+    loadDirectory,
+    handleToggle,
+    refreshTree
+  } = useFileTreeData({ projectPath })
+
+  // Git status polling
+  const { gitChanges } = useGitStatusPolling({
+    projectPath,
+    nodesRef,
+    onRefresh: () => loadDirectory(projectPath)
+  })
+
+  // File drag and drop
+  const {
+    draggedPath,
+    dropTargetPath,
+    handleFileDragStart,
+    handleFileDragOver,
+    handleFileDragLeave,
+    handleFileDrop,
+    handleFileDragEnd,
+    handleRootDragOver,
+    handleRootDragLeave,
+    handleRootDrop
+  } = useFileDragDrop({
+    projectPath,
+    onMoveComplete: () => loadDirectory(projectPath)
+  })
+
+  // File operations (create, rename, delete)
+  const {
+    dialog,
+    handleCreateFile,
+    handleCreateFolder,
+    handleRename,
+    handleDelete,
+    handleUploadFiles,
+    handleCopyPath,
+    validateName,
+    closeDialog,
+    openNewFileDialog,
+    openNewFolderDialog,
+    openRenameDialog,
+    openDeleteDialog
+  } = useFileOperations({
+    projectPath,
+    onOperationComplete: () => loadDirectory(projectPath)
+  })
+
+  // Context menu state
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
-  const [dialog, setDialog] = useState<DialogState>({ type: null, targetPath: '' })
-  const [fileDragState, setFileDragState] = useState<FileDragState>({ draggedPath: null, dropTargetPath: null })
 
-  // 保持 nodesRef 与 nodes 同步
-  useEffect(() => {
-    nodesRef.current = nodes
-  }, [nodes])
-
-  // Load git file changes (uncommitted) and last commit files
-  const loadGitChanges = useCallback(async () => {
-    try {
-      const changesMap = new Map<string, ExtendedGitStatus>()
-
-      // Get files from last commit first (lower priority)
-      const commitsResult = await window.api.git.getRecentCommits(projectPath, 1)
-      if (commitsResult.success && commitsResult.commits && commitsResult.commits.length > 0) {
-        const lastCommit = commitsResult.commits[0]
-        const filesResult = await window.api.git.getCommitFiles(projectPath, lastCommit.hash)
-        if (filesResult.success && filesResult.files) {
-          filesResult.files.forEach(file => {
-            const fullPath = `${projectPath}/${file.path}`
-            changesMap.set(fullPath, 'recent-commit')
-          })
-        }
-      }
-
-      // Get uncommitted changes (higher priority - will override recent-commit)
-      const result = await window.api.git.getFileChanges(projectPath)
-      if (result.success && result.changes) {
-        result.changes.forEach(change => {
-          const fullPath = `${projectPath}/${change.path}`
-          changesMap.set(fullPath, change.status)
-        })
-      }
-
-      setGitChanges(changesMap)
-    } catch (err) {
-      // Silently ignore git errors (project might not be a git repo)
-    }
-  }, [projectPath])
-
-  useEffect(() => {
+  // Load initial directory
+  React.useEffect(() => {
     loadDirectory(projectPath)
-    loadGitChanges()
-
-    // Calculate adaptive polling interval based on project size
-    const nodeCount = countNodes(nodesRef.current)
-    const pollInterval = getGitPollInterval(nodeCount)
-    console.log(`[FileTree] Using ${pollInterval}ms git poll interval for ${nodeCount} nodes`)
-
-    // Poll git status with adaptive interval
-    gitPollIntervalRef.current = setInterval(loadGitChanges, pollInterval)
-
-    // Start file watcher for this project
-    window.api.fileWatcher.watch(projectPath)
-
-    // Listen for file changes
-    const unsubscribe = window.api.fileWatcher.onChanged((data) => {
-      if (data.projectPath === projectPath) {
-        console.log(`[FileTree] Detected ${data.changeCount} file changes, refreshing...`)
-        loadDirectory(projectPath)
-        loadGitChanges()
-      }
-    })
-
-    return () => {
-      if (gitPollIntervalRef.current) {
-        clearInterval(gitPollIntervalRef.current)
-      }
-      // Stop file watcher and remove listener
-      window.api.fileWatcher.unwatch(projectPath)
-      unsubscribe()
-    }
-  }, [projectPath, loadGitChanges])
-
-  // Track the current interval value to avoid unnecessary re-registrations
-  const currentIntervalRef = useRef<number>(3000)
-
-  // Update git polling interval when node count changes significantly
-  useEffect(() => {
-    if (!gitPollIntervalRef.current) return
-
-    const nodeCount = countNodes(nodes)
-    const newInterval = getGitPollInterval(nodeCount)
-
-    // Only update if interval threshold actually changed
-    if (newInterval !== currentIntervalRef.current) {
-      currentIntervalRef.current = newInterval
-      clearInterval(gitPollIntervalRef.current)
-      gitPollIntervalRef.current = setInterval(loadGitChanges, newInterval)
-      console.log(`[FileTree] Updated git poll interval to ${newInterval}ms for ${nodeCount} nodes`)
-    }
-  }, [nodes, loadGitChanges])
-
-  const loadDirectory = async (path: string) => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      // 先收集当前展开的路径
-      const expandedPaths = collectExpandedPaths(nodesRef.current)
-
-      const result = await window.api.fs.readDir(path, 1)
-      if (result.success && result.nodes) {
-        // 如果有展开的文件夹，恢复展开状态
-        if (expandedPaths.size > 0) {
-          const restoredNodes = await restoreExpandedState(result.nodes, expandedPaths)
-          setNodes(restoredNodes)
-        } else {
-          setNodes(result.nodes)
-        }
-      } else {
-        setError(result.error || 'Failed to load directory')
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleToggle = async (node: FileNode) => {
-    if (node.type !== 'directory') return
-
-    // If already has children loaded, just toggle
-    if (node.children && node.children.length > 0) {
-      updateNodeExpansion(node.id, !node.isExpanded)
-      return
-    }
-
-    // Load children if not loaded
-    try {
-      const result = await window.api.fs.readDir(node.path, 1)
-      if (result.success && result.nodes) {
-        updateNodeChildren(node.id, result.nodes)
-        updateNodeExpansion(node.id, true)
-      }
-    } catch (err) {
-      console.error('Failed to load directory:', err)
-    }
-  }
-
-  const updateNodeExpansion = (nodeId: string, isExpanded: boolean) => {
-    setNodes(prevNodes => updateNodeInTree(prevNodes, nodeId, { isExpanded }))
-  }
-
-  const updateNodeChildren = (nodeId: string, children: FileNode[]) => {
-    setNodes(prevNodes => updateNodeInTree(prevNodes, nodeId, { children, isExpanded: true }))
-  }
-
-  const updateNodeInTree = (
-    nodes: FileNode[],
-    nodeId: string,
-    updates: Partial<FileNode>
-  ): FileNode[] => {
-    return nodes.map(node => {
-      if (node.id === nodeId) {
-        return { ...node, ...updates }
-      }
-      if (node.children) {
-        return {
-          ...node,
-          children: updateNodeInTree(node.children, nodeId, updates)
-        }
-      }
-      return node
-    })
-  }
+  }, [projectPath, loadDirectory])
 
   // Context menu handler
   const handleContextMenu = useCallback((
@@ -307,100 +118,6 @@ export const FileTree: React.FC<FileTreeProps> = ({
     setContextMenu(null)
   }, [])
 
-  // File operations
-  const handleCreateFile = useCallback(async (name: string) => {
-    const targetDir = dialog.targetPath
-    const filePath = `${targetDir}/${name}`
-
-    try {
-      const result = await window.api.fs.createFile(filePath)
-      if (result.success) {
-        // Refresh the directory
-        loadDirectory(projectPath)
-      } else {
-        console.error('Failed to create file:', result.error)
-      }
-    } catch (err) {
-      console.error('Error creating file:', err)
-    }
-
-    setDialog({ type: null, targetPath: '' })
-  }, [dialog.targetPath, projectPath])
-
-  const handleCreateFolder = useCallback(async (name: string) => {
-    const targetDir = dialog.targetPath
-    const folderPath = `${targetDir}/${name}`
-
-    try {
-      const result = await window.api.fs.createDirectory(folderPath)
-      if (result.success) {
-        loadDirectory(projectPath)
-      } else {
-        console.error('Failed to create folder:', result.error)
-      }
-    } catch (err) {
-      console.error('Error creating folder:', err)
-    }
-
-    setDialog({ type: null, targetPath: '' })
-  }, [dialog.targetPath, projectPath])
-
-  const handleRename = useCallback(async (newName: string) => {
-    const oldPath = dialog.targetPath
-    const parentDir = oldPath.substring(0, oldPath.lastIndexOf('/'))
-    const newPath = `${parentDir}/${newName}`
-
-    try {
-      const result = await window.api.fs.rename(oldPath, newPath)
-      if (result.success) {
-        loadDirectory(projectPath)
-      } else {
-        console.error('Failed to rename:', result.error)
-      }
-    } catch (err) {
-      console.error('Error renaming:', err)
-    }
-
-    setDialog({ type: null, targetPath: '' })
-  }, [dialog.targetPath, projectPath])
-
-  const handleDelete = useCallback(async () => {
-    const targetPath = dialog.targetPath
-
-    try {
-      const result = await window.api.fs.delete(targetPath)
-      if (result.success) {
-        loadDirectory(projectPath)
-      } else {
-        console.error('Failed to delete:', result.error)
-      }
-    } catch (err) {
-      console.error('Error deleting:', err)
-    }
-
-    setDialog({ type: null, targetPath: '' })
-  }, [dialog.targetPath, projectPath])
-
-  const handleUploadFiles = useCallback(async (targetDir: string) => {
-    try {
-      const result = await window.api.dialog.openFiles()
-      if (result.success && result.data?.paths) {
-        const copyResult = await window.api.fs.copyFiles(result.data.paths, targetDir)
-        if (copyResult.success) {
-          loadDirectory(projectPath)
-        } else {
-          console.error('Failed to copy files:', copyResult.error)
-        }
-      }
-    } catch (err) {
-      console.error('Error uploading files:', err)
-    }
-  }, [projectPath])
-
-  const handleCopyPath = useCallback((path: string) => {
-    navigator.clipboard.writeText(path)
-  }, [])
-
   // Get context menu actions
   const getContextMenuActionsForNode = useCallback((): ContextMenuAction[] => {
     if (!contextMenu) return []
@@ -412,33 +129,19 @@ export const FileTree: React.FC<FileTreeProps> = ({
 
     return getFileContextMenuActions(isDirectory, isProjectRoot, {
       onNewFile: () => {
-        setDialog({
-          type: 'new-file',
-          targetPath: isDirectory ? targetPath : targetPath.substring(0, targetPath.lastIndexOf('/'))
-        })
+        openNewFileDialog(isDirectory ? targetPath : targetPath.substring(0, targetPath.lastIndexOf('/')))
       },
       onNewFolder: () => {
-        setDialog({
-          type: 'new-folder',
-          targetPath: isDirectory ? targetPath : targetPath.substring(0, targetPath.lastIndexOf('/'))
-        })
+        openNewFolderDialog(isDirectory ? targetPath : targetPath.substring(0, targetPath.lastIndexOf('/')))
       },
       onRename: () => {
         if (node) {
-          setDialog({
-            type: 'rename',
-            targetPath: targetPath,
-            targetName: node.name
-          })
+          openRenameDialog(targetPath, node.name)
         }
       },
       onDelete: () => {
         if (node) {
-          setDialog({
-            type: 'delete',
-            targetPath: targetPath,
-            targetName: node.name
-          })
+          openDeleteDialog(targetPath, node.name)
         }
       },
       onUploadFiles: () => {
@@ -448,137 +151,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
         handleCopyPath(targetPath)
       }
     })
-  }, [contextMenu, projectPath, handleUploadFiles, handleCopyPath])
-
-  // Validate file/folder name
-  const validateName = useCallback((name: string): string | null => {
-    if (name.includes('/') || name.includes('\\')) {
-      return 'Name cannot contain / or \\'
-    }
-    if (name.startsWith('.') && name.length === 1) {
-      return 'Invalid name'
-    }
-    return null
-  }, [])
-
-  // File drag and drop handlers
-  const handleFileDragStart = useCallback((e: React.DragEvent, path: string) => {
-    e.stopPropagation()
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('application/x-file-path', path)
-    setFileDragState({ draggedPath: path, dropTargetPath: null })
-  }, [])
-
-  const handleFileDragOver = useCallback((e: React.DragEvent, node: FileNode) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    // Only allow drop on directories
-    if (node.type !== 'directory') return
-
-    const draggedPath = fileDragState.draggedPath
-    if (!draggedPath) return
-
-    // Don't allow dropping on self or parent
-    if (draggedPath === node.path || node.path.startsWith(draggedPath + '/')) return
-
-    e.dataTransfer.dropEffect = 'move'
-    setFileDragState(prev => ({ ...prev, dropTargetPath: node.path }))
-  }, [fileDragState.draggedPath])
-
-  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
-    e.stopPropagation()
-    setFileDragState(prev => ({ ...prev, dropTargetPath: null }))
-  }, [])
-
-  const handleFileDrop = useCallback(async (e: React.DragEvent, targetNode: FileNode) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    const draggedPath = e.dataTransfer.getData('application/x-file-path')
-    if (!draggedPath || targetNode.type !== 'directory') {
-      setFileDragState({ draggedPath: null, dropTargetPath: null })
-      return
-    }
-
-    // Don't drop on self or into own subdirectory
-    if (draggedPath === targetNode.path || targetNode.path.startsWith(draggedPath + '/')) {
-      setFileDragState({ draggedPath: null, dropTargetPath: null })
-      return
-    }
-
-    // Get the file/folder name
-    const name = draggedPath.substring(draggedPath.lastIndexOf('/') + 1)
-    const newPath = `${targetNode.path}/${name}`
-
-    try {
-      const result = await window.api.fs.rename(draggedPath, newPath)
-      if (result.success) {
-        loadDirectory(projectPath)
-      } else {
-        console.error('Failed to move file:', result.error)
-      }
-    } catch (err) {
-      console.error('Error moving file:', err)
-    }
-
-    setFileDragState({ draggedPath: null, dropTargetPath: null })
-  }, [projectPath])
-
-  const handleFileDragEnd = useCallback(() => {
-    setFileDragState({ draggedPath: null, dropTargetPath: null })
-  }, [])
-
-  // Handle drop on project root (file-tree-content area)
-  const handleRootDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    if (fileDragState.draggedPath) {
-      e.dataTransfer.dropEffect = 'move'
-      setFileDragState(prev => ({ ...prev, dropTargetPath: projectPath }))
-    }
-  }, [fileDragState.draggedPath, projectPath])
-
-  const handleRootDragLeave = useCallback((e: React.DragEvent) => {
-    // Only clear if leaving the root area, not entering a child
-    const relatedTarget = e.relatedTarget as HTMLElement
-    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
-      setFileDragState(prev => ({ ...prev, dropTargetPath: null }))
-    }
-  }, [])
-
-  const handleRootDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault()
-
-    const draggedPath = e.dataTransfer.getData('application/x-file-path')
-    if (!draggedPath) {
-      setFileDragState({ draggedPath: null, dropTargetPath: null })
-      return
-    }
-
-    // Check if already in root directory
-    const parentDir = draggedPath.substring(0, draggedPath.lastIndexOf('/'))
-    if (parentDir === projectPath) {
-      setFileDragState({ draggedPath: null, dropTargetPath: null })
-      return
-    }
-
-    // Get the file/folder name
-    const name = draggedPath.substring(draggedPath.lastIndexOf('/') + 1)
-    const newPath = `${projectPath}/${name}`
-
-    try {
-      const result = await window.api.fs.rename(draggedPath, newPath)
-      if (result.success) {
-        loadDirectory(projectPath)
-      } else {
-        console.error('Failed to move file:', result.error)
-      }
-    } catch (err) {
-      console.error('Error moving file:', err)
-    }
-
-    setFileDragState({ draggedPath: null, dropTargetPath: null })
-  }, [projectPath])
+  }, [contextMenu, projectPath, openNewFileDialog, openNewFolderDialog, openRenameDialog, openDeleteDialog, handleUploadFiles, handleCopyPath])
 
   if (loading && nodes.length === 0) {
     return (
@@ -596,7 +169,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
     )
   }
 
-  const isRootDropTarget = fileDragState.dropTargetPath === projectPath
+  const isRootDropTarget = dropTargetPath === projectPath
 
   return (
     <div
@@ -625,8 +198,8 @@ export const FileTree: React.FC<FileTreeProps> = ({
             onDragLeave={handleFileDragLeave}
             onDrop={handleFileDrop}
             onDragEnd={handleFileDragEnd}
-            draggedPath={fileDragState.draggedPath}
-            dropTargetPath={fileDragState.dropTargetPath}
+            draggedPath={draggedPath}
+            dropTargetPath={dropTargetPath}
           />
         ))}
       </div>
@@ -648,7 +221,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
           placeholder="Enter file name"
           confirmLabel="Create"
           onConfirm={handleCreateFile}
-          onCancel={() => setDialog({ type: null, targetPath: '' })}
+          onCancel={closeDialog}
           validator={validateName}
         />
       )}
@@ -659,7 +232,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
           placeholder="Enter folder name"
           confirmLabel="Create"
           onConfirm={handleCreateFolder}
-          onCancel={() => setDialog({ type: null, targetPath: '' })}
+          onCancel={closeDialog}
           validator={validateName}
         />
       )}
@@ -671,7 +244,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
           defaultValue={dialog.targetName}
           confirmLabel="Rename"
           onConfirm={handleRename}
-          onCancel={() => setDialog({ type: null, targetPath: '' })}
+          onCancel={closeDialog}
           validator={validateName}
         />
       )}
@@ -684,7 +257,7 @@ export const FileTree: React.FC<FileTreeProps> = ({
           confirmLabel="Move to Trash"
           variant="danger"
           onConfirm={handleDelete}
-          onCancel={() => setDialog({ type: null, targetPath: '' })}
+          onCancel={closeDialog}
         />
       )}
     </div>
