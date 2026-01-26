@@ -954,7 +954,7 @@ export class QwenASRService implements VoiceRecognitionService {
       const transcriptionPromise = new Promise<string>((resolve, reject) => {
         let resultText = ''
         let interimText = ''
-        let allSegments: string[] = []
+        const allSegments: string[] = []
         let lastInterimTime = 0
         let audioSentComplete = false
         let idleTimeout: NodeJS.Timeout | null = null

@@ -9,6 +9,8 @@
 import { app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import type {
   TemplateAICliConfig,
   TemplateKnowledgeConfig,
@@ -822,8 +824,6 @@ export class ProjectTemplateManager {
     scripts: PostApplyScript[],
     context: TemplateVariablesContext
   ): Promise<void> {
-    const { exec } = require('child_process');
-    const { promisify } = require('util');
     const execAsync = promisify(exec);
 
     for (const script of scripts) {
