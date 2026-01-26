@@ -1,10 +1,10 @@
 import { useState, useContext } from 'react'
 import { VscGitCommit, VscRefresh, VscCheck, VscFile, VscDiffAdded, VscDiffModified, VscDiffRemoved, VscCloudUpload, VscCloudDownload, VscSync, VscAdd, VscRemove, VscChevronDown, VscChevronRight } from 'react-icons/vsc'
-import { GitStatus, EditorTab, GitCommit } from '../../types'
-import { AppContext } from '../context/AppContext'
-import { useGitOperations, type CommitFile, type FileChange } from '../hooks/useGitOperations'
-import { formatRelativeTime } from '../utils'
-import '../styles/GitHistoryPanel.css'
+import { GitStatus, EditorTab, GitCommit } from '../../../types'
+import { AppContext } from '../../context/AppContext'
+import { useGitOperations, type CommitFile, type FileChange } from '../../hooks/useGitOperations'
+import { formatRelativeTime } from '../../utils'
+import '../../styles/GitHistoryPanel.css'
 
 interface GitHistoryPanelProps {
   projectId: string

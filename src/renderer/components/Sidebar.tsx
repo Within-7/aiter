@@ -2,9 +2,9 @@ import { useContext, useState, useEffect, useRef } from 'react'
 import { VscFiles, VscSourceControl, VscSearch } from 'react-icons/vsc'
 import { AppContext } from '../context/AppContext'
 import { ExplorerView } from './ExplorerView'
-import { GitView } from './GitView'
+import { GitView } from './Git'
 import { SearchView } from './SearchView'
-import { WorkspaceSelector } from './WorkspaceSelector'
+import { WorkspaceSelector } from './Workspace'
 import {
   SIDEBAR_MIN_WIDTH,
   SIDEBAR_MAX_WIDTH,

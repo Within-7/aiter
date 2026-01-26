@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Workspace, Project } from '../../types'
-import '../styles/WorkspaceManagerDialog.css'
+import { Workspace, Project } from '../../../types'
+import '../../styles/WorkspaceManagerDialog.css'
 
 interface WorkspaceManagerDialogProps {
   isOpen: boolean

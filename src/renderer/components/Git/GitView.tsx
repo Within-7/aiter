@@ -1,10 +1,10 @@
 import { useContext, useState, useEffect, useRef } from 'react'
 import { VscSourceControl } from 'react-icons/vsc'
-import { AppContext } from '../context/AppContext'
+import { AppContext } from '../../context/AppContext'
 import { GitHistoryPanel } from './GitHistoryPanel'
-import { GitStatus } from '../../types'
-import { getProjectColor } from '../utils/projectColors'
-import '../styles/GitView.css'
+import { GitStatus } from '../../../types'
+import { getProjectColor } from '../../utils/projectColors'
+import '../../styles/GitView.css'
 
 // Helper to compare git statuses for equality
 const isGitStatusEqual = (a: GitStatus | undefined, b: GitStatus | undefined): boolean => {
