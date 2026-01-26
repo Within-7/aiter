@@ -1,116 +1,56 @@
-import { ipcMain } from 'electron'
 import { fileSystemManager } from '../filesystem'
+import { registerHandler, registerBoolHandler } from './utils'
 
 export function registerFilesystemHandlers() {
   // File system operations
-  ipcMain.handle('fs:readDir', async (_, { path, depth }) => {
-    try {
-      const nodes = await fileSystemManager.readDirectory(path, depth || 1)
-      return { success: true, nodes }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerHandler('fs:readDir', async ({ path, depth }: { path: string; depth?: number }) => {
+    const nodes = await fileSystemManager.readDirectory(path, depth || 1)
+    return { nodes }
   })
 
-  ipcMain.handle('fs:readFile', async (_, { path }) => {
-    try {
-      const result = await fileSystemManager.readFile(path)
-      return { success: true, ...result }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerHandler('fs:readFile', async ({ path }: { path: string }) => {
+    const result = await fileSystemManager.readFile(path)
+    return result
   })
 
-  ipcMain.handle('fs:writeFile', async (_, { path, content }) => {
-    try {
-      const success = await fileSystemManager.writeFile(path, content)
-      return { success }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerBoolHandler('fs:writeFile', async ({ path, content }: { path: string; content: string }) => {
+    return await fileSystemManager.writeFile(path, content)
   })
 
-  ipcMain.handle('fs:fileExists', async (_, { path }) => {
-    try {
-      const exists = await fileSystemManager.fileExists(path)
-      return { success: true, exists }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerHandler('fs:fileExists', async ({ path }: { path: string }) => {
+    const exists = await fileSystemManager.fileExists(path)
+    return { exists }
   })
 
-  ipcMain.handle('fs:createFile', async (_, { path, content }) => {
-    try {
-      const success = await fileSystemManager.createFile(path, content || '')
-      return { success }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerBoolHandler('fs:createFile', async ({ path, content }: { path: string; content?: string }) => {
+    return await fileSystemManager.createFile(path, content || '')
   })
 
-  ipcMain.handle('fs:createDirectory', async (_, { path }) => {
-    try {
-      const success = await fileSystemManager.createDirectory(path)
-      return { success }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerBoolHandler('fs:createDirectory', async ({ path }: { path: string }) => {
+    return await fileSystemManager.createDirectory(path)
   })
 
-  ipcMain.handle('fs:rename', async (_, { oldPath, newPath }) => {
-    try {
-      const success = await fileSystemManager.rename(oldPath, newPath)
-      return { success }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerBoolHandler('fs:rename', async ({ oldPath, newPath }: { oldPath: string; newPath: string }) => {
+    return await fileSystemManager.rename(oldPath, newPath)
   })
 
-  ipcMain.handle('fs:delete', async (_, { path }) => {
-    try {
-      const success = await fileSystemManager.delete(path)
-      return { success }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerBoolHandler('fs:delete', async ({ path }: { path: string }) => {
+    return await fileSystemManager.delete(path)
   })
 
-  ipcMain.handle('fs:copyFiles', async (_, { sourcePaths, destDir }) => {
-    try {
-      const result = await fileSystemManager.copyFiles(sourcePaths, destDir)
-      return { success: true, ...result }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerHandler('fs:copyFiles', async ({ sourcePaths, destDir }: { sourcePaths: string[]; destDir: string }) => {
+    const result = await fileSystemManager.copyFiles(sourcePaths, destDir)
+    return result
   })
 
   // File search operations
-  ipcMain.handle('fs:searchFiles', async (_, { projectPath, pattern, options }) => {
-    try {
-      const results = await fileSystemManager.searchFiles(projectPath, pattern, options)
-      return { success: true, results }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerHandler('fs:searchFiles', async ({ projectPath, pattern, options }: { projectPath: string; pattern: string; options?: unknown }) => {
+    const results = await fileSystemManager.searchFiles(projectPath, pattern, options)
+    return { results }
   })
 
-  ipcMain.handle('fs:searchContent', async (_, { projectPath, pattern, options }) => {
-    try {
-      const results = await fileSystemManager.searchContent(projectPath, pattern, options)
-      return { success: true, results }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      return { success: false, error: message }
-    }
+  registerHandler('fs:searchContent', async ({ projectPath, pattern, options }: { projectPath: string; pattern: string; options?: unknown }) => {
+    const results = await fileSystemManager.searchContent(projectPath, pattern, options)
+    return { results }
   })
 }

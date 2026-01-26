@@ -5,6 +5,45 @@ import { useVoiceInput } from '../../hooks/useVoiceInput'
 import { defaultVoiceInputSettings, VoiceTranscription, VoiceBackup, VoiceRecord } from '../../../types/voiceInput'
 
 /**
+ * Separates voice records into transcriptions and pending backups.
+ * This utility function eliminates code duplication between loadRecords and reloadRecords.
+ */
+function separateVoiceRecords(records: VoiceRecord[]): {
+  transcriptions: VoiceTranscription[]
+  backups: VoiceBackup[]
+} {
+  const transcriptions: VoiceTranscription[] = []
+  const backups: VoiceBackup[] = []
+
+  for (const record of records) {
+    if (record.status === 'transcribed' && record.text) {
+      transcriptions.push({
+        id: record.id,
+        text: record.text,
+        timestamp: record.timestamp,
+        source: record.source,
+        projectId: record.projectId,
+        insertedTo: record.insertedTo
+      })
+    } else if (record.status !== 'transcribed') {
+      backups.push({
+        id: record.id,
+        timestamp: record.timestamp,
+        source: record.source,
+        projectId: record.projectId,
+        duration: record.duration || 0,
+        sampleRate: record.sampleRate || 16000,
+        status: record.status as 'pending' | 'retrying' | 'failed' | 'recording' | 'completed',
+        retryCount: record.retryCount || 0,
+        lastError: record.lastError
+      })
+    }
+  }
+
+  return { transcriptions, backups }
+}
+
+/**
  * Container component that connects VoicePanel to AppContext and voice input logic
  */
 export const VoicePanelContainer: React.FC = () => {
@@ -42,36 +81,7 @@ export const VoicePanelContainer: React.FC = () => {
         // Load unified records
         const result = await window.api.voiceRecords.list(projectPath)
         if (result.success && result.records) {
-          // Separate transcribed records from pending backups
-          const transcriptions: VoiceTranscription[] = []
-          const backups: VoiceBackup[] = []
-
-          for (const record of result.records) {
-            if (record.status === 'transcribed' && record.text) {
-              transcriptions.push({
-                id: record.id,
-                text: record.text,
-                timestamp: record.timestamp,
-                source: record.source,
-                projectId: record.projectId,
-                insertedTo: record.insertedTo
-              })
-            } else if (record.status !== 'transcribed') {
-              backups.push({
-                id: record.id,
-                timestamp: record.timestamp,
-                source: record.source,
-                projectId: record.projectId,
-                duration: record.duration || 0,
-                sampleRate: record.sampleRate || 16000,
-                status: record.status as 'pending' | 'retrying' | 'failed' | 'recording' | 'completed',
-                retryCount: record.retryCount || 0,
-                lastError: record.lastError
-              })
-            }
-          }
-
-          // Update global transcriptions state
+          const { transcriptions, backups } = separateVoiceRecords(result.records)
           dispatch({ type: 'SET_VOICE_TRANSCRIPTIONS', payload: transcriptions })
           setPendingBackups(backups)
         }
@@ -93,35 +103,7 @@ export const VoicePanelContainer: React.FC = () => {
     try {
       const result = await window.api.voiceRecords.list(projectPath)
       if (result.success && result.records) {
-        // Separate transcribed records from pending backups
-        const transcriptions: VoiceTranscription[] = []
-        const backups: VoiceBackup[] = []
-
-        for (const record of result.records) {
-          if (record.status === 'transcribed' && record.text) {
-            transcriptions.push({
-              id: record.id,
-              text: record.text,
-              timestamp: record.timestamp,
-              source: record.source,
-              projectId: record.projectId,
-              insertedTo: record.insertedTo
-            })
-          } else if (record.status !== 'transcribed') {
-            backups.push({
-              id: record.id,
-              timestamp: record.timestamp,
-              source: record.source,
-              projectId: record.projectId,
-              duration: record.duration || 0,
-              sampleRate: record.sampleRate || 16000,
-              status: record.status as 'pending' | 'retrying' | 'failed' | 'recording' | 'completed',
-              retryCount: record.retryCount || 0,
-              lastError: record.lastError
-            })
-          }
-        }
-
+        const { transcriptions, backups } = separateVoiceRecords(result.records)
         dispatch({ type: 'SET_VOICE_TRANSCRIPTIONS', payload: transcriptions })
         setPendingBackups(backups)
       }
