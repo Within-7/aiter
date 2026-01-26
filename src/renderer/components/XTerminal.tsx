@@ -235,15 +235,17 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
     }
   }, [isActive])
 
+  // Use ref to track current active state without re-registering listener on isActive change
+  const isActiveRef = useRef(isActive)
+  isActiveRef.current = isActive
+
   // Handle terminal data updates with batching and double-buffered throttling
   // Uses a 32ms window (~2 frames) to batch high-frequency data from REPL apps
+  // NOTE: isActive is tracked via ref to avoid re-registering event listener on every tab switch
   useEffect(() => {
     let dataBuffer = ''
     let timeoutId: NodeJS.Timeout | null = null
     let rafId: number | null = null
-    // Use ref to track current active state without re-registering listener
-    const isActiveRef = { current: isActive }
-    isActiveRef.current = isActive
 
     // Batch window in ms - 32ms allows ~2 frames worth of data to accumulate
     const BATCH_WINDOW_MS = 32
@@ -306,7 +308,7 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
         }
       }
     }
-  }, [terminal.id, isActive])
+  }, [terminal.id]) // Remove isActive from deps - use ref instead to avoid re-registering on tab switch
 
   // Update settings - only when specific values change
   useEffect(() => {

@@ -193,12 +193,17 @@ export function editorReducer(state: AppState, action: AppAction): AppState {
       }
     }
 
-    case 'SET_ACTIVE_EDITOR_TAB':
+    case 'SET_ACTIVE_EDITOR_TAB': {
+      const tabId = `editor-${action.payload}`
       return {
         ...state,
         activeEditorTabId: action.payload,
-        activeTerminalId: undefined  // Clear terminal selection when switching to editor
+        activeTerminalId: undefined,  // Clear terminal selection when switching to editor
+        // Update selection state in a single dispatch to avoid double render
+        selectedTabIds: new Set([tabId]),
+        lastSelectedTabId: tabId
       }
+    }
 
     case 'REORDER_EDITOR_TABS':
       return {

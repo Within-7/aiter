@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "projectPath": "/Users/lib/Desktop/dev/within-7/claude-code-projects/airter",
+  "records": [
+    {
+      "id": "1769219767299",
+      "timestamp": 1769219767299,
+      "source": "inline",
+      "projectId": "/Users/lib/Desktop/dev/within-7/claude-code-projects/airter",
+      "status": "pending",
+      "duration": 0.0213125,
+      "sampleRate": 16000,
+      "retryCount": 0,
+      "lastError": "Empty transcription"
+    }
+  ],
+  "lastUpdated": 1769219768296
+}

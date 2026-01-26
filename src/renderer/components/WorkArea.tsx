@@ -237,13 +237,7 @@ export const WorkArea: React.FC = () => {
         }
       })
     } else {
-      // Normal click: switch to tab and update selection
-      dispatch({
-        type: 'SELECT_TAB',
-        payload: { tabId, shiftKey: false, ctrlKey: false }
-      })
-
-      // Also activate the tab
+      // Normal click: activate tab (this also updates selection in a single dispatch)
       if (tabId.startsWith('editor-')) {
         const id = tabId.substring('editor-'.length)
         dispatch({ type: 'SET_ACTIVE_EDITOR_TAB', payload: id })

@@ -67,12 +67,17 @@ export function terminalReducer(state: AppState, action: AppAction): AppState {
       }
     }
 
-    case 'SET_ACTIVE_TERMINAL':
+    case 'SET_ACTIVE_TERMINAL': {
+      const tabId = `terminal-${action.payload}`
       return {
         ...state,
         activeTerminalId: action.payload,
-        activeEditorTabId: undefined  // Clear editor selection when switching to terminal
+        activeEditorTabId: undefined,  // Clear editor selection when switching to terminal
+        // Update selection state in a single dispatch to avoid double render
+        selectedTabIds: new Set([tabId]),
+        lastSelectedTabId: tabId
       }
+    }
 
     case 'UPDATE_TERMINAL_NAME':
       return {
