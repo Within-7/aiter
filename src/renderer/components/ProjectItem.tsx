@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import { createPortal } from 'react-dom'
 import { Project } from '../../types'
 import '../styles/ProjectItem.css'
@@ -10,7 +10,11 @@ interface ProjectItemProps {
   onRemove: () => void
 }
 
-export function ProjectItem({
+/**
+ * Memoized ProjectItem component
+ * Prevents unnecessary re-renders when other projects change
+ */
+export const ProjectItem = memo(function ProjectItem({
   project,
   isActive,
   onSelect,
@@ -82,4 +86,4 @@ export function ProjectItem({
       )}
     </div>
   )
-}
+})

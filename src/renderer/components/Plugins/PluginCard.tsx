@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 
 type PluginStatus = 'installed' | 'not-installed' | 'update-available' | 'installing' | 'updating' | 'removing' | 'error'
 
@@ -34,7 +34,52 @@ interface PluginCardProps {
   isProcessing: boolean
 }
 
-export const PluginCard: React.FC<PluginCardProps> = ({
+// Helper functions moved outside component for performance
+const getStatusColor = (status: PluginStatus): string => {
+  switch (status) {
+    case 'installed':
+      return '#4caf50'
+    case 'not-installed':
+      return '#757575'
+    case 'update-available':
+      return '#ff9800'
+    case 'installing':
+    case 'updating':
+    case 'removing':
+      return '#2196f3'
+    case 'error':
+      return '#f44336'
+    default:
+      return '#757575'
+  }
+}
+
+const getStatusText = (status: PluginStatus): string => {
+  switch (status) {
+    case 'installed':
+      return 'Installed'
+    case 'not-installed':
+      return 'Not Installed'
+    case 'update-available':
+      return 'Update Available'
+    case 'installing':
+      return 'Installing...'
+    case 'updating':
+      return 'Updating...'
+    case 'removing':
+      return 'Removing...'
+    case 'error':
+      return 'Error'
+    default:
+      return status
+  }
+}
+
+/**
+ * Memoized PluginCard component
+ * Prevents unnecessary re-renders when other plugins change
+ */
+export const PluginCard = memo(function PluginCard({
   plugin,
   onInstall,
   onUpdate,
@@ -43,47 +88,7 @@ export const PluginCard: React.FC<PluginCardProps> = ({
   onConfigure,
   onCheckUpdate,
   isProcessing
-}) => {
-  const getStatusColor = (status: PluginStatus): string => {
-    switch (status) {
-      case 'installed':
-        return '#4caf50'
-      case 'not-installed':
-        return '#757575'
-      case 'update-available':
-        return '#ff9800'
-      case 'installing':
-      case 'updating':
-      case 'removing':
-        return '#2196f3'
-      case 'error':
-        return '#f44336'
-      default:
-        return '#757575'
-    }
-  }
-
-  const getStatusText = (status: PluginStatus): string => {
-    switch (status) {
-      case 'installed':
-        return 'Installed'
-      case 'not-installed':
-        return 'Not Installed'
-      case 'update-available':
-        return 'Update Available'
-      case 'installing':
-        return 'Installing...'
-      case 'updating':
-        return 'Updating...'
-      case 'removing':
-        return 'Removing...'
-      case 'error':
-        return 'Error'
-      default:
-        return status
-    }
-  }
-
+}: PluginCardProps) {
   const isInstalled = plugin.status === 'installed' || plugin.status === 'update-available'
   const canInstall = plugin.status === 'not-installed' && !isProcessing && !plugin.isBuiltIn  // Built-in plugins auto-install
   const canUpdate = plugin.hasUpdate && !isProcessing
@@ -206,4 +211,4 @@ export const PluginCard: React.FC<PluginCardProps> = ({
       </div>
     </div>
   )
-}
+})

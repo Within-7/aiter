@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useCallback } from 'react'
+import { useEffect, useReducer, useRef, useCallback, useMemo } from 'react'
 import { AppContext, appReducer, initialState } from './context/AppContext'
 import { SessionState } from '../types'
 import { DEBOUNCE_SAVE_DELAY_MS } from '../constants'
@@ -297,8 +297,11 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Empty deps: listeners registered once, use stateRef for current values
 
-  // Get active terminal for StatusBar
-  const activeTerminal = state.terminals.find(t => t.id === state.activeTerminalId)
+  // Get active terminal for StatusBar (memoized to prevent unnecessary StatusBar re-renders)
+  const activeTerminal = useMemo(
+    () => state.terminals.find(t => t.id === state.activeTerminalId),
+    [state.terminals, state.activeTerminalId]
+  )
 
   return (
     <ErrorBoundary name="App">

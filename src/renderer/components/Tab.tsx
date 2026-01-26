@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Terminal } from '../../types'
 import '../styles/Tab.css'
 
@@ -8,7 +9,11 @@ interface TabProps {
   onClose: () => void
 }
 
-export function Tab({ terminal, isActive, onSelect, onClose }: TabProps) {
+/**
+ * Memoized Tab component
+ * Prevents unnecessary re-renders when other terminals change
+ */
+export const Tab = memo(function Tab({ terminal, isActive, onSelect, onClose }: TabProps) {
   const handleClose = (e: React.MouseEvent) => {
     e.stopPropagation()
     onClose()
@@ -35,4 +40,4 @@ export function Tab({ terminal, isActive, onSelect, onClose }: TabProps) {
       </button>
     </div>
   )
-}
+})

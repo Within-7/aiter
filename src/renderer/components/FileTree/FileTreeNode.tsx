@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { FileNode } from '../../../types'
 import { ExtendedGitStatus } from './FileTree'
 
@@ -190,7 +190,11 @@ const getDirectoryGitStatus = (
   return highestPriority
 }
 
-export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
+/**
+ * Memoized FileTreeNode component
+ * Prevents unnecessary re-renders when parent state changes but props remain the same
+ */
+export const FileTreeNode = memo(function FileTreeNode({
   node,
   level,
   onToggle,
@@ -206,7 +210,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   onDragEnd,
   draggedPath,
   dropTargetPath
-}) => {
+}: FileTreeNodeProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (node.type === 'directory') {
@@ -295,4 +299,4 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       )}
     </div>
   )
-}
+})

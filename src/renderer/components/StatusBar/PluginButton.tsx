@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { VscExtensions } from 'react-icons/vsc'
 import './StatusBar.css'
 
@@ -10,7 +11,11 @@ export interface PluginButtonProps {
   onClick: () => void
 }
 
-export function PluginButton({ pluginCount, status, hasUpdates, onClick }: PluginButtonProps) {
+/**
+ * Memoized PluginButton component
+ * Prevents unnecessary re-renders when StatusBar updates but plugin state is the same
+ */
+export const PluginButton = memo(function PluginButton({ pluginCount, status, hasUpdates, onClick }: PluginButtonProps) {
 
   // Determine display text based on status
   const getDisplayText = () => {
@@ -65,4 +70,4 @@ export function PluginButton({ pluginCount, status, hasUpdates, onClick }: Plugi
       )}
     </button>
   )
-}
+})
