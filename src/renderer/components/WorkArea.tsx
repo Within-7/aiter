@@ -187,31 +187,57 @@ export const WorkArea: React.FC = () => {
     ? `terminal-${state.activeTerminalId}`
     : null
 
+  // Memoize project color lookup maps to avoid recalculating on every render
+  // This creates stable references that only change when projects actually change
+  const projectColorById = useMemo(() => {
+    const map = new Map<string, string>()
+    state.projects.forEach(p => {
+      map.set(p.id, getProjectColor(p.id, p.color))
+    })
+    return map
+  }, [state.projects])
+
+  const projectColorByPath = useMemo(() => {
+    const map = new Map<string, string>()
+    state.projects.forEach(p => {
+      map.set(p.path, getProjectColor(p.id, p.color))
+    })
+    return map
+  }, [state.projects])
+
   // Memoize tabs creation to prevent unnecessary recalculations
   const allTabs = useMemo(() => {
     const tabsById = new Map<string, Tab>()
 
     state.editorTabs.forEach(t => {
       // For diff tabs, use projectPath; for regular tabs, match by filePath
-      const project = t.projectPath
-        ? state.projects.find(p => p.path === t.projectPath)
-        : state.projects.find(p => t.filePath.startsWith(p.path))
+      let projectColor: string | undefined
+      if (t.projectPath) {
+        projectColor = projectColorByPath.get(t.projectPath)
+      } else {
+        // Find project by file path prefix
+        for (const [path, color] of projectColorByPath) {
+          if (t.filePath.startsWith(path)) {
+            projectColor = color
+            break
+          }
+        }
+      }
       tabsById.set(`editor-${t.id}`, {
         id: `editor-${t.id}`,
         type: 'editor' as TabType,
         title: t.isDirty ? `● ${t.fileName}` : t.fileName,
-        projectColor: project ? getProjectColor(project.id, project.color) : undefined,
+        projectColor,
         isPreview: t.isPreview
       })
     })
 
     state.terminals.forEach(t => {
-      const project = state.projects.find(p => p.id === t.projectId)
       tabsById.set(`terminal-${t.id}`, {
         id: `terminal-${t.id}`,
         type: 'terminal' as TabType,
         title: t.name,
-        projectColor: project ? getProjectColor(project.id, project.color) : undefined
+        projectColor: projectColorById.get(t.projectId)
       })
     })
 
@@ -219,7 +245,7 @@ export const WorkArea: React.FC = () => {
     return (state.tabOrder || [])
       .map(id => tabsById.get(id))
       .filter((tab): tab is Tab => tab !== undefined)
-  }, [state.editorTabs, state.terminals, state.projects, state.tabOrder])
+  }, [state.editorTabs, state.terminals, state.tabOrder, projectColorById, projectColorByPath])
 
   // Handle tab click with multi-select support
   const handleTabClick = useCallback((e: React.MouseEvent, tabId: string) => {

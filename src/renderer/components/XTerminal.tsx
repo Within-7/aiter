@@ -29,13 +29,21 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
   const inactiveBufferRef = useRef<string>('')
 
   // Check visibility periodically until container is visible
+  // Uses a ref to ensure interval is cleared immediately when visibility is detected
   useEffect(() => {
     if (isVisible || !terminalRef.current) return
+
+    let interval: NodeJS.Timeout | null = null
 
     const checkVisibility = () => {
       if (!terminalRef.current) return
       const rect = terminalRef.current.getBoundingClientRect()
       if (rect.width > 0 && rect.height > 0) {
+        // Clear interval immediately to prevent further checks
+        if (interval) {
+          clearInterval(interval)
+          interval = null
+        }
         setIsVisible(true)
       }
     }
@@ -43,9 +51,16 @@ export const XTerminal = memo(function XTerminal({ terminal, settings, isActive 
     // Initial check
     checkVisibility()
 
-    // Keep checking until visible
-    const interval = setInterval(checkVisibility, 100)
-    return () => clearInterval(interval)
+    // Only set interval if not already visible
+    if (!interval) {
+      interval = setInterval(checkVisibility, 100)
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
   }, [isVisible])
 
   useEffect(() => {

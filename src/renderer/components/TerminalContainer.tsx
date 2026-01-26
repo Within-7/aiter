@@ -1,3 +1,4 @@
+import React, { memo } from 'react'
 import { Terminal as TerminalType, AppSettings } from '../../types'
 import { XTerminal } from './XTerminal'
 import '../styles/TerminalContainer.css'
@@ -8,7 +9,12 @@ interface TerminalContainerProps {
   settings: AppSettings
 }
 
-export function TerminalContainer({
+/**
+ * Container component for managing multiple terminal instances.
+ * Uses React.memo to prevent unnecessary re-renders when parent state changes
+ * but terminal-related props remain the same.
+ */
+export const TerminalContainer = memo(function TerminalContainer({
   terminals,
   activeTerminalId,
   settings
@@ -32,4 +38,4 @@ export function TerminalContainer({
       })}
     </div>
   )
-}
+})
