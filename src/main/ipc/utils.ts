@@ -1,13 +1,8 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
+import type { IpcResponse } from '../../types/ipc'
 
-/**
- * Standard IPC response type for consistent error handling across all handlers.
- */
-export interface IpcResponse<T = unknown> {
-  success: boolean
-  error?: string
-  data?: T
-}
+// Re-export IpcResponse for backward compatibility
+export type { IpcResponse } from '../../types/ipc'
 
 /**
  * Creates a standardized IPC response for successful operations.

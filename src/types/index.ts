@@ -431,3 +431,6 @@ export * from './auth'
 
 // Export initialization config types
 export * from './initConfig'
+
+// Export IPC types
+export * from './ipc'
