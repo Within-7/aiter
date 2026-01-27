@@ -157,6 +157,23 @@ export const VoiceInputSettings: React.FC<VoiceInputSettingsProps> = ({
           {currentSettings.pushToTalk.enabled && (
             <>
               <div className="setting-item">
+                <label htmlFor="trigger-mode">{t('voice.activation.triggerMode')}</label>
+                <select
+                  id="trigger-mode"
+                  value={currentSettings.pushToTalk.triggerMode || 'double-tap'}
+                  onChange={(e) => handlePushToTalkChange('triggerMode', e.target.value as 'hold' | 'double-tap')}
+                >
+                  <option value="double-tap">{t('voice.activation.triggerModeDoubleTap')} {t('voice.recommended')}</option>
+                  <option value="hold">{t('voice.activation.triggerModeHold')}</option>
+                </select>
+                <span className="setting-hint">
+                  {currentSettings.pushToTalk.triggerMode === 'hold'
+                    ? t('voice.activation.triggerModeHoldHint')
+                    : t('voice.activation.triggerModeDoubleTapHint')}
+                </span>
+              </div>
+
+              <div className="setting-item">
                 <label htmlFor="trigger-key">{t('voice.activation.triggerKey')}</label>
                 <select
                   id="trigger-key"

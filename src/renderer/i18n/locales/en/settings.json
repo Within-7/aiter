@@ -171,6 +171,11 @@
     "activation": {
       "title": "Activation Method",
       "pushToTalk": "Push-to-Talk",
+      "triggerMode": "Trigger Mode",
+      "triggerModeDoubleTap": "Double-tap + Hold",
+      "triggerModeHold": "Hold Only",
+      "triggerModeDoubleTapHint": "Double-tap then hold to record. Avoids conflicts with AI CLI shortcuts.",
+      "triggerModeHoldHint": "Just hold the key to record. May conflict with AI CLI shortcuts like Option+Enter.",
       "triggerKey": "Trigger Key",
       "triggerKeyOption": "Option / Alt",
       "triggerKeyMeta": "Command / Win",

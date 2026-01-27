@@ -35,11 +35,16 @@ export interface QwenASRConfig {
   model?: string
 }
 
+// 触发模式
+export type TriggerMode = 'hold' | 'double-tap'
+
 // Push-to-Talk 配置
 export interface PushToTalkConfig {
   enabled: boolean
   triggerKey: 'Alt' | 'Meta' | 'Control' | string
+  triggerMode: TriggerMode       // 'hold' = 长按触发, 'double-tap' = 双击+按住触发
   minHoldDuration: number
+  doubleTapInterval?: number     // 双击间隔时间（ms），默认 300ms
 }
 
 // 切换模式配置
@@ -153,7 +158,9 @@ export const defaultVoiceInputSettings: VoiceInputSettings = {
   pushToTalk: {
     enabled: true,
     triggerKey: 'Alt',
-    minHoldDuration: 200
+    triggerMode: 'double-tap',    // 默认使用双击模式，避免与 AI CLI 工具快捷键冲突
+    minHoldDuration: 200,
+    doubleTapInterval: 300
   },
   toggleMode: {
     enabled: false,

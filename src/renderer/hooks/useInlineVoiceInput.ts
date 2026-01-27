@@ -172,7 +172,9 @@ export function useInlineVoiceInput(options: UseInlineVoiceInputOptions) {
   // Push-to-Talk integration
   usePushToTalk({
     triggerKey: settings.pushToTalk.triggerKey,
+    triggerMode: settings.pushToTalk.triggerMode,
     minHoldDuration: settings.pushToTalk.minHoldDuration,
+    doubleTapInterval: settings.pushToTalk.doubleTapInterval,
     onStart: startRecording,
     onEnd: stopRecording,
     enabled: settings.enabled && settings.pushToTalk.enabled
