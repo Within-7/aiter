@@ -15,6 +15,7 @@ import {
   VOICE_NOTES_FILENAME,
   VOICE_RECORDS_FILENAME
 } from '../../types/voiceInput'
+import { ensureAiterDir, setMainWindow } from '../utils/aiterDir'
 
 const INDEX_FILENAME = 'index.json' // Legacy backup index
 
@@ -59,8 +60,8 @@ async function readRecords(projectPath: string): Promise<VoiceRecordsFile> {
  * Write unified records file
  */
 async function writeRecords(projectPath: string, records: VoiceRecordsFile): Promise<void> {
-  const dirPath = path.join(projectPath, VOICE_NOTES_DIR)
-  await fs.mkdir(dirPath, { recursive: true })
+  // Use shared utility to ensure .aiter/ is created and added to ignore files
+  await ensureAiterDir(projectPath)
   const recordsPath = getRecordsPath(projectPath)
   records.lastUpdated = Date.now()
   await fs.writeFile(recordsPath, JSON.stringify(records, null, 2), 'utf-8')
@@ -188,8 +189,9 @@ function getIndexPath(projectPath: string): string {
  * Ensure the audio backups directory exists
  */
 async function ensureBackupsDir(projectPath: string): Promise<void> {
-  const dirPath = getBackupsDir(projectPath)
-  await fs.mkdir(dirPath, { recursive: true })
+  // Use shared utility to ensure .aiter/ is created and added to ignore files,
+  // then create the audio-backups subdirectory
+  await ensureAiterDir(projectPath, AUDIO_BACKUPS_DIR)
 }
 
 /**
@@ -219,6 +221,9 @@ async function writeIndex(projectPath: string, index: VoiceBackupsIndex): Promis
 }
 
 export function registerVoiceBackupHandlers(_window: BrowserWindow) {
+  // Set main window reference for file tree refresh notifications
+  setMainWindow(_window)
+
   // ============== Unified Records API ==============
 
   // List all voice records (transcriptions + pending backups)
