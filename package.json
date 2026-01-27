@@ -1,7 +1,7 @@
 {
   "name": "airter",
   "productName": "AiTer",
-  "version": "0.1.54",
+  "version": "0.1.55",
   "description": "AiTer - A terminal client optimized for AI CLI collaboration",
   "main": "dist-electron/main/index.js",
   "author": {
@@ -93,7 +93,7 @@
     "@typescript-eslint/parser": "^6.13.2",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^4.0.16",
-    "@vitest/ui": "^4.0.18",
+    "@vitest/ui": "^4.0.16",
     "electron": "^33.4.11",
     "electron-builder": "^24.9.1",
     "eslint": "^8.55.0",
