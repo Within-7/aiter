@@ -9,6 +9,7 @@ interface MonacoEditorProps {
   onChange: (value: string) => void
   onSave: (content: string) => void
   isActive?: boolean
+  onMount?: OnMount  // Optional callback when editor is mounted
 }
 
 const languageMap: Record<string, string> = {
@@ -51,7 +52,8 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   language,
   onChange,
   onSave,
-  isActive = true
+  isActive = true,
+  onMount: onMountProp
 }) => {
   const { state } = useContext(AppContext)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -217,6 +219,11 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
     // Focus the editor
     editor.focus()
+
+    // Call optional external onMount callback
+    if (onMountProp) {
+      onMountProp(editor, monacoInstance)
+    }
   }
 
   const handleEditorChange = (value: string | undefined) => {

@@ -5,7 +5,7 @@ import DOMPurify from 'dompurify'
 import type { OnMount } from '@monaco-editor/react'
 import type * as monaco from 'monaco-editor'
 import { AppContext } from '../../context/AppContext'
-import { MonacoMarkdownEditor } from './MonacoMarkdownEditor'
+import { MonacoEditor } from './MonacoEditor'
 import { getParentDir, generateMarkdownId } from '../../utils'
 import './MarkdownEditor.css'
 import './MonacoEditorLazy.css'
@@ -181,12 +181,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     setPreview(cleanHTML)
   }, [value, imageUrls])
 
-  // Keep onSave ref updated
-  const onSaveRef = useRef(onSave)
-  useEffect(() => {
-    onSaveRef.current = onSave
-  }, [onSave])
-
   // Focus editor when switching to edit mode
   useEffect(() => {
     if (mode === 'edit' && editorRef.current) {
@@ -197,14 +191,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   // Ref to store the scroll listener disposable
   const scrollListenerRef = useRef<monaco.IDisposable | null>(null)
 
-  const handleEditorDidMount: OnMount = (editor, monacoInstance) => {
+  // Markdown-specific onMount callback for scroll position persistence
+  // Save/focus/shortcuts are handled by MonacoEditor
+  const handleEditorDidMount: OnMount = (editor, _monacoInstance) => {
     editorRef.current = editor
-
-    // Add save keyboard shortcut - get content directly from editor
-    editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
-      const currentContent = editor.getValue()
-      onSaveRef.current(currentContent)
-    })
 
     // Restore editor scroll position if available
     const savedPosition = editorScrollPositionMap.get(currentFilePath)
@@ -229,15 +219,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         editorScrollPositionMap.set(currentFilePath, { scrollTop, scrollLeft })
       }
     })
-
-    // Focus the editor
-    editor.focus()
-  }
-
-  const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined) {
-      onChange(value)
-    }
   }
 
   const handleTocClick = (id: string) => {
@@ -297,9 +278,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     <div className="markdown-editor">
       {mode === 'edit' ? (
         <div className="markdown-editor-pane-full">
-          <MonacoMarkdownEditor
+          <MonacoEditor
             value={value}
-            onChange={handleEditorChange}
+            language="markdown"
+            onChange={onChange}
+            onSave={onSave}
             onMount={handleEditorDidMount}
           />
         </div>
