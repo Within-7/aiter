@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, clipboard } from 'electron'
 import { Project, Terminal, AppSettings, FileNode, Plugin, PluginInstallProgress, PluginUpdateProgress, GitStatus, GitCommit, FileChange, DetectedShell, VersionManagerInfo, ShellType, Workspace, SessionState, VoiceTranscription, VoiceNotesFile } from '../types'
 import type { VoiceBackup, VoiceRecord } from '../types/voiceInput'
 
@@ -493,6 +493,12 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('voiceRecords:delete', { projectPath, recordId }),
     clear: (projectPath: string) =>
       ipcRenderer.invoke('voiceRecords:clear', { projectPath })
+  },
+
+  // Clipboard APIs (for Monaco Editor Find Widget paste workaround in Electron 34+)
+  clipboard: {
+    readText: () => clipboard.readText(),
+    writeText: (text: string) => clipboard.writeText(text)
   },
 
   // Voice Backup APIs (for audio file operations only - use voiceRecords for metadata)
@@ -1061,6 +1067,10 @@ export interface API {
       success: boolean;
       error?: string;
     }>
+  }
+  clipboard: {
+    readText(): string
+    writeText(text: string): void
   }
   voiceBackup: {
     save(projectPath: string, backup: VoiceBackup, audioData: string): Promise<{

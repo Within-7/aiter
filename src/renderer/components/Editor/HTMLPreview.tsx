@@ -39,6 +39,66 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
   // Track if we've done initial trim for this content
   const hasInitiallyTrimmedRef = useRef(false)
 
+  // Handle paste in Monaco Editor's Find Widget
+  // Electron 34+ dropped support for document.execCommand('paste'), which Monaco relies on.
+  // We intercept Ctrl/Cmd+V when the Find Widget input is focused and manually insert clipboard text.
+  // See: https://github.com/microsoft/monaco-editor/issues/4855
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if Ctrl+V or Cmd+V
+      const isPasteShortcut = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v'
+      if (!isPasteShortcut) return
+
+      // Check if the active element is inside Monaco's Find Widget
+      const activeElement = document.activeElement
+      if (!activeElement) return
+
+      // Find Widget inputs have class 'input' inside '.find-widget'
+      const findWidget = activeElement.closest('.find-widget')
+      if (!findWidget) return
+
+      // It's a paste in Find Widget - handle it manually
+      e.preventDefault()
+      e.stopPropagation()
+
+      try {
+        const clipboardText = window.api.clipboard.readText()
+        if (clipboardText && activeElement instanceof HTMLInputElement) {
+          // Insert text at cursor position in the input field
+          const start = activeElement.selectionStart ?? 0
+          const end = activeElement.selectionEnd ?? 0
+          const currentValue = activeElement.value
+          const newValue = currentValue.slice(0, start) + clipboardText + currentValue.slice(end)
+
+          // Set the value and trigger input event for Monaco to pick up the change
+          activeElement.value = newValue
+          activeElement.setSelectionRange(start + clipboardText.length, start + clipboardText.length)
+
+          // Dispatch input event to notify Monaco of the change
+          activeElement.dispatchEvent(new Event('input', { bubbles: true }))
+        } else if (clipboardText && activeElement instanceof HTMLTextAreaElement) {
+          // Handle textarea (e.g., replace field)
+          const start = activeElement.selectionStart ?? 0
+          const end = activeElement.selectionEnd ?? 0
+          const currentValue = activeElement.value
+          const newValue = currentValue.slice(0, start) + clipboardText + currentValue.slice(end)
+
+          activeElement.value = newValue
+          activeElement.setSelectionRange(start + clipboardText.length, start + clipboardText.length)
+          activeElement.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+      } catch (error) {
+        console.error('Failed to paste in Find Widget:', error)
+      }
+    }
+
+    // Use capture phase to intercept before Monaco handles it
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+    }
+  }, [])
+
   // Trim trailing whitespace on initial load only
   // This fixes word wrap issues without causing cursor jumping during editing
   useEffect(() => {
@@ -303,7 +363,9 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
     // when using word wrap. This is the same fix VSCode uses (editor.editContext setting).
     // See: https://github.com/microsoft/monaco-editor/issues/4592
     // See: https://code.visualstudio.com/updates/v1_101#_edit-context
-    editContext: true
+    editContext: true,
+    // Fix Find Widget tooltips appearing outside visible area
+    fixedOverflowWidgets: true
   }
 
   // Generate a key based on settings to force re-render when settings change
