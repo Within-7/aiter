@@ -61,6 +61,56 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
   const minimap = state.settings.editorMinimap ?? false
   const lineNumbers = state.settings.editorLineNumbers ?? true
 
+  // Handle paste in Monaco Editor's Find Widget
+  // Electron 34+ dropped support for document.execCommand('paste'), which Monaco relies on.
+  // We intercept Ctrl/Cmd+V when the Find Widget input is focused and manually insert clipboard text.
+  // See: https://github.com/microsoft/monaco-editor/issues/4855
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if Ctrl+V or Cmd+V
+      const isPasteShortcut = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v'
+      if (!isPasteShortcut) return
+
+      // Check if the active element is inside Monaco's Find Widget
+      const activeElement = document.activeElement
+      if (!activeElement) return
+
+      // Find Widget inputs have class 'input' inside '.find-widget'
+      const findWidget = activeElement.closest('.find-widget')
+      if (!findWidget) return
+
+      // It's a paste in Find Widget - handle it manually
+      e.preventDefault()
+      e.stopPropagation()
+
+      try {
+        const clipboardText = window.api.clipboard.readText()
+        if (clipboardText && (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement)) {
+          // Insert text at cursor position in the input field
+          const start = activeElement.selectionStart ?? 0
+          const end = activeElement.selectionEnd ?? 0
+          const currentValue = activeElement.value
+          const newValue = currentValue.slice(0, start) + clipboardText + currentValue.slice(end)
+
+          // Set the value and trigger input event for Monaco to pick up the change
+          activeElement.value = newValue
+          activeElement.setSelectionRange(start + clipboardText.length, start + clipboardText.length)
+
+          // Dispatch input event to notify Monaco of the change
+          activeElement.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+      } catch (error) {
+        console.error('Failed to paste in Find Widget:', error)
+      }
+    }
+
+    // Use capture phase to intercept before Monaco handles it
+    document.addEventListener('keydown', handleKeyDown, true)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+    }
+  }, [])
+
   // Trim trailing whitespace on initial load only
   // This fixes word wrap issues without causing cursor jumping during editing
   useEffect(() => {
@@ -82,32 +132,10 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
     }
   }, [value, onChange])
 
-  // Wrap the external onMount to add paste trimming behavior
+  // Wrap the external onMount to add additional behavior
+  // Note: We no longer override Ctrl+V because it interferes with paste in Find Widget.
+  // Trailing whitespace trimming is handled on initial file load instead.
   const handleEditorMount: OnMount = (editor, monacoInstance) => {
-    // Override paste action to trim trailing whitespace from pasted content
-    editor.addAction({
-      id: 'trim-trailing-whitespace-on-paste',
-      label: 'Paste with trimmed trailing whitespace',
-      keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyV],
-      run: async (ed) => {
-        try {
-          const clipboardText = await navigator.clipboard.readText()
-          const trimmedText = trimTrailingWhitespace(clipboardText)
-          const selection = ed.getSelection()
-          if (selection) {
-            ed.executeEdits('paste-trimmed', [{
-              range: selection,
-              text: trimmedText,
-              forceMoveMarkers: true
-            }])
-          }
-        } catch {
-          // If clipboard access fails, fallback to default paste behavior
-          document.execCommand('paste')
-        }
-      }
-    })
-
     // Call the external onMount handler
     onMount(editor, monacoInstance)
   }
@@ -138,7 +166,9 @@ export const MonacoMarkdownEditor: React.FC<MonacoMarkdownEditorProps> = ({
     // when using word wrap. This is the same fix VSCode uses (editor.editContext setting).
     // See: https://github.com/microsoft/monaco-editor/issues/4592
     // See: https://code.visualstudio.com/updates/v1_101#_edit-context
-    editContext: true
+    editContext: true,
+    // Fix Find Widget tooltips appearing outside visible area
+    fixedOverflowWidgets: true
   }
 
   // Generate a key based on settings to force re-render when settings change

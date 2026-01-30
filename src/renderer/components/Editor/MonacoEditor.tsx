@@ -127,7 +127,7 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
       try {
         const clipboardText = window.api.clipboard.readText()
-        if (clipboardText && activeElement instanceof HTMLInputElement) {
+        if (clipboardText && (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement)) {
           // Insert text at cursor position in the input field
           const start = activeElement.selectionStart ?? 0
           const end = activeElement.selectionEnd ?? 0
@@ -139,16 +139,6 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
           activeElement.setSelectionRange(start + clipboardText.length, start + clipboardText.length)
 
           // Dispatch input event to notify Monaco of the change
-          activeElement.dispatchEvent(new Event('input', { bubbles: true }))
-        } else if (clipboardText && activeElement instanceof HTMLTextAreaElement) {
-          // Handle textarea (e.g., replace field)
-          const start = activeElement.selectionStart ?? 0
-          const end = activeElement.selectionEnd ?? 0
-          const currentValue = activeElement.value
-          const newValue = currentValue.slice(0, start) + clipboardText + currentValue.slice(end)
-
-          activeElement.value = newValue
-          activeElement.setSelectionRange(start + clipboardText.length, start + clipboardText.length)
           activeElement.dispatchEvent(new Event('input', { bubbles: true }))
         }
       } catch (error) {
