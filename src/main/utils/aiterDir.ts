@@ -147,3 +147,101 @@ export async function ensureAiterDir(projectPath: string, subDir?: string): Prom
 export function clearProcessedPaths(): void {
   processedPaths.clear()
 }
+
+/**
+ * Check if .aiter/ directory exists and ensure it's added to all ignore files.
+ * This is used on startup to ensure existing .aiter/ directories are properly ignored.
+ *
+ * @param projectPath - The project root path
+ * @returns true if any ignore files were updated
+ */
+export async function ensureAiterInIgnoreFiles(projectPath: string): Promise<boolean> {
+  const aiterPath = path.join(projectPath, VOICE_NOTES_DIR)
+
+  // Check if .aiter directory exists
+  try {
+    const stat = await fs.stat(aiterPath)
+    if (!stat.isDirectory()) {
+      return false
+    }
+  } catch {
+    // Directory doesn't exist, nothing to do
+    return false
+  }
+
+  // Find and check all ignore files
+  const ignoreFiles = await findIgnoreFiles(projectPath)
+  if (ignoreFiles.length === 0) {
+    return false
+  }
+
+  let anyUpdated = false
+
+  for (const ignoreFile of ignoreFiles) {
+    const filePath = path.join(projectPath, ignoreFile)
+    const ignoreEntry = `${VOICE_NOTES_DIR}/`
+
+    try {
+      const content = await fs.readFile(filePath, 'utf-8')
+
+      // Check if .aiter/ is already in the file
+      const lines = content.split('\n')
+      const hasEntry = lines.some(line => {
+        const trimmed = line.trim()
+        return trimmed === VOICE_NOTES_DIR ||
+               trimmed === `${VOICE_NOTES_DIR}/` ||
+               trimmed === `/${VOICE_NOTES_DIR}` ||
+               trimmed === `/${VOICE_NOTES_DIR}/`
+      })
+
+      if (!hasEntry) {
+        // Add .aiter/ to the end of the file
+        const newContent = content.endsWith('\n')
+          ? `${content}${ignoreEntry}\n`
+          : `${content}\n${ignoreEntry}\n`
+        await fs.writeFile(filePath, newContent, 'utf-8')
+        console.log(`[aiterDir] Startup: Added ${ignoreEntry} to ${ignoreFile} in ${path.basename(projectPath)}`)
+        anyUpdated = true
+      }
+    } catch (error) {
+      console.warn(`[aiterDir] Startup: Failed to check/update ${ignoreFile}:`, error)
+    }
+  }
+
+  return anyUpdated
+}
+
+/**
+ * Check all projects and ensure .aiter/ is in their ignore files.
+ * This should be called once on app startup.
+ *
+ * @param projectPaths - Array of project root paths to check
+ * @returns Number of projects that had ignore files updated
+ */
+export async function ensureAiterIgnoredInAllProjects(projectPaths: string[]): Promise<number> {
+  let updatedCount = 0
+
+  console.log(`[aiterDir] Startup: Checking ${projectPaths.length} projects for .aiter/ in ignore files...`)
+
+  // Process all projects in parallel for faster startup
+  const results = await Promise.all(
+    projectPaths.map(async (projectPath) => {
+      try {
+        return await ensureAiterInIgnoreFiles(projectPath)
+      } catch (error) {
+        console.warn(`[aiterDir] Startup: Failed to check project ${projectPath}:`, error)
+        return false
+      }
+    })
+  )
+
+  updatedCount = results.filter(Boolean).length
+
+  if (updatedCount > 0) {
+    console.log(`[aiterDir] Startup: Updated ignore files in ${updatedCount} project(s)`)
+  } else {
+    console.log(`[aiterDir] Startup: All projects have .aiter/ properly ignored`)
+  }
+
+  return updatedCount
+}

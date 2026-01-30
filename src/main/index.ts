@@ -12,6 +12,7 @@ import { initAutoUpdateManager } from './updater'
 import { NodeManager } from './nodejs/manager'
 import { WorkspaceManager } from './workspace'
 import { initQwenASRProxy } from './voice/QwenASRProxy'
+import { ensureAiterIgnoredInAllProjects } from './utils/aiterDir'
 
 // ============================================================================
 // Proxy Configuration Strategy
@@ -175,6 +176,13 @@ async function initialize() {
     } else {
       console.log('[NodeManager] npx cache is healthy')
     }
+
+    // Check all projects for .aiter/ in ignore files (on every startup)
+    const projects = storeManager.getProjects()
+    const projectPaths = projects.map(p => p.path)
+    ensureAiterIgnoredInAllProjects(projectPaths).catch(error => {
+      console.warn('[Startup] Failed to check .aiter/ ignore files:', error)
+    })
 
     // Check and install Minto CLI if needed (first-time setup)
     const settings = storeManager.getSettings()
