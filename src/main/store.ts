@@ -71,6 +71,7 @@ const defaultSettings: AppSettings = {
   editorWordWrap: true,              // Enable word wrap by default
   editorMinimap: false,              // Disable minimap by default
   editorLineNumbers: true,           // Show line numbers by default
+  editorSuggestions: false,          // Disable code suggestions by default (better for writers/analysts)
 
   // Configuration directory isolation (Hybrid Mode)
   // Disabled by default - users can opt-in for isolated CLI tool configs

@@ -112,7 +112,9 @@
       "minimap": "Show Minimap",
       "minimapHint": "Display code overview on the right side",
       "lineNumbers": "Show Line Numbers",
-      "lineNumbersHint": "Display line numbers in the gutter"
+      "lineNumbersHint": "Display line numbers in the gutter",
+      "suggestions": "Code Suggestions",
+      "suggestionsHint": "Show autocomplete suggestions while typing. Disable for distraction-free writing."
     }
   },
   "shortcuts": {

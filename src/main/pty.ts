@@ -205,6 +205,7 @@ export class PTYManager {
       editorWordWrap: true,
       editorMinimap: false,
       editorLineNumbers: true,
+      editorSuggestions: false,
       // Configuration isolation (default: disabled)
       configIsolation: {
         enabled: false,

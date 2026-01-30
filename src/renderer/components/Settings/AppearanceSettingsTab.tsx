@@ -144,6 +144,19 @@ export const AppearanceSettingsTab: React.FC<AppearanceSettingsTabProps> = ({ se
           {t('appearance.editor.lineNumbersHint')}
         </span>
       </div>
+
+      <div className="setting-item setting-item-checkbox">
+        <label htmlFor="editor-suggestions">{t('appearance.editor.suggestions')}</label>
+        <input
+          id="editor-suggestions"
+          type="checkbox"
+          checked={settings.editorSuggestions ?? false}
+          onChange={(e) => handleSettingChange('editorSuggestions', e.target.checked)}
+        />
+        <span className="setting-hint">
+          {t('appearance.editor.suggestionsHint')}
+        </span>
+      </div>
     </section>
   )
 }

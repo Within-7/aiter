@@ -67,6 +67,7 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   const wordWrap = state.settings.editorWordWrap ?? true
   const minimap = state.settings.editorMinimap ?? false
   const lineNumbers = state.settings.editorLineNumbers ?? true
+  const suggestions = state.settings.editorSuggestions ?? false
 
   // Trim trailing whitespace on initial load only
   // This fixes word wrap issues without causing cursor jumping during editing
@@ -135,6 +136,25 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   const handleEditorDidMount: OnMount = (editor, monacoInstance) => {
     editorRef.current = editor
 
+    // Disable all validation/diagnostics (red underlines) for JavaScript and TypeScript
+    // AiTer is designed for document viewing/editing, not code development
+    // Users just want syntax highlighting without error messages
+    monacoInstance.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
+      noSuggestionDiagnostics: true
+    })
+    monacoInstance.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
+      noSuggestionDiagnostics: true
+    })
+
+    // Disable validation for JSON files as well
+    monacoInstance.languages.json?.jsonDefaults?.setDiagnosticsOptions?.({
+      validate: false
+    })
+
     // Add save keyboard shortcut - get content directly from editor
     editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => {
       const currentContent = editor.getValue()
@@ -142,10 +162,13 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     })
 
     // Override paste action to trim trailing whitespace from pasted content
+    // Only intercept paste when the main editor area has focus (not Find Widget, etc.)
     editor.addAction({
       id: 'trim-trailing-whitespace-on-paste',
       label: 'Paste with trimmed trailing whitespace',
       keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyV],
+      // Only run when the editor text area has focus (not Find Widget or other widgets)
+      precondition: 'editorTextFocus',
       run: async (ed) => {
         try {
           const clipboardText = await navigator.clipboard.readText()
@@ -181,6 +204,11 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   //
   // Note: We trim trailing whitespace on initial file load to fix word wrap issues
   // with terminal output that has lines padded with spaces
+  //
+  // Writer-friendly defaults:
+  // - Suggestions disabled by default (less distraction for writers/analysts)
+  // - No validation errors (syntax highlighting only)
+  // - Word wrap enabled for comfortable reading
   const editorOptions: monaco.editor.IStandaloneEditorConstructionOptions = {
     minimap: { enabled: minimap },
     fontSize: 14,
@@ -210,12 +238,52 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
     // when using word wrap. This is the same fix VSCode uses (editor.editContext setting).
     // See: https://github.com/microsoft/monaco-editor/issues/4592
     // See: https://code.visualstudio.com/updates/v1_101#_edit-context
-    editContext: true
+    editContext: true,
+
+    // === Writer/Analyst-friendly settings ===
+    // These settings make the editor more comfortable for non-developers:
+    // business analysts, researchers, writers, students, etc.
+
+    // Code suggestions/autocomplete - disabled by default for less distraction
+    // When disabled, typing won't trigger popups with code suggestions
+    quickSuggestions: suggestions ? {
+      other: true,
+      comments: false,
+      strings: false
+    } : false,
+    suggestOnTriggerCharacters: suggestions,
+    acceptSuggestionOnEnter: suggestions ? 'on' : 'off',
+    tabCompletion: suggestions ? 'on' : 'off',
+    wordBasedSuggestions: suggestions ? 'currentDocument' : 'off',
+    parameterHints: { enabled: suggestions },
+
+    // Disable inline suggestions (ghost text) when suggestions are off
+    inlineSuggest: { enabled: suggestions },
+
+    // Smoother editing experience
+    smoothScrolling: true,
+    cursorSmoothCaretAnimation: 'on',
+
+    // Better for reading long documents
+    padding: { top: 8, bottom: 8 },
+
+    // Reduce visual noise
+    renderLineHighlight: 'line',
+    occurrencesHighlight: 'off',
+    selectionHighlight: true,
+
+    // Folding for document structure (useful for markdown, code)
+    folding: true,
+    foldingHighlight: false,
+
+    // Bracket matching without colorization (less distracting)
+    bracketPairColorization: { enabled: false },
+    matchBrackets: 'near'
   }
 
   // Generate a key based on settings to force re-render when settings change
   // This ensures Monaco Editor picks up the new options reliably
-  const editorKey = `editor-${wordWrap}-${minimap}-${lineNumbers}`
+  const editorKey = `editor-${wordWrap}-${minimap}-${lineNumbers}-${suggestions}`
 
   return (
     <Editor

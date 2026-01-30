@@ -157,6 +157,7 @@ export interface AppSettings {
   editorWordWrap: boolean                 // Enable word wrap in code editor
   editorMinimap: boolean                  // Show minimap in code editor
   editorLineNumbers: boolean              // Show line numbers in code editor
+  editorSuggestions: boolean              // Show code suggestions/autocomplete (disable for writers/analysts)
 
   // Configuration directory isolation (Hybrid Mode)
   configIsolation: ConfigIsolationSettings  // Configuration isolation settings for CLI tools
