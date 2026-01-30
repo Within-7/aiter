@@ -239,6 +239,7 @@ export function ExplorerView() {
             fileName: file.name,
             fileType: result.fileType as EditorTab['fileType'],
             content: result.content,
+            originalContent: result.content,  // Store original for dirty detection
             isDirty: false,
             isPreview  // Preview tab (single-click) or permanent tab (double-click)
           }

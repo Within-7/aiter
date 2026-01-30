@@ -214,11 +214,26 @@ export function editorReducer(state: AppState, action: AppAction): AppState {
     case 'UPDATE_EDITOR_CONTENT':
       return {
         ...state,
-        editorTabs: state.editorTabs.map(tab =>
-          tab.id === action.payload.id
-            ? { ...tab, content: action.payload.content, isDirty: true, isPreview: false }
-            : tab
-        )
+        editorTabs: state.editorTabs.map(tab => {
+          if (tab.id !== action.payload.id) {
+            return tab
+          }
+          // Compare current content with original to determine dirty state
+          // For scratchpads, any content means dirty (original is always empty string)
+          // For regular files, compare with originalContent
+          const originalContent = tab.originalContent ?? ''
+          const newContent = action.payload.content
+          const isDirty = tab.isScratchpad
+            ? newContent.length > 0  // Scratchpad: dirty if has content
+            : newContent !== originalContent  // File: dirty if different from original
+
+          return {
+            ...tab,
+            content: newContent,
+            isDirty,
+            isPreview: false
+          }
+        })
       }
 
     case 'MARK_TAB_DIRTY':
@@ -227,6 +242,21 @@ export function editorReducer(state: AppState, action: AppAction): AppState {
         editorTabs: state.editorTabs.map(tab =>
           tab.id === action.payload.id
             ? { ...tab, isDirty: action.payload.isDirty }
+            : tab
+        )
+      }
+
+    case 'MARK_TAB_SAVED':
+      // After successful save: update originalContent to match saved content, clear dirty flag
+      return {
+        ...state,
+        editorTabs: state.editorTabs.map(tab =>
+          tab.id === action.payload.id
+            ? {
+                ...tab,
+                isDirty: false,
+                originalContent: action.payload.content
+              }
             : tab
         )
       }

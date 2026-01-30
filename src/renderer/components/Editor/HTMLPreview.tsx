@@ -189,6 +189,7 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
         if (fileResult.success) {
           // Create a new editor tab with server URL (including query params)
           const tabId = generateTabId()
+          const content = fileResult.content || ''
 
           dispatch({
             type: 'ADD_EDITOR_TAB',
@@ -197,7 +198,8 @@ export const HTMLPreview: React.FC<HTMLPreviewProps> = ({
               filePath: targetPath,
               fileName: displayFileName,
               fileType: (fileResult.fileType || 'html') as any,
-              content: fileResult.content || '',
+              content,
+              originalContent: content,  // Store original for dirty detection
               isDirty: false,
               serverUrl: fullUrl
             }

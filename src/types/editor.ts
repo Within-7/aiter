@@ -43,6 +43,7 @@ export interface EditorTab {
   fileName: string
   fileType: EditorFileType
   content: string
+  originalContent?: string // Original content when file was opened, used to detect if content changed
   isDirty: boolean
   isPreview?: boolean // Preview tab (VSCode-like behavior): replaced on next file click, unless pinned
   isScratchpad?: boolean // Temporary scratchpad tab, not associated with a file

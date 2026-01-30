@@ -148,6 +148,7 @@ function App() {
                       fileName: tabInfo.fileName,
                       fileType: tabInfo.fileType,
                       content: fileResult.content,
+                      originalContent: fileResult.content,  // Store original for dirty detection
                       isDirty: false,
                       serverUrl: tabInfo.serverUrl,
                       projectPath: tabInfo.projectPath

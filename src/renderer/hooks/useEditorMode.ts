@@ -80,9 +80,10 @@ export function useEditorMode({
             payload: { id: activeEditorTab.id, content }
           })
         }
+        // Mark as saved and update originalContent so future undo/redo tracks correctly
         dispatch({
-          type: 'MARK_TAB_DIRTY',
-          payload: { id: activeEditorTab.id, isDirty: false }
+          type: 'MARK_TAB_SAVED',
+          payload: { id: activeEditorTab.id, content: contentToSave }
         })
       } else {
         console.error('Failed to save file:', result.error)

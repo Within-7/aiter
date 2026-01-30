@@ -61,6 +61,7 @@ export type AppAction =
   | { type: 'REORDER_TABS'; payload: string[] }
   | { type: 'UPDATE_EDITOR_CONTENT'; payload: { id: string; content: string } }
   | { type: 'MARK_TAB_DIRTY'; payload: { id: string; isDirty: boolean } }
+  | { type: 'MARK_TAB_SAVED'; payload: { id: string; content: string } }  // After save: update originalContent
   | { type: 'PIN_EDITOR_TAB'; payload: string }
   | { type: 'TERMINAL_DATA'; payload: { id: string; data: string } }
   | { type: 'TERMINAL_EXIT'; payload: { id: string; exitCode: number } }

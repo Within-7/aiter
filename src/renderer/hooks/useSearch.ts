@@ -255,6 +255,7 @@ export function useSearch({
           fileName: result.fileName,
           fileType: fileResult.fileType as EditorTab['fileType'],
           content: fileResult.content,
+          originalContent: fileResult.content,  // Store original for dirty detection
           isDirty: false,
           isPreview: true,
           cursorPosition: match ? { line: match.line, column: match.column } : undefined
