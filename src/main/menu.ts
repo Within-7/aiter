@@ -76,54 +76,117 @@ export function setupMenu() {
     },
 
     // Edit menu
+    // Note: We use accelerator + webContents methods instead of role for paste/copy/cut
+    // to ensure proper handling in Monaco Editor's Find Widget and other input elements.
+    // Using 'role' causes Electron to bypass the focused input element in some cases.
     {
       label: '编辑',
       submenu: [
         {
           label: '撤销',
-          role: 'undo' as const
+          accelerator: 'CmdOrCtrl+Z',
+          click: () => {
+            const focusedWindow = BrowserWindow.getFocusedWindow()
+            if (focusedWindow) {
+              focusedWindow.webContents.undo()
+            }
+          }
         },
         {
           label: '重做',
-          role: 'redo' as const
+          accelerator: isMac ? 'Cmd+Shift+Z' : 'Ctrl+Y',
+          click: () => {
+            const focusedWindow = BrowserWindow.getFocusedWindow()
+            if (focusedWindow) {
+              focusedWindow.webContents.redo()
+            }
+          }
         },
         { type: 'separator' as const },
         {
           label: '剪切',
-          role: 'cut' as const
+          accelerator: 'CmdOrCtrl+X',
+          click: () => {
+            const focusedWindow = BrowserWindow.getFocusedWindow()
+            if (focusedWindow) {
+              focusedWindow.webContents.cut()
+            }
+          }
         },
         {
           label: '复制',
-          role: 'copy' as const
+          accelerator: 'CmdOrCtrl+C',
+          click: () => {
+            const focusedWindow = BrowserWindow.getFocusedWindow()
+            if (focusedWindow) {
+              focusedWindow.webContents.copy()
+            }
+          }
         },
         {
           label: '粘贴',
-          role: 'paste' as const
+          accelerator: 'CmdOrCtrl+V',
+          click: () => {
+            const focusedWindow = BrowserWindow.getFocusedWindow()
+            if (focusedWindow) {
+              focusedWindow.webContents.paste()
+            }
+          }
         },
         ...(isMac
           ? [
               {
                 label: '粘贴并匹配样式',
-                role: 'pasteAndMatchStyle' as const
+                accelerator: 'Cmd+Shift+V',
+                click: () => {
+                  const focusedWindow = BrowserWindow.getFocusedWindow()
+                  if (focusedWindow) {
+                    focusedWindow.webContents.pasteAndMatchStyle()
+                  }
+                }
               },
               {
                 label: '删除',
-                role: 'delete' as const
+                accelerator: 'Backspace',
+                click: () => {
+                  const focusedWindow = BrowserWindow.getFocusedWindow()
+                  if (focusedWindow) {
+                    focusedWindow.webContents.delete()
+                  }
+                }
               },
               {
                 label: '全选',
-                role: 'selectAll' as const
+                accelerator: 'CmdOrCtrl+A',
+                click: () => {
+                  const focusedWindow = BrowserWindow.getFocusedWindow()
+                  if (focusedWindow) {
+                    focusedWindow.webContents.selectAll()
+                  }
+                }
               }
             ]
           : [
               {
                 label: '删除',
-                role: 'delete' as const
+                accelerator: 'Delete',
+                click: () => {
+                  const focusedWindow = BrowserWindow.getFocusedWindow()
+                  if (focusedWindow) {
+                    focusedWindow.webContents.delete()
+                  }
+                }
               },
               { type: 'separator' as const },
               {
                 label: '全选',
-                role: 'selectAll' as const
+                accelerator: 'CmdOrCtrl+A',
+                click: () => {
+                  const focusedWindow = BrowserWindow.getFocusedWindow()
+                  if (focusedWindow) {
+                    focusedWindow.webContents.selectAll()
+                  }
+                }
               }
             ])
       ]
