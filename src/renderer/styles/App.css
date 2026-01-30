@@ -70,3 +70,35 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #4e4e4e;
 }
+
+/* Monaco Editor Find Widget fixes */
+/* Ensure Find Widget tooltips stay within visible area */
+.monaco-editor .find-widget {
+  /* Allow tooltips to overflow upward into visible area */
+  overflow: visible !important;
+}
+
+/* Fix Find Widget tooltip position - show below instead of above */
+.monaco-editor .find-widget .monaco-hover {
+  /* Ensure hover tooltips are visible */
+  z-index: 10000 !important;
+}
+
+/* Ensure the editor container allows overflow for Find Widget */
+.monaco-editor {
+  overflow: visible !important;
+}
+
+/* Fix tooltip position to show below buttons instead of above */
+.monaco-editor .find-widget .button:hover::after,
+.monaco-editor .find-widget [role="checkbox"]:hover::after {
+  /* Move tooltip below the button */
+  top: 100% !important;
+  bottom: auto !important;
+  margin-top: 4px;
+}
+
+/* Ensure the find widget's parent doesn't clip tooltips */
+.editor-content {
+  overflow: visible !important;
+}
