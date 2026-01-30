@@ -161,32 +161,9 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
       onSaveRef.current(currentContent)
     })
 
-    // Override paste action to trim trailing whitespace from pasted content
-    // Only intercept paste when the main editor area has focus (not Find Widget, etc.)
-    editor.addAction({
-      id: 'trim-trailing-whitespace-on-paste',
-      label: 'Paste with trimmed trailing whitespace',
-      keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyV],
-      // Only run when the editor text area has focus (not Find Widget or other widgets)
-      precondition: 'editorTextFocus',
-      run: async (ed) => {
-        try {
-          const clipboardText = await navigator.clipboard.readText()
-          const trimmedText = trimTrailingWhitespace(clipboardText)
-          const selection = ed.getSelection()
-          if (selection) {
-            ed.executeEdits('paste-trimmed', [{
-              range: selection,
-              text: trimmedText,
-              forceMoveMarkers: true
-            }])
-          }
-        } catch {
-          // If clipboard access fails, fallback to default paste behavior
-          document.execCommand('paste')
-        }
-      }
-    })
+    // Note: We no longer override Ctrl+V because it interferes with paste in Find Widget
+    // and other Monaco UI components. The built-in paste behavior is preserved.
+    // Trailing whitespace trimming is handled on initial file load instead.
 
     // Focus the editor
     editor.focus()
@@ -278,7 +255,30 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
 
     // Bracket matching without colorization (less distracting)
     bracketPairColorization: { enabled: false },
-    matchBrackets: 'near'
+    matchBrackets: 'near',
+
+    // === Essential editing features ===
+    // Ensure all standard keyboard shortcuts work properly
+
+    // Context menu with Cut, Copy, Paste, Select All
+    contextmenu: true,
+
+    // Find and Replace (Ctrl/Cmd+F, Ctrl/Cmd+H)
+    find: {
+      addExtraSpaceOnTop: false,
+      autoFindInSelection: 'multiline',
+      seedSearchStringFromSelection: 'selection'
+    },
+
+    // Copy/Paste without formatting issues
+    copyWithSyntaxHighlighting: false,
+
+    // Enable all standard editor actions
+    // These ensure Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+Z, Ctrl+Y, Ctrl+F work correctly
+    readOnly: false,
+
+    // Multi-cursor support (Alt+Click on macOS, Ctrl+Click on Windows)
+    multiCursorModifier: 'alt'
   }
 
   // Generate a key based on settings to force re-render when settings change
